@@ -12,6 +12,6 @@ You can install Poetry binary build using [Homebrew](https://brew.sh/):
 
     brew install gi0baro/poetry-bin/poetry-bin
 
-or you can manually download the package from the [releases page](./releases).
+or you can manually download the package from the [releases page](https://github.com/gi0baro/poetry-bin/releases).
 
 > **Note:** only x86 builds for Linux and MacOS are currently available.
