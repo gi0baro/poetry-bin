@@ -21,7 +21,6 @@ dist
 /docs/_draft.rst
 /pip-wheel-metadata
 /src/virtualenv/out
-venv*
 .python-version
 
 *wheel-store*

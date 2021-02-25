@@ -1,15 +1,17 @@
 diff --git a/.gitignore b/.gitignore
-index f8aceb2..a8034d0 100644
+index f8aceb2..837bb1c 100644
 --- a/.gitignore
 +++ b/.gitignore
-@@ -20,7 +20,6 @@ dist
+@@ -20,9 +20,7 @@ dist
  
  /docs/_draft.rst
  /pip-wheel-metadata
 -/src/virtualenv/version.py
  /src/virtualenv/out
- venv*
+-venv*
  .python-version
+ 
+ *wheel-store*
 diff --git a/setup.py b/setup.py
 index cddd1d3..1b5dbe4 100644
 --- a/setup.py
