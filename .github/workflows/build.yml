@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - master
+    paths:
+      - pyoxidizer.bzl
+      - static/**
+      - vendor/**
 
 jobs:
   Linux:
@@ -20,10 +24,10 @@ jobs:
         toolchain: 1.47.0
         default: true
         profile: minimal
-    - name: Install pyOxidizer
+    - name: Install PyOxidizer
       run: |
         cargo install --git https://github.com/gi0baro/PyOxidizer.git --rev 1d074e3 pyoxidizer
-    - name: Building release
+    - name: Build release
       run: |
         make build_linux
         build/x86_64-unknown-linux-gnu/release/install/bin/poetry --version
@@ -53,10 +57,10 @@ jobs:
         toolchain: 1.47.0
         default: true
         profile: minimal
-    - name: Install pyOxidizer
+    - name: Install PyOxidizer
       run: |
         cargo install --git https://github.com/gi0baro/PyOxidizer.git --rev 1d074e3 pyoxidizer
-    - name: Building release
+    - name: Build release
       run: |
         make build_mac
         build/x86_64-apple-darwin/release/install/bin/poetry --version

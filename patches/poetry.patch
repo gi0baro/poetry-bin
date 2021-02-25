@@ -45,7 +45,7 @@ index 1320fdd..0351310 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 9d660c7..25a3acf 100644
+index 9d660c7..4660030 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -27,6 +27,7 @@ from packaging.tags import interpreter_name
@@ -98,7 +98,7 @@ index 9d660c7..25a3acf 100644
                  "--no-periodic-update",
                  "--python",
 -                executable or sys.executable,
-+                executable or "python",
++                executable or "python3",
                  str(path),
              ]
          )
@@ -107,7 +107,7 @@ index 9d660c7..25a3acf 100644
      @property
      def python(self):  # type: () -> str
 -        return sys.executable
-+        return "python"
++        return "python3"
  
      @property
      def sys_path(self):  # type: () -> List[str]
@@ -116,7 +116,7 @@ index 9d660c7..25a3acf 100644
          # If we're not in a venv, assume the interpreter we're running on
          # has a pip and use that
 -        return [sys.executable, "-m", "pip"]
-+        return ["python", "-m", "pip"]
++        return ["python3", "-m", "pip"]
  
      def get_paths(self):  # type: () -> Dict[str, str]
          # We can't use sysconfig.get_paths() because

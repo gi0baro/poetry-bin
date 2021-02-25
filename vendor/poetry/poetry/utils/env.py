@@ -799,7 +799,7 @@ class EnvManager(object):
                 "--no-download",
                 "--no-periodic-update",
                 "--python",
-                executable or "python",
+                executable or "python3",
                 str(path),
             ]
         )
@@ -1136,7 +1136,7 @@ class SystemEnv(Env):
 
     @property
     def python(self):  # type: () -> str
-        return "python"
+        return "python3"
 
     @property
     def sys_path(self):  # type: () -> List[str]
@@ -1151,7 +1151,7 @@ class SystemEnv(Env):
     def get_pip_command(self):  # type: () -> List[str]
         # If we're not in a venv, assume the interpreter we're running on
         # has a pip and use that
-        return ["python", "-m", "pip"]
+        return ["python3", "-m", "pip"]
 
     def get_paths(self):  # type: () -> Dict[str, str]
         # We can't use sysconfig.get_paths() because
