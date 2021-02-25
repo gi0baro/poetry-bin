@@ -1,0 +1,123 @@
+diff --git a/poetry/core/__init__.py b/poetry/core/__init__.py
+index eed5b18..c668dc4 100644
+--- a/poetry/core/__init__.py
++++ b/poetry/core/__init__.py
+@@ -1,15 +1,5 @@
+-import sys
+-
+-
+-try:
+-    from pathlib import Path
+-except ImportError:
+-    # noinspection PyUnresolvedReferences
+-    from pathlib2 import Path
++from pathlib import Path
+ 
+ __version__ = "1.0.2"
+ 
+-__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
+-
+-if __vendor_site__ not in sys.path:
+-    sys.path.insert(0, __vendor_site__)
++__path_assets__ = Path(__path__[0]).parents[3] / "assets"
+diff --git a/poetry/core/json/__init__.py b/poetry/core/json/__init__.py
+index 83ecab7..ce6619f 100644
+--- a/poetry/core/json/__init__.py
++++ b/poetry/core/json/__init__.py
+@@ -6,8 +6,9 @@ from typing import List
+ 
+ from jsonschema import Draft7Validator
+ 
++from .. import __path_assets__
+ 
+-SCHEMA_DIR = os.path.join(os.path.dirname(__file__), "schemas")
++SCHEMA_DIR = __path_assets__ / "schemas"
+ 
+ 
+ class ValidationError(ValueError):
+diff --git a/poetry/core/spdx/__init__.py b/poetry/core/spdx/__init__.py
+index 713aa30..ed220b4 100644
+--- a/poetry/core/spdx/__init__.py
++++ b/poetry/core/spdx/__init__.py
+@@ -5,6 +5,7 @@ from io import open
+ from typing import Dict
+ from typing import Optional
+ 
++from .. import __path_assets__
+ from .license import License
+ from .updater import Updater
+ 
+@@ -31,7 +32,7 @@ def load_licenses():  # type: () -> None
+ 
+     _licenses = {}
+ 
+-    licenses_file = os.path.join(os.path.dirname(__file__), "data", "licenses.json")
++    licenses_file = __path_assets__ / "licenses.json"
+ 
+     with open(licenses_file, encoding="utf-8") as f:
+         data = json.loads(f.read())
+diff --git a/poetry/core/spdx/updater.py b/poetry/core/spdx/updater.py
+index 30c3a51..4fbfc9c 100644
+--- a/poetry/core/spdx/updater.py
++++ b/poetry/core/spdx/updater.py
+@@ -12,6 +12,8 @@ try:
+ except ImportError:
+     from urllib2 import urlopen
+ 
++from . import __path_assets__
++
+ 
+ class Updater:
+ 
+@@ -22,7 +24,7 @@ class Updater:
+ 
+     def dump(self, file=None):  # type: (Optional[str]) -> None
+         if file is None:
+-            file = os.path.join(os.path.dirname(__file__), "data", "licenses.json")
++            file = __path_assets__ / "licenses.json"
+ 
+         licenses_url = self._base_url + "licenses.json"
+ 
+diff --git a/poetry/core/version/markers.py b/poetry/core/version/markers.py
+index 894e1dc..f451867 100644
+--- a/poetry/core/version/markers.py
++++ b/poetry/core/version/markers.py
+@@ -12,6 +12,8 @@ from lark import Lark
+ from lark import Token
+ from lark import Tree
+ 
++from .. import __path_assets__
++
+ 
+ if TYPE_CHECKING:
+     from poetry.core.semver import VersionTypes  # noqa
+@@ -49,7 +51,7 @@ ALIASES = {
+     "python_implementation": "platform_python_implementation",
+ }
+ _parser = Lark.open(
+-    os.path.join(os.path.dirname(__file__), "grammars", "markers.lark"), parser="lalr"
++    os.path.join(__path_assets__, "grammars", "markers.lark"), parser="lalr"
+ )
+ 
+ 
+diff --git a/poetry/core/version/requirements.py b/poetry/core/version/requirements.py
+index c9601a0..b211c64 100644
+--- a/poetry/core/version/requirements.py
++++ b/poetry/core/version/requirements.py
+@@ -14,6 +14,7 @@ from lark import UnexpectedToken
+ from poetry.core.semver import parse_constraint
+ from poetry.core.semver.exceptions import ParseConstraintError
+ 
++from .. import __path_assets__
+ from .markers import _compact_markers
+ 
+ 
+@@ -30,7 +31,7 @@ class InvalidRequirement(ValueError):
+ 
+ 
+ _parser = Lark.open(
+-    os.path.join(os.path.dirname(__file__), "grammars", "pep508.lark"), parser="lalr"
++    os.path.join(__path_assets__, "grammars", "pep508.lark"), parser="lalr"
+ )
+ 
+ 

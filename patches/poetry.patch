@@ -1,0 +1,175 @@
+diff --git a/poetry/console/__init__.py b/poetry/console/__init__.py
+index c0c2573..e69de29 100644
+--- a/poetry/console/__init__.py
++++ b/poetry/console/__init__.py
+@@ -1,5 +0,0 @@
+-from .application import Application
+-
+-
+-def main():
+-    return Application().run()
+diff --git a/poetry/console/commands/self/self.py b/poetry/console/commands/self/self.py
+index 3e5cafa..ff1abef 100644
+--- a/poetry/console/commands/self/self.py
++++ b/poetry/console/commands/self/self.py
+@@ -1,5 +1,4 @@
+ from ..command import Command
+-from .update import SelfUpdateCommand
+ 
+ 
+ class SelfCommand(Command):
+@@ -7,7 +6,7 @@ class SelfCommand(Command):
+     name = "self"
+     description = "Interact with Poetry directly."
+ 
+-    commands = [SelfUpdateCommand()]
++    commands = []
+ 
+     def handle(self):
+         return self.call("help", self._config.name)
+diff --git a/poetry/repositories/installed_repository.py b/poetry/repositories/installed_repository.py
+index 1320fdd..0351310 100644
+--- a/poetry/repositories/installed_repository.py
++++ b/poetry/repositories/installed_repository.py
+@@ -9,10 +9,11 @@ from poetry.utils._compat import Path
+ from poetry.utils._compat import metadata
+ from poetry.utils.env import Env
+ 
++from . import __path__
+ from .repository import Repository
+ 
+ 
+-_VENDORS = Path(__file__).parent.parent.joinpath("_vendor")
++_VENDORS = Path(__path__[0]).parent.joinpath("_vendor")
+ 
+ 
+ try:
+diff --git a/poetry/utils/env.py b/poetry/utils/env.py
+index 9d660c7..25a3acf 100644
+--- a/poetry/utils/env.py
++++ b/poetry/utils/env.py
+@@ -27,6 +27,7 @@ from packaging.tags import interpreter_name
+ from packaging.tags import interpreter_version
+ from packaging.tags import sys_tags
+ 
++from poetry import __path__ as __pkgpath__
+ from poetry.core.semver import parse_constraint
+ from poetry.core.semver.version import Version
+ from poetry.core.toml.file import TOMLFile
+@@ -646,8 +647,7 @@ class EnvManager(object):
+         if not name:
+             name = self._poetry.package.name
+ 
+-        python_patch = ".".join([str(v) for v in sys.version_info[:3]])
+-        python_minor = ".".join([str(v) for v in sys.version_info[:2]])
++        python_patch, python_minor = None, None
+         if executable:
+             python_patch = decode(
+                 subprocess.check_output(
+@@ -664,7 +664,10 @@ class EnvManager(object):
+             python_minor = ".".join(python_patch.split(".")[:2])
+ 
+         supported_python = self._poetry.package.python_constraint
+-        if not supported_python.allows(Version.parse(python_patch)):
++        if (
++            not python_patch or
++            python_patch and not supported_python.allows(Version.parse(python_patch))
++        ):
+             # The currently activated or chosen Python version
+             # is not compatible with the Python constraint specified
+             # for the project.
+@@ -676,14 +679,6 @@ class EnvManager(object):
+                     self._poetry.package.python_versions, python_patch
+                 )
+ 
+-            io.write_line(
+-                "<warning>The currently activated Python version {} "
+-                "is not supported by the project ({}).\n"
+-                "Trying to find and use a compatible version.</warning> ".format(
+-                    python_patch, self._poetry.package.python_versions
+-                )
+-            )
+-
+             for python_to_try in reversed(
+                 sorted(
+                     self._poetry.package.AVAILABLE_PYTHONS,
+@@ -804,7 +799,7 @@ class EnvManager(object):
+                 "--no-download",
+                 "--no-periodic-update",
+                 "--python",
+-                executable or sys.executable,
++                executable or "python",
+                 str(path),
+             ]
+         )
+@@ -1141,7 +1136,7 @@ class SystemEnv(Env):
+ 
+     @property
+     def python(self):  # type: () -> str
+-        return sys.executable
++        return "python"
+ 
+     @property
+     def sys_path(self):  # type: () -> List[str]
+@@ -1156,7 +1151,7 @@ class SystemEnv(Env):
+     def get_pip_command(self):  # type: () -> List[str]
+         # If we're not in a venv, assume the interpreter we're running on
+         # has a pip and use that
+-        return [sys.executable, "-m", "pip"]
++        return ["python", "-m", "pip"]
+ 
+     def get_paths(self):  # type: () -> Dict[str, str]
+         # We can't use sysconfig.get_paths() because
+@@ -1267,31 +1262,11 @@ class VirtualEnv(Env):
+         return [self._bin("pip")]
+ 
+     def get_supported_tags(self):  # type: () -> List[Tag]
+-        file_path = Path(packaging.tags.__file__)
+-        if file_path.suffix == ".pyc":
+-            # Python 2
+-            file_path = file_path.with_suffix(".py")
++        file_path = Path(__pkgpath__[0]).parents[2] / "assets" / "packaging_tags.py"
+ 
+         with file_path.open(encoding="utf-8") as f:
+             script = decode(f.read())
+ 
+-        script = script.replace(
+-            "from ._typing import TYPE_CHECKING, cast",
+-            "TYPE_CHECKING = False\ncast = lambda type_, value: value",
+-        )
+-        script = script.replace(
+-            "from ._typing import MYPY_CHECK_RUNNING, cast",
+-            "MYPY_CHECK_RUNNING = False\ncast = lambda type_, value: value",
+-        )
+-
+-        script += textwrap.dedent(
+-            """
+-            import json
+-
+-            print(json.dumps([(t.interpreter, t.abi, t.platform) for t in sys_tags()]))
+-            """
+-        )
+-
+         output = self.run("python", "-", input_=script)
+ 
+         return [Tag(*t) for t in json.loads(output)]
+diff --git a/pyproject.toml b/pyproject.toml
+index 0868175..cb1d525 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -24,7 +24,6 @@ classifiers = [
+ [tool.poetry.dependencies]
+ python = "~2.7 || ^3.5"
+ 
+-poetry-core = "^1.0.0"
+ cleo = "^0.8.1"
+ clikit = "^0.6.2"
+ crashtest = { version = "^0.3.0", python = "^3.6" }
+@@ -38,7 +37,6 @@ shellingham = "^1.1"
+ tomlkit = ">=0.7.0,<1.0.0"
+ pexpect = "^4.7.0"
+ packaging = "^20.4"
+-virtualenv = { version = "^20.0.26" }
+ 
+ # The typing module is not in the stdlib in Python 2.7
+ typing = { version = "^3.6", python = "~2.7" }

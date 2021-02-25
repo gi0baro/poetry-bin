@@ -1,0 +1,46 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 19.10b0
+    hooks:
+      - id: black
+        exclude: ^poetry/core/_vendor
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.3
+    hooks:
+      - id: flake8
+        exclude: |
+          (?x)(
+              ^poetry/core/utils/_typing.py$
+              | ^poetry/core/utils/_compat.py$
+              | ^poetry/core/_vendor
+          )
+
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.4.2
+    hooks:
+      - id: isort
+        additional_dependencies: [toml]
+        exclude: |
+          (?x)(
+              ^.*/?setup\.py$
+              | ^poetry/core/_vendor
+          )
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: |
+          (?x)(
+              ^tests/.*/fixtures/.*
+              | ^poetry/core/_vendor
+          )
+      - id: end-of-file-fixer
+        exclude: |
+          (?x)(
+              ^tests/.*/fixtures/.*
+              | ^poetry/core/_vendor
+          )
+      - id: debug-statements
+        exclude: ^poetry/core/_vendor

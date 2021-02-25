@@ -1,0 +1,61 @@
+[[package]]
+name = "A"
+version = "1.0"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+B = [
+    {version = "^1.0", markers = "python_version < \"4.0\""},
+    {version = "^2.0", markers = "python_version >= \"4.0\""},
+]
+
+[[package]]
+name = "B"
+version = "1.0"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+C = "1.2"
+
+[[package]]
+name = "B"
+version = "2.0"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+C = "1.5"
+
+[[package]]
+name = "C"
+version = "1.2"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "C"
+version = "1.5"
+description = ""
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+python-versions = "*"
+lock-version = "1.1"
+content-hash = "123456789"
+
+[metadata.files]
+A = []
+B = []
+C = []

@@ -1,0 +1,74 @@
+name: Tests
+
+on:
+  pull_request: {}
+  push:
+    branches: [master]
+
+jobs:
+  Tests:
+    name: ${{ matrix.os }} / ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os: [Ubuntu, MacOS, Windows]
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9, pypy2, pypy3]
+        exclude:
+          - os: Ubuntu
+            python-version: pypy2
+          - os: MacOS
+            python-version: pypy2
+          - os: MacOS
+            python-version: pypy3
+          - os: Windows
+            python-version: pypy2
+          - os: Windows
+            python-version: pypy3
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get full python version
+        id: full-python-version
+        shell: bash
+        run: echo ::set-output name=version::$(python -c "import sys; print('-'.join(str(v) for v in sys.version_info))")
+
+      - name: Install poetry
+        shell: bash
+        run: |
+          curl -fsS -o get-poetry.py https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py
+          python get-poetry.py --preview -y
+          echo "$HOME/.poetry/bin" >> $GITHUB_PATH
+
+      - name: Configure poetry
+        shell: bash
+        run: poetry config virtualenvs.in-project true
+
+      - name: Configure poetry installer
+        if: matrix.python-version == '2.7'
+        shell: bash
+        run: poetry config experimental.new-installer false
+
+      - name: Set up cache
+        uses: actions/cache@v1
+        id: cache
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Ensure cache is healthy
+        if: steps.cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: timeout 10s poetry run pip --version >/dev/null 2>&1 || rm -rf .venv
+
+      - name: Install dependencies
+        shell: bash
+        run: poetry install
+
+      - name: Run pytest
+        shell: bash
+        run: poetry run pytest -q tests

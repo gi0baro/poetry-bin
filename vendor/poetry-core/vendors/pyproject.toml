@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "vendors"
+version = "1.0.0"
+description = "Vendors"
+authors = ["Sébastien Eustace <sebastien@eustace.io>"]
+
+license = "MIT"
+
+readme = "README.md"
+
+homepage = "https://github.com/python-poetry/core"
+repository = "https://github.com/python-poetry/core"
+
+keywords = ["packaging", "dependency", "poetry"]
+
+classifiers = [
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+
+jsonschema = "^3.2.0"
+lark-parser = "^0.9.0"
+packaging = "^20.9"
+pyrsistent = "^0.16.0"
+tomlkit = ">=0.7.0,<1.0.0"

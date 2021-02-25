@@ -1,0 +1,387 @@
+diff --git a/.gitignore b/.gitignore
+index f8aceb2..a8034d0 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -20,7 +20,6 @@ dist
+ 
+ /docs/_draft.rst
+ /pip-wheel-metadata
+-/src/virtualenv/version.py
+ /src/virtualenv/out
+ venv*
+ .python-version
+diff --git a/setup.py b/setup.py
+index cddd1d3..1b5dbe4 100644
+--- a/setup.py
++++ b/setup.py
+@@ -3,10 +3,4 @@ from setuptools import __version__, setup
+ if int(__version__.split(".")[0]) < 41:
+     raise RuntimeError("setuptools >= 41 required to build")
+ 
+-setup(
+-    use_scm_version={
+-        "write_to": "src/virtualenv/version.py",
+-        "write_to_template": 'from __future__ import  unicode_literals\n\n__version__ = "{version}"\n',
+-    },
+-    setup_requires=["setuptools_scm >= 2"],
+-)
++setup()
+diff --git a/src/virtualenv/__init__.py b/src/virtualenv/__init__.py
+index 5f74e3e..1fad76f 100644
+--- a/src/virtualenv/__init__.py
++++ b/src/virtualenv/__init__.py
+@@ -1,5 +1,10 @@
+ from __future__ import absolute_import, unicode_literals
+ 
++from pathlib import Path
++
++__path_pack__ = Path(__path__[0])
++__path_assets__ = __path_pack__.parents[2] / "assets" / "virtualenv"
++
+ from .run import cli_run, session_via_cli
+ from .version import __version__
+ 
+diff --git a/src/virtualenv/activation/via_template.py b/src/virtualenv/activation/via_template.py
+index 14f0979..d0a64e3 100644
+--- a/src/virtualenv/activation/via_template.py
++++ b/src/virtualenv/activation/via_template.py
+@@ -1,20 +1,17 @@
+ from __future__ import absolute_import, unicode_literals
+ 
+ import os
+-import sys
++
+ from abc import ABCMeta, abstractmethod
++from pathlib import Path
+ 
+ from six import add_metaclass
+ 
++from virtualenv import __path_assets__
+ from virtualenv.util.six import ensure_text
+ 
+ from .activator import Activator
+ 
+-if sys.version_info >= (3, 7):
+-    from importlib.resources import read_binary
+-else:
+-    from importlib_resources import read_binary
+-
+ 
+ @add_metaclass(ABCMeta)
+ class ViaTemplateActivator(Activator):
+@@ -54,7 +51,8 @@ class ViaTemplateActivator(Activator):
+ 
+     def instantiate_template(self, replacements, template, creator):
+         # read content as binary to avoid platform specific line normalization (\n -> \r\n)
+-        binary = read_binary(self.__module__, str(template))
++        with (__path_assets__ / "activation" / str(template)).open("rb") as f:
++            binary = f.read()
+         text = binary.decode("utf-8", errors="strict")
+         for key, value in replacements.items():
+             value = self._repr_unicode(creator, value)
+diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
+index 6363f8b..c6cf112 100644
+--- a/src/virtualenv/create/creator.py
++++ b/src/virtualenv/create/creator.py
+@@ -12,6 +12,7 @@ from textwrap import dedent
+ 
+ from six import add_metaclass
+ 
++from virtualenv import __path_assets__
+ from virtualenv.discovery.cached_py_info import LogCmd
+ from virtualenv.info import WIN_CPYTHON_2
+ from virtualenv.util.path import Path, safe_delete
+@@ -21,8 +22,7 @@ from virtualenv.version import __version__
+ 
+ from .pyenv_cfg import PyEnvCfg
+ 
+-HERE = Path(os.path.abspath(__file__)).parent
+-DEBUG_SCRIPT = HERE / "debug.py"
++DEBUG_SCRIPT = __path_assets__ / "debug.py"
+ 
+ 
+ class CreatorMeta(object):
+diff --git a/src/virtualenv/create/via_global_ref/api.py b/src/virtualenv/create/via_global_ref/api.py
+index 6f296f4..544f4ae 100644
+--- a/src/virtualenv/create/via_global_ref/api.py
++++ b/src/virtualenv/create/via_global_ref/api.py
+@@ -6,6 +6,7 @@ from abc import ABCMeta
+ 
+ from six import add_metaclass
+ 
++from virtualenv import __path_assets__
+ from virtualenv.info import fs_supports_symlink
+ from virtualenv.util.path import Path
+ from virtualenv.util.six import ensure_text
+@@ -100,7 +101,7 @@ class ViaGlobalRefApi(Creator):
+ 
+     def env_patch_text(self):
+         """Patch the distutils package to not be derailed by its configuration files"""
+-        with self.app_data.ensure_extracted(Path(__file__).parent / "_virtualenv.py") as resolved_path:
++        with self.app_data.ensure_extracted(__path_assets__ / "_virtualenv.py") as resolved_path:
+             text = resolved_path.read_text()
+             return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
+ 
+diff --git a/src/virtualenv/create/via_global_ref/builtin/python2/python2.py b/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
+index cacd56e..3f73dc6 100644
+--- a/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
++++ b/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
+@@ -6,6 +6,7 @@ import os
+ 
+ from six import add_metaclass
+ 
++from virtualenv import __path_assets__
+ from virtualenv.create.describe import Python2Supports
+ from virtualenv.create.via_global_ref.builtin.ref import PathRefToDest
+ from virtualenv.info import IS_ZIPAPP
+@@ -15,7 +16,7 @@ from virtualenv.util.zipapp import read as read_from_zipapp
+ 
+ from ..via_global_self_do import ViaGlobalRefVirtualenvBuiltin
+ 
+-HERE = Path(os.path.abspath(__file__)).parent
++HERE = __path_assets__
+ 
+ 
+ @add_metaclass(abc.ABCMeta)
+diff --git a/src/virtualenv/discovery/builtin.py b/src/virtualenv/discovery/builtin.py
+index 41b4390..7bbe6e7 100644
+--- a/src/virtualenv/discovery/builtin.py
++++ b/src/virtualenv/discovery/builtin.py
+@@ -97,8 +97,8 @@ def propose_interpreters(spec, try_first_with, app_data, env=None):
+         if spec.is_abs:
+             return
+     else:
+-        # 2. otherwise try with the current
+-        yield PythonInfo.current_system(app_data), True
++        # 2. in binary we can't use current
++        # yield PythonInfo.current_system(app_data), True
+ 
+         # 3. otherwise fallback to platform default logic
+         if IS_WIN:
+diff --git a/src/virtualenv/discovery/cached_py_info.py b/src/virtualenv/discovery/cached_py_info.py
+index d16a8e2..1b7ca24 100644
+--- a/src/virtualenv/discovery/cached_py_info.py
++++ b/src/virtualenv/discovery/cached_py_info.py
+@@ -12,6 +12,7 @@ import pipes
+ import sys
+ from collections import OrderedDict
+ 
++from virtualenv import __path_assets__
+ from virtualenv.app_data import AppDataDisabled
+ from virtualenv.discovery.py_info import PythonInfo
+ from virtualenv.info import PY2
+@@ -82,7 +83,7 @@ def _get_via_file_cache(cls, app_data, path, exe, env):
+ 
+ 
+ def _run_subprocess(cls, exe, app_data, env):
+-    py_info_script = Path(os.path.abspath(__file__)).parent / "py_info.py"
++    py_info_script = __path_assets__ / "py_info.py"
+     with app_data.ensure_extracted(py_info_script) as py_info_script:
+         cmd = [exe, str(py_info_script)]
+         # prevent sys.prefix from leaking into the child process - see https://bugs.python.org/issue22490
+diff --git a/src/virtualenv/info.py b/src/virtualenv/info.py
+index afe4097..6331d60 100644
+--- a/src/virtualenv/info.py
++++ b/src/virtualenv/info.py
+@@ -6,14 +6,16 @@ import platform
+ import sys
+ import tempfile
+ 
++from . import __path_pack__
++
+ IMPLEMENTATION = platform.python_implementation()
+ IS_PYPY = IMPLEMENTATION == "PyPy"
+ IS_CPYTHON = IMPLEMENTATION == "CPython"
+ PY3 = sys.version_info[0] == 3
+ PY2 = sys.version_info[0] == 2
+ IS_WIN = sys.platform == "win32"
+-ROOT = os.path.realpath(os.path.join(os.path.abspath(__file__), os.path.pardir, os.path.pardir))
+-IS_ZIPAPP = os.path.isfile(ROOT)
++ROOT = os.path.realpath(__path_pack__.parent)
++IS_ZIPAPP = False
+ WIN_CPYTHON_2 = IS_CPYTHON and IS_WIN and PY2
+ 
+ _CAN_SYMLINK = _FS_CASE_SENSITIVE = _CFG_DIR = _DATA_DIR = None
+diff --git a/src/virtualenv/run/__init__.py b/src/virtualenv/run/__init__.py
+index e8e7ab1..7cbcd0a 100644
+--- a/src/virtualenv/run/__init__.py
++++ b/src/virtualenv/run/__init__.py
+@@ -130,7 +130,7 @@ def add_version_flag(parser):
+     parser.add_argument(
+         "--version",
+         action="version",
+-        version="%(prog)s {} from {}".format(__version__, virtualenv.__file__),
++        version="%(prog)s {} from {}".format(__version__, virtualenv.__path__[0]),
+         help="display the version of the virtualenv package and its location, then exit",
+     )
+ 
+diff --git a/src/virtualenv/run/plugin/activators.py b/src/virtualenv/run/plugin/activators.py
+index dea2827..548e531 100644
+--- a/src/virtualenv/run/plugin/activators.py
++++ b/src/virtualenv/run/plugin/activators.py
+@@ -2,11 +2,30 @@ from __future__ import absolute_import, unicode_literals
+ 
+ from argparse import ArgumentTypeError
+ from collections import OrderedDict
++from importlib.metadata import EntryPoint
+ 
+ from .base import ComponentBuilder
+ 
+ 
+ class ActivationSelector(ComponentBuilder):
++    _ENTRY_POINTS = {
++        "virtualenv.activate": [
++            EntryPoint(
++                name=name,
++                value=f"virtualenv.activation.{dst}",
++                group="virtualenv.activate"
++            ) for name, dst in [
++                ("bash", "bash:BashActivator"),
++                ("cshell", "cshell:CShellActivator"),
++                ("batch", "batch:BatchActivator"),
++                ("fish", "fish:FishActivator"),
++                ("powershell", "powershell:PowerShellActivator"),
++                ("python", "python:PythonActivator"),
++                ("xonsh", "xonsh:XonshActivator")
++            ]
++        ]
++    }
++
+     def __init__(self, interpreter, parser):
+         self.default = None
+         possible = OrderedDict(
+diff --git a/src/virtualenv/run/plugin/base.py b/src/virtualenv/run/plugin/base.py
+index ed10fe0..16fafaa 100644
+--- a/src/virtualenv/run/plugin/base.py
++++ b/src/virtualenv/run/plugin/base.py
+@@ -17,11 +17,11 @@ class PluginLoader(object):
+     def entry_points_for(cls, key):
+         return OrderedDict((e.name, e.load()) for e in cls.entry_points().get(key, {}))
+ 
+-    @staticmethod
+-    def entry_points():
+-        if PluginLoader._ENTRY_POINTS is None:
+-            PluginLoader._ENTRY_POINTS = entry_points()
+-        return PluginLoader._ENTRY_POINTS
++    @classmethod
++    def entry_points(cls):
++        if cls._ENTRY_POINTS is None:
++            cls._ENTRY_POINTS = entry_points()
++        return cls._ENTRY_POINTS
+ 
+ 
+ class ComponentBuilder(PluginLoader):
+diff --git a/src/virtualenv/run/plugin/creators.py b/src/virtualenv/run/plugin/creators.py
+index ef4177a..0a59e32 100644
+--- a/src/virtualenv/run/plugin/creators.py
++++ b/src/virtualenv/run/plugin/creators.py
+@@ -1,6 +1,7 @@
+ from __future__ import absolute_import, unicode_literals
+ 
+ from collections import OrderedDict, defaultdict, namedtuple
++from importlib.metadata import EntryPoint
+ 
+ from virtualenv.create.describe import Describe
+ from virtualenv.create.via_global_ref.builtin.builtin_way import VirtualenvBuiltin
+@@ -11,6 +12,28 @@ CreatorInfo = namedtuple("CreatorInfo", ["key_to_class", "key_to_meta", "describ
+ 
+ 
+ class CreatorSelector(ComponentBuilder):
++    _ENTRY_POINTS = {
++        "virtualenv.create": [
++            EntryPoint(
++                name=name,
++                value=f"virtualenv.create.via_global_ref.{dst}",
++                group="virtualenv.create"
++            ) for name, dst in [
++                ("venv", "venv:Venv"),
++                ("cpython3-posix", "builtin.cpython.cpython3:CPython3Posix"),
++                ("cpython3-win", "builtin.cpython.cpython3:CPython3Windows"),
++                ("cpython2-posix", "builtin.cpython.cpython2:CPython2Posix"),
++                ("cpython2-mac-framework", "builtin.cpython.mac_os:CPython2macOsFramework"),
++                ("cpython3-mac-framework", "builtin.cpython.mac_os:CPython3macOsFramework"),
++                ("cpython2-win", "builtin.cpython.cpython2:CPython2Windows"),
++                ("pypy2-posix", "builtin.pypy.pypy2:PyPy2Posix"),
++                ("pypy2-win", "builtin.pypy.pypy2:Pypy2Windows"),
++                ("pypy3-posix", "builtin.pypy.pypy3:PyPy3Posix"),
++                ("pypy3-win", "builtin.pypy.pypy3:Pypy3Windows")
++            ]
++        ]
++    }
++
+     def __init__(self, interpreter, parser):
+         creators, self.key_to_meta, self.describe, self.builtin_key = self.for_interpreter(interpreter)
+         super(CreatorSelector, self).__init__(interpreter, parser, "creator", creators)
+diff --git a/src/virtualenv/run/plugin/discovery.py b/src/virtualenv/run/plugin/discovery.py
+index 3b6fc60..c557f8a 100644
+--- a/src/virtualenv/run/plugin/discovery.py
++++ b/src/virtualenv/run/plugin/discovery.py
+@@ -1,10 +1,22 @@
+ from __future__ import absolute_import, unicode_literals
+ 
++from importlib.metadata import EntryPoint
++
+ from .base import PluginLoader
+ 
+ 
+ class Discovery(PluginLoader):
+-    """"""
++    _ENTRY_POINTS = {
++        "virtualenv.discovery": [
++            EntryPoint(
++                name=name,
++                value=f"virtualenv.discovery.{dst}",
++                group="virtualenv.discovery"
++            ) for name, dst in [
++                ("builtin", "builtin:Builtin")
++            ]
++        ]
++    }
+ 
+ 
+ def get_discover(parser, args):
+diff --git a/src/virtualenv/run/plugin/seeders.py b/src/virtualenv/run/plugin/seeders.py
+index d182c6f..ee3e5bc 100644
+--- a/src/virtualenv/run/plugin/seeders.py
++++ b/src/virtualenv/run/plugin/seeders.py
+@@ -1,9 +1,24 @@
+ from __future__ import absolute_import, unicode_literals
+ 
++from importlib.metadata import EntryPoint
++
+ from .base import ComponentBuilder
+ 
+ 
+ class SeederSelector(ComponentBuilder):
++    _ENTRY_POINTS = {
++        "virtualenv.seed": [
++            EntryPoint(
++                name=name,
++                value=f"virtualenv.seed.embed.{dst}",
++                group="virtualenv.seed"
++            ) for name, dst in [
++                ("pip", "pip_invoke:PipInvoke"),
++                ("app-data", "via_app_data.via_app_data:FromAppData")
++            ]
++        ]
++    }
++
+     def __init__(self, interpreter, parser):
+         possible = self.options("virtualenv.seed")
+         super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
+diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
+index 992c856..49f7c29 100644
+--- a/src/virtualenv/seed/wheels/embed/__init__.py
++++ b/src/virtualenv/seed/wheels/embed/__init__.py
+@@ -1,9 +1,10 @@
+ from __future__ import absolute_import, unicode_literals
+ 
++from virtualenv import __path_assets__
+ from virtualenv.seed.wheels.util import Wheel
+ from virtualenv.util.path import Path
+ 
+-BUNDLE_FOLDER = Path(__file__).absolute().parent
++BUNDLE_FOLDER = __path_assets__ / "wheels"
+ BUNDLE_SUPPORT = {
+     "3.10": {
+         "pip": "pip-21.0.1-py3-none-any.whl",
