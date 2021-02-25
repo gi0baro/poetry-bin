@@ -1,0 +1,151 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*.*.*-*'
+
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get build version
+        id: build_version
+        run: |
+          echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.47.0
+          default: true
+          profile: minimal
+      - name: Install PyOxidizer
+        run: |
+          cargo install --git https://github.com/gi0baro/PyOxidizer.git --rev 1d074e3 pyoxidizer
+      - name: Build release
+        run: |
+          make build_linux
+          build/x86_64-unknown-linux-gnu/release/install/bin/poetry --version
+          make pack_linux BUILD_VERSION=${{ steps.build_version.outputs.version }}
+      - name: Upload release file
+        uses: actions/upload-artifact@v1
+        with:
+          name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
+          path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
+      - name: Upload checksum file
+        uses: actions/upload-artifact@v1
+        with:
+          name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
+          path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
+
+  MacOS:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get build version
+        id: build_version
+        run: |
+          echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: 1.47.0
+          default: true
+          profile: minimal
+      - name: Install PyOxidizer
+        run: |
+          cargo install --git https://github.com/gi0baro/PyOxidizer.git --rev 1d074e3 pyoxidizer
+      - name: Build release
+        run: |
+          make build_mac
+          build/x86_64-apple-darwin/release/install/bin/poetry --version
+          make pack_mac BUILD_VERSION=${{ steps.build_version.outputs.version }}
+      - name: Upload release file
+        uses: actions/upload-artifact@v1
+        with:
+          name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
+          path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
+      - name: Upload checksum file
+        uses: actions/upload-artifact@v1
+        with:
+          name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
+          path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
+
+  Release:
+    needs: [Linux, MacOS]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Get tag
+        id: tag
+        run: |
+          echo ::set-output name=tag::${GITHUB_REF#refs/tags/}
+      - name: Download Linux release file
+        uses: actions/download-artifact@master
+        with:
+          name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-unknown-linux-gnu.tar.gz
+          path: dist/
+      - name: Download Linux checksum file
+        uses: actions/download-artifact@master
+        with:
+          name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-unknown-linux-gnu.sha256sum
+          path: dist/
+      - name: Download MacOS release file
+        uses: actions/download-artifact@master
+        with:
+          name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.tar.gz
+          path: dist/
+      - name: Download MacOS checksum file
+        uses: actions/download-artifact@master
+        with:
+          name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.sha256sum
+          path: dist/
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: ${{ steps.tag.outputs.tag }}
+          draft: false
+          prerelease: false
+      - name: Upload Linux release file asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-unknown-linux-gnu.tar.gz
+          asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-unknown-linux-gnu.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload Linux checksum file asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-unknown-linux-gnu.sha256sum
+          asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-unknown-linux-gnu.sha256sum
+          asset_content_type: text/plain
+      - name: Upload MacOS release file asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.tar.gz
+          asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload MacOS checksum file asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.sha256sum
+          asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.sha256sum
+          asset_content_type: text/plain
