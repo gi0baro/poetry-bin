@@ -1,5 +1,5 @@
 diff --git a/poetry/console/__init__.py b/poetry/console/__init__.py
-index c0c2573..e69de29 100644
+index c0c25738..e69de29b 100644
 --- a/poetry/console/__init__.py
 +++ b/poetry/console/__init__.py
 @@ -1,5 +0,0 @@
@@ -9,7 +9,7 @@ index c0c2573..e69de29 100644
 -def main():
 -    return Application().run()
 diff --git a/poetry/console/commands/self/self.py b/poetry/console/commands/self/self.py
-index 3e5cafa..ff1abef 100644
+index 3e5cafa9..ff1abefe 100644
 --- a/poetry/console/commands/self/self.py
 +++ b/poetry/console/commands/self/self.py
 @@ -1,5 +1,4 @@
@@ -28,7 +28,7 @@ index 3e5cafa..ff1abef 100644
      def handle(self):
          return self.call("help", self._config.name)
 diff --git a/poetry/repositories/installed_repository.py b/poetry/repositories/installed_repository.py
-index 1320fdd..0351310 100644
+index 1320fdd6..03513103 100644
 --- a/poetry/repositories/installed_repository.py
 +++ b/poetry/repositories/installed_repository.py
 @@ -9,10 +9,11 @@ from poetry.utils._compat import Path
@@ -45,7 +45,7 @@ index 1320fdd..0351310 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 9d660c7..4660030 100644
+index 9d660c70..46600306 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -27,6 +27,7 @@ from packaging.tags import interpreter_name
@@ -154,14 +154,14 @@ index 9d660c7..4660030 100644
  
          return [Tag(*t) for t in json.loads(output)]
 diff --git a/pyproject.toml b/pyproject.toml
-index 0868175..cb1d525 100644
+index 02f6dabc..34e8ae5c 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -24,7 +24,6 @@ classifiers = [
  [tool.poetry.dependencies]
  python = "~2.7 || ^3.5"
  
--poetry-core = "^1.0.0"
+-poetry-core = "~1.0.2"
  cleo = "^0.8.1"
  clikit = "^0.6.2"
  crashtest = { version = "^0.3.0", python = "^3.6" }
