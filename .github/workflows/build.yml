@@ -66,11 +66,6 @@ jobs:
         make build_mac ARCH=x86_64-apple-darwin
         build/x86_64-apple-darwin/release/install/bin/poetry --version
         make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
-    - name: Build aarch64 release
-      run: |
-        make build_mac ARCH=aarch64-apple-darwin
-        build/aarch64-apple-darwin/release/install/bin/poetry --version
-        make pack_mac ARCH=aarch64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload x86_64 release file
       uses: actions/upload-artifact@v1
       with:
@@ -81,13 +76,3 @@ jobs:
       with:
         name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
-    - name: Upload aarch64 release file
-      uses: actions/upload-artifact@v1
-      with:
-        name: poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.tar.gz
-        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.tar.gz
-    - name: Upload aarch64 checksum file
-      uses: actions/upload-artifact@v1
-      with:
-        name: poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.sha256sum
-        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.sha256sum
