@@ -1,5 +1,5 @@
 def make_dist():
-    return default_python_distribution(python_version="3.8")
+    return default_python_distribution(python_version="3.9")
 
 def make_exe(dist):
     policy = dist.make_python_packaging_policy()
@@ -38,5 +38,5 @@ register_target("install", make_install, depends=["exe"], default=True)
 
 resolve_targets()
 
-PYOXIDIZER_VERSION = "0.10.3"
+PYOXIDIZER_VERSION = "0.11.0"
 PYOXIDIZER_COMMIT = "UNKNOWN"
