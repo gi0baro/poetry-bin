@@ -8,10 +8,14 @@ The aim is to have a Poetry instance which is fully independant of the local Pyt
 
 ## Installation
 
-You can install Poetry binary build using [Homebrew](https://brew.sh/):
+You can install Poetry binary build using the install script:
+
+    curl https://raw.githubusercontent.com/gi0baro/poetry-bin/master/install.sh | sh
+
+or you might want to use [Homebrew](https://brew.sh/):
 
     brew install gi0baro/poetry-bin/poetry-bin
 
-or you can manually download the package from the [releases page](https://github.com/gi0baro/poetry-bin/releases).
+or you can manually download the packages from the [releases page](https://github.com/gi0baro/poetry-bin/releases).
 
 > **Note:** only x86 builds for Linux and MacOS are currently available.
