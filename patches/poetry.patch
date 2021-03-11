@@ -44,6 +44,28 @@ index 1320fdd6..03513103 100644
  
  
  try:
+diff --git a/poetry/utils/_compat.py b/poetry/utils/_compat.py
+index 937f9b30..40e41514 100644
+--- a/poetry/utils/_compat.py
++++ b/poetry/utils/_compat.py
+@@ -1,5 +1,5 @@
+ import sys
+-
++import importlib_metadata as metadata
+ 
+ try:
+     from functools32 import lru_cache
+@@ -13,10 +13,7 @@ except ImportError:
+ 
+ try:
+     import zipfile as zipp
+-
+-    from importlib import metadata
+ except ImportError:
+-    import importlib_metadata as metadata
+     import zipp
+ 
+ try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
 index 9d660c70..46600306 100644
 --- a/poetry/utils/env.py

@@ -20,6 +20,7 @@ clean_vendor:
 
 patches:
 	@cd src/certifi && git diff --binary HEAD > ../../patches/certifi.patch
+	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
 	@cd src/virtualenv && git diff --binary HEAD > ../../patches/virtualenv.patch

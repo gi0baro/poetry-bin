@@ -1,5 +1,5 @@
 import sys
-
+import importlib_metadata as metadata
 
 try:
     from functools32 import lru_cache
@@ -13,10 +13,7 @@ except ImportError:
 
 try:
     import zipfile as zipp
-
-    from importlib import metadata
 except ImportError:
-    import importlib_metadata as metadata
     import zipp
 
 try:
