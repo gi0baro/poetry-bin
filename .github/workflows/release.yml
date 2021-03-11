@@ -7,7 +7,7 @@ on:
 
 jobs:
   Linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
       - uses: actions/checkout@v2
@@ -17,12 +17,12 @@ jobs:
           echo ::set-output name=version::${GITHUB_REF#refs/tags/}
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.47.0
+          toolchain: 1.50.0
           default: true
           profile: minimal
       - name: Install PyOxidizer
         run: |
-          cargo install --git https://github.com/gi0baro/PyOxidizer.git --rev 1d074e3 pyoxidizer
+          cargo install pyoxidizer --version 0.11.0
       - name: Build release
         run: |
           make build_linux
@@ -50,17 +50,17 @@ jobs:
           echo ::set-output name=version::${GITHUB_REF#refs/tags/}
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.47.0
+          toolchain: 1.50.0
           default: true
           profile: minimal
       - name: Install PyOxidizer
         run: |
-          cargo install --git https://github.com/gi0baro/PyOxidizer.git --rev 1d074e3 pyoxidizer
+          cargo install pyoxidizer --version 0.11.0
       - name: Build release
         run: |
-          make build_mac
+          make build_mac ARCH=x86_64-apple-darwin
           build/x86_64-apple-darwin/release/install/bin/poetry --version
-          make pack_mac BUILD_VERSION=${{ steps.build_version.outputs.version }}
+          make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
       - name: Upload release file
         uses: actions/upload-artifact@v1
         with:
