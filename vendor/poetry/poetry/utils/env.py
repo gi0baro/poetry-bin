@@ -434,7 +434,7 @@ class EnvManager(object):
         if self._env is not None and not reload:
             return self._env
 
-        python_minor = ".".join([str(v) for v in sys.version_info[:2]])
+        python_minor = InterpreterLookup.find()[1]
 
         venv_path = self._poetry.config.get("virtualenvs.path")
         if venv_path is None:
@@ -470,9 +470,10 @@ class EnvManager(object):
                     return VirtualEnv(venv)
 
             create_venv = self._poetry.config.get("virtualenvs.create", True)
+            pydef_executable, pydef_minor, pydef_patch = InterpreterLookup.find()
 
             if not create_venv:
-                return SystemEnv(Path(sys.prefix))
+                return SystemEnv(pydef_executable)
 
             venv_path = self._poetry.config.get("virtualenvs.path")
             if venv_path is None:
@@ -485,7 +486,7 @@ class EnvManager(object):
             venv = venv_path / name
 
             if not venv.exists():
-                return SystemEnv(Path(sys.prefix))
+                return SystemEnv(pydef_executable)
 
             return VirtualEnv(venv)
 
@@ -679,52 +680,7 @@ class EnvManager(object):
                     self._poetry.package.python_versions, python_patch
                 )
 
-            for python_to_try in reversed(
-                sorted(
-                    self._poetry.package.AVAILABLE_PYTHONS,
-                    key=lambda v: (v.startswith("3"), -len(v), v),
-                )
-            ):
-                if len(python_to_try) == 1:
-                    if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
-                        supported_python
-                    ):
-                        continue
-                elif not supported_python.allows_all(
-                    parse_constraint(python_to_try + ".*")
-                ):
-                    continue
-
-                python = "python" + python_to_try
-
-                if io.is_debug():
-                    io.write_line("<debug>Trying {}</debug>".format(python))
-
-                try:
-                    python_patch = decode(
-                        subprocess.check_output(
-                            list_to_shell_command(
-                                [
-                                    python,
-                                    "-c",
-                                    "\"import sys; print('.'.join([str(s) for s in sys.version_info[:3]]))\"",
-                                ]
-                            ),
-                            stderr=subprocess.STDOUT,
-                            shell=True,
-                        ).strip()
-                    )
-                except CalledProcessError:
-                    continue
-
-                if not python_patch:
-                    continue
-
-                if supported_python.allows(Version.parse(python_patch)):
-                    io.write_line("Using <c1>{}</c1> ({})".format(python, python_patch))
-                    executable = python
-                    python_minor = ".".join(python_patch.split(".")[:2])
-                    break
+            executable, python_minor, python_patch = InterpreterLookup.find(supported_python)
 
             if not executable:
                 raise NoCompatiblePythonVersionFound(
@@ -747,13 +703,21 @@ class EnvManager(object):
                     "</>"
                 )
 
-                return SystemEnv(Path(sys.prefix))
+                return SystemEnv(executable)
 
             io.write_line(
                 "Creating virtualenv <c1>{}</> in {}".format(name, str(venv_path))
             )
 
             self.build_venv(venv, executable=executable)
+
+            if not root_venv:
+                envs = tomlkit.document()
+                envs_file = TOMLFile(Path(CACHE_DIR) / "virtualenvs" / self.ENVS_FILE)
+                if envs_file.exists():
+                    envs = envs_file.read()
+                envs[name] = {"minor": python_minor, "patch": python_patch}
+                envs_file.write(envs)
         else:
             if force:
                 if not env.is_sane():
@@ -770,22 +734,6 @@ class EnvManager(object):
             elif io.is_very_verbose():
                 io.write_line("Virtualenv <c1>{}</> already exists.".format(name))
 
-        # venv detection:
-        # stdlib venv may symlink sys.executable, so we can't use realpath.
-        # but others can symlink *to* the venv Python,
-        # so we can't just use sys.executable.
-        # So we just check every item in the symlink tree (generally <= 3)
-        p = os.path.normcase(sys.executable)
-        paths = [p]
-        while os.path.islink(p):
-            p = os.path.normcase(os.path.join(os.path.dirname(p), os.readlink(p)))
-            paths.append(p)
-
-        p_venv = os.path.normcase(str(venv))
-        if any(p.startswith(p_venv) for p in paths):
-            # Running properly in the virtualenv, don't need to do anything
-            return SystemEnv(Path(sys.prefix), self.get_base_prefix())
-
         return VirtualEnv(venv)
 
     @classmethod
@@ -799,7 +747,7 @@ class EnvManager(object):
                 "--no-download",
                 "--no-periodic-update",
                 "--python",
-                executable or "python3",
+                executable or "python",
                 str(path),
             ]
         )
@@ -1134,96 +1082,52 @@ class SystemEnv(Env):
     A system (i.e. not a virtualenv) Python environment.
     """
 
-    @property
-    def python(self):  # type: () -> str
-        return "python3"
+    def __init__(self, path, base=None):
+        self._is_windows = sys.platform == "win32"
+        path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
+        super().__init__(path)
 
     @property
-    def sys_path(self):  # type: () -> List[str]
-        return sys.path
+    def sys_path(self):
+        output = self.run("python", "-", input_=GET_SYS_PATH)
+        return json.loads(output)
 
-    def get_version_info(self):  # type: () -> Tuple[int]
-        return sys.version_info
+    def get_version_info(self):
+        output = self.run("python", "-", input_=GET_PYTHON_VERSION)
+        return tuple([int(s) for s in output.strip().split(".")])
 
-    def get_python_implementation(self):  # type: () -> str
-        return platform.python_implementation()
+    def get_python_implementation(self):
+        return self.marker_env["platform_python_implementation"]
 
-    def get_pip_command(self):  # type: () -> List[str]
-        # If we're not in a venv, assume the interpreter we're running on
-        # has a pip and use that
-        return ["python3", "-m", "pip"]
+    def get_marker_env(self):
+        output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
+        return json.loads(output)
 
-    def get_paths(self):  # type: () -> Dict[str, str]
-        # We can't use sysconfig.get_paths() because
-        # on some distributions it does not return the proper paths
-        # (those used by pip for instance). We go through distutils
-        # to get the proper ones.
-        import site
-
-        from distutils.command.install import SCHEME_KEYS  # noqa
-        from distutils.core import Distribution
-
-        d = Distribution()
-        d.parse_config_files()
-        obj = d.get_command_obj("install", create=True)
-        obj.finalize_options()
-
-        paths = sysconfig.get_paths().copy()
-        for key in SCHEME_KEYS:
-            if key == "headers":
-                # headers is not a path returned by sysconfig.get_paths()
-                continue
-
-            paths[key] = getattr(obj, "install_{}".format(key))
-
-        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
-            paths["usersite"] = getattr(obj, "install_usersite")
-            paths["userbase"] = getattr(obj, "install_userbase")
-
-        return paths
+    def get_paths(self):
+        output = self.run("python", "-", input_=GET_PATHS)
+        return json.loads(output)
 
     def get_supported_tags(self):  # type: () -> List[Tag]
-        return list(sys_tags())
+        file_path = Path(__pkgpath__[0]).parents[2] / "assets" / "packaging_tags.py"
 
-    def get_marker_env(self):  # type: () -> Dict[str, Any]
-        if hasattr(sys, "implementation"):
-            info = sys.implementation.version
-            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
-            kind = info.releaselevel
-            if kind != "final":
-                iver += kind[0] + str(info.serial)
+        with file_path.open(encoding="utf-8") as f:
+            script = decode(f.read())
 
-            implementation_name = sys.implementation.name
-        else:
-            iver = "0"
-            implementation_name = ""
+        output = self.run("python", "-", input_=script)
 
-        return {
-            "implementation_name": implementation_name,
-            "implementation_version": iver,
-            "os_name": os.name,
-            "platform_machine": platform.machine(),
-            "platform_release": platform.release(),
-            "platform_system": platform.system(),
-            "platform_version": platform.version(),
-            "python_full_version": platform.python_version(),
-            "platform_python_implementation": platform.python_implementation(),
-            "python_version": ".".join(
-                v for v in platform.python_version().split(".")[:2]
-            ),
-            "sys_platform": sys.platform,
-            "version_info": sys.version_info,
-            # Extra information
-            "interpreter_name": interpreter_name(),
-            "interpreter_version": interpreter_version(),
-        }
+        return [Tag(*t) for t in json.loads(output)]
 
-    def get_pip_version(self):  # type: () -> Version
-        from pip import __version__
+    def get_pip_command(self):
+        return [self.python, "-m", "pip"]
 
-        return Version.parse(__version__)
+    def get_pip_version(self):
+        output = self.run_pip("--version").strip()
+        m = re.match("pip (.+?)(?: from .+)?$", output)
+        if not m:
+            return Version.parse("0.0")
+        return Version.parse(m.group(1))
 
-    def is_venv(self):  # type: () -> bool
+    def is_venv(self):
         return self._path != self._base
 
 
@@ -1426,3 +1330,69 @@ class MockEnv(NullEnv):
 
     def is_venv(self):  # type: () -> bool
         return self._is_venv
+
+
+class InterpreterLookup:
+    @staticmethod
+    def _version_check(executable, supported_python=None):
+        try:
+            python_patch = decode(
+                subprocess.check_output(
+                    list_to_shell_command(
+                        [
+                            executable,
+                            "-c",
+                            "\"import sys; print('.'.join([str(s) for s in sys.version_info[:3]]))\"",
+                        ]
+                    ),
+                    stderr=subprocess.STDOUT,
+                    shell=True,
+                ).strip()
+            )
+        except CalledProcessError:
+            return False, None, None
+
+        if not python_patch:
+            return False, None, None
+
+        if (
+            not supported_python or
+            (supported_python and supported_python.allows(Version.parse(python_patch)))
+        ):
+            python_minor = ".".join(python_patch.split(".")[:2])
+            return True, python_minor, python_patch
+
+        return False, None, None
+
+    @classmethod
+    def find(cls, constraint=None):
+        executable, minor, patch = None, None, None
+
+        for executable in ["python", "python3", "python2"]:
+            match, minor, patch = cls._version_check(executable, constraint)
+            if match:
+                return executable, minor, patch
+
+        for python_to_try in reversed(
+            sorted(
+                self._poetry.package.AVAILABLE_PYTHONS,
+                key=lambda v: (v.startswith("3"), -len(v), v),
+            )
+        ):
+            if len(python_to_try) == 1:
+                if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
+                    constraint
+                ):
+                    continue
+            elif not constraint.allows_all(
+                parse_constraint(python_to_try + ".*")
+            ):
+                continue
+
+            python = "python" + python_to_try
+            match, minor, patch = cls._version_check(python, constraint)
+            if match:
+                executable = python
+                break
+
+        return executable, minor, patch

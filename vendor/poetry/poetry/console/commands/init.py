@@ -66,7 +66,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
         from poetry.core.vcs.git import GitConfig
         from poetry.layouts import layout
         from poetry.utils._compat import Path
-        from poetry.utils.env import SystemEnv
+        from poetry.utils.env import SystemEnv, InterpreterLookup
 
         pyproject = PyProjectTOML(Path.cwd() / "pyproject.toml")
 
@@ -141,7 +141,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
 
         python = self.option("python")
         if not python:
-            current_env = SystemEnv(Path(sys.executable))
+            executable, py_minor, py_patch = InterpreterLookup.find()
+            current_env = SystemEnv(executable)
             default_python = "^{}".format(
                 ".".join(str(v) for v in current_env.version_info[:2])
             )

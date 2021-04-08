@@ -54,7 +54,7 @@ class EnvInfoCommand(Command):
                 [
                     "<info>Platform</info>: <comment>{}</>".format(env.platform),
                     "<info>OS</info>:       <comment>{}</>".format(env.os),
-                    "<info>Python</info>:   <comment>{}</>".format(env.base),
+                    "<info>Python</info>:   <comment>{}</>".format(env.python),
                 ]
             )
         )
