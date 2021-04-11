@@ -76,3 +76,36 @@ jobs:
       with:
         name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
+
+  Windows:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get build version
+      id: build_version
+      run: |
+        echo ::set-output name=version::$(echo ${GITHUB_SHA} | cut -c1-8)
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.51.0
+        default: true
+        profile: minimal
+    - name: Install PyOxidizer
+      run: |
+        cargo install pyoxidizer --version 0.11.0
+    - name: Build x86_64 release
+      run: |
+        make build_win
+        build/x86_64-pc-windows-msvc/release/install/bin/poetry --version
+        make pack_win BUILD_VERSION=${{ steps.build_version.outputs.version }}
+    - name: Upload x86_64 release file
+      uses: actions/upload-artifact@v1
+      with:
+        name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.tar.gz
+        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.tar.gz
+    - name: Upload x86_64 checksum file
+      uses: actions/upload-artifact@v1
+      with:
+        name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum
+        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum

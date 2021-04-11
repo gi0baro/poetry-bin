@@ -1,7 +1,8 @@
 .PHONY: _path_build _path_assets build pack patches sign
 
-ARCH_MAC := x86_64-apple-darwin
 ARCH_LINUX := x86_64-unknown-linux-gnu
+ARCH_MAC := x86_64-apple-darwin
+ARCH_WIN := x86_64-pc-windows-msvc
 BUILD_VERSION := latest
 
 _path_build:
@@ -35,6 +36,9 @@ build_linux: build
 
 build_mac: ARCH := ${ARCH_MAC}
 build_mac: build sign
+
+build_win: ARCH := ${ARCH_WIN}
+build_win: build
 
 build: _path_build _path_assets clean_build
 	pyoxidizer build --release --target-triple=${ARCH}
@@ -72,6 +76,9 @@ pack_linux: pack
 
 pack_mac: ARCH := ${ARCH_MAC}
 pack_mac: pack
+
+pack_win: ARCH := ${ARCH_WIN}
+pack_win: pack
 
 pack: _path_build clean_dist
 	@mkdir -p dist
