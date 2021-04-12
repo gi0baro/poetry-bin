@@ -84,6 +84,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Get build version
       id: build_version
+      shell: bash
       run: |
         echo "::set-output name=version::$(echo ${GITHUB_SHA} | cut -c1-8)"
     - uses: actions-rs/toolchain@v1
