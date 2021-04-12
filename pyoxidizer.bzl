@@ -45,8 +45,8 @@ register_target("config_win", make_config_win, depends=["dist"])
 register_target("exe_posix", make_exe, depends=["dist", "config_posix"])
 register_target("exe_win", make_exe, depends=["dist", "config_win"])
 register_target("resources_posix", make_embedded_resources, depends=["exe_posix"], default_build_script=True)
-register_target("install_posix", make_install, depends=["exe_posix"], default=True)
-register_target("install_win", make_install, depends=["exe_win"])
+register_target("posix", make_install, depends=["exe_posix"], default=True)
+register_target("win", make_install, depends=["exe_win"])
 
 resolve_targets()
 

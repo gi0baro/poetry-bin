@@ -6,7 +6,7 @@ ARCH_WIN := x86_64-pc-windows-msvc
 BUILD_VERSION := latest
 
 _path_build:
-	$(eval BUILDPATH := build/${ARCH}/release/install)
+	$(eval BUILDPATH := build/${ARCH}/release/${TARGET})
 _path_lib: _path_build
 	$(eval LIBPATH := ${BUILDPATH}/lib)
 _path_assets: _path_build
@@ -34,12 +34,15 @@ vendor: clean_vendor
 	@find vendor -type d -name .git | xargs rm -r
 
 build_linux: ARCH := ${ARCH_LINUX}
+build_linux: TARGET := posix
 build_linux: _build_posix assets
 
 build_mac: ARCH := ${ARCH_MAC}
+build_mac: TARGET := posix
 build_mac: _build_posix assets sign
 
 build_win: ARCH := ${ARCH_WIN}
+build_win: TARGET := win
 build_win: _build_win assets
 
 _build_posix: _path_build _path_lib clean_build
@@ -48,7 +51,7 @@ _build_posix: _path_build _path_lib clean_build
 	@cp -R vendor/poetry-core/poetry/core/_vendor/* ${LIBPATH}
 
 _build_win: _path_build clean_build
-	pyoxidizer build --release --target-triple=${ARCH} install_win
+	pyoxidizer build --release --target-triple=${ARCH} win
 	@cp -R vendor/poetry-core/poetry/core/_vendor/* ${BUILDPATH}/bin/lib
 
 assets: _path_assets
@@ -80,12 +83,15 @@ sign: _path_build _path_lib
 	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$
 
 pack_linux: ARCH := ${ARCH_LINUX}
+pack_linux: TARGET := posix
 pack_linux: pack
 
 pack_mac: ARCH := ${ARCH_MAC}
+pack_mac: TARGET := posix
 pack_mac: pack
 
 pack_win: ARCH := ${ARCH_WIN}
+pack_win: TARGET := win
 pack_win: pack
 
 pack: _path_build clean_dist
