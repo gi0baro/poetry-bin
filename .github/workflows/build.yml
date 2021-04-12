@@ -86,7 +86,7 @@ jobs:
       id: build_version
       shell: bash
       run: |
-        echo "::set-output name=version::$(echo ${GITHUB_SHA} | cut -c1-8)"
+        echo ::set-output name=version::$(echo ${GITHUB_SHA} | cut -c1-8)
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: 1.51.0

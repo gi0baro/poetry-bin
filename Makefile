@@ -1,4 +1,4 @@
-.PHONY: _path_build _path_assets build pack patches sign
+.PHONY: _path_build _path_lib _path_assets _build_posix _build_win assets pack patches sign
 
 ARCH_LINUX := x86_64-unknown-linux-gnu
 ARCH_MAC := x86_64-apple-darwin
@@ -7,7 +7,9 @@ BUILD_VERSION := latest
 
 _path_build:
 	$(eval BUILDPATH := build/${ARCH}/release/install)
-_path_assets:
+_path_lib: _path_build
+	$(eval LIBPATH := ${BUILDPATH}/lib)
+_path_assets: _path_build
 	$(eval ASSETSPATH := ${BUILDPATH}/assets)
 
 clean_build: _path_build
@@ -32,22 +34,28 @@ vendor: clean_vendor
 	@find vendor -type d -name .git | xargs rm -r
 
 build_linux: ARCH := ${ARCH_LINUX}
-build_linux: build
+build_linux: _build_posix assets
 
 build_mac: ARCH := ${ARCH_MAC}
-build_mac: build sign
+build_mac: _build_posix assets sign
 
 build_win: ARCH := ${ARCH_WIN}
-build_win: build
+build_win: _build_win assets
 
-build: _path_build _path_assets clean_build
+_build_posix: _path_build _path_lib clean_build
 	pyoxidizer build --release --target-triple=${ARCH}
 	@mv ${BUILDPATH}/bin/lib ${BUILDPATH}
+	@cp -R vendor/poetry-core/poetry/core/_vendor/* ${LIBPATH}
+
+_build_win: _path_build clean_build
+	pyoxidizer build --release --target-triple=${ARCH} install_win
+	@cp -R vendor/poetry-core/poetry/core/_vendor/* ${BUILDPATH}/bin/lib
+
+assets: _path_assets
 	@mkdir -p ${ASSETSPATH}
 	@mkdir -p ${ASSETSPATH}/virtualenv
 	@mkdir -p ${ASSETSPATH}/virtualenv/activation
 	@cp vendor/certifi/certifi/cacert.pem ${ASSETSPATH}/cacert.pem
-	@cp -R vendor/poetry-core/poetry/core/_vendor/* ${BUILDPATH}/lib
 	@cp -R vendor/poetry-core/poetry/core/json/schemas ${ASSETSPATH}/schemas
 	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/grammars
 	@cp vendor/poetry-core/poetry/core/spdx/data/licenses.json ${ASSETSPATH}/licenses.json
@@ -67,9 +75,9 @@ build: _path_build _path_assets clean_build
 	@cp -R vendor/virtualenv/src/virtualenv/seed/wheels/embed ${ASSETSPATH}/virtualenv/wheels
 	@cp static/packaging_tags.py ${ASSETSPATH}/packaging_tags.py
 
-sign: _path_build _path_assets
+sign: _path_build _path_lib
 	@codesign -s - ${BUILDPATH}/bin/poetry
-	@find ${BUILDPATH}/lib -name '*.so' -type f | xargs -I $$ codesign -s - $$
+	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$
 
 pack_linux: ARCH := ${ARCH_LINUX}
 pack_linux: pack
