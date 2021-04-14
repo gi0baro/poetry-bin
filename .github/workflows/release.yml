@@ -26,7 +26,7 @@ jobs:
       - name: Build release
         run: |
           make build_linux
-          build/x86_64-unknown-linux-gnu/release/install/bin/poetry --version
+          build/x86_64-unknown-linux-gnu/release/posix/bin/poetry --version
           make pack_linux BUILD_VERSION=${{ steps.build_version.outputs.version }}
       - name: Upload release file
         uses: actions/upload-artifact@v1
@@ -59,7 +59,7 @@ jobs:
       - name: Build release
         run: |
           make build_mac ARCH=x86_64-apple-darwin
-          build/x86_64-apple-darwin/release/install/bin/poetry --version
+          build/x86_64-apple-darwin/release/posix/bin/poetry --version
           make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
       - name: Upload release file
         uses: actions/upload-artifact@v1
@@ -72,8 +72,42 @@ jobs:
           name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
           path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
 
+  Windows:
+    runs-on: windows-2019
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get build version
+      id: build_version
+      shell: bash
+      run: |
+        echo ::set-output name=version::${GITHUB_REF#refs/tags/}
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.51.0
+        default: true
+        profile: minimal
+    - name: Install PyOxidizer
+      run: |
+        cargo install pyoxidizer --version 0.11.0
+    - name: Build release
+      run: |
+        make build_win
+        build/x86_64-pc-windows-msvc/release/win/bin/poetry --version
+        make pack_win BUILD_VERSION=${{ steps.build_version.outputs.version }}
+    - name: Upload release file
+      uses: actions/upload-artifact@v1
+      with:
+        name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.tar.gz
+        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.tar.gz
+    - name: Upload checksum file
+      uses: actions/upload-artifact@v1
+      with:
+        name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum
+        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum
+
   Release:
-    needs: [Linux, MacOS]
+    needs: [Linux, MacOS, Windows]
     runs-on: ubuntu-latest
 
     steps:
@@ -102,6 +136,16 @@ jobs:
         uses: actions/download-artifact@master
         with:
           name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.sha256sum
+          path: dist/
+      - name: Download Windows release file
+        uses: actions/download-artifact@master
+        with:
+          name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-pc-windows-msvc.tar.gz
+          path: dist/
+      - name: Download Windows checksum file
+        uses: actions/download-artifact@master
+        with:
+          name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-pc-windows-msvc.sha256sum
           path: dist/
       - name: Create Release
         id: create_release
@@ -148,4 +192,22 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.sha256sum
           asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-apple-darwin.sha256sum
+          asset_content_type: text/plain
+      - name: Upload Windows release file asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-pc-windows-msvc.tar.gz
+          asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-pc-windows-msvc.tar.gz
+          asset_content_type: application/gzip
+      - name: Upload Windows checksum file asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-pc-windows-msvc.sha256sum
+          asset_name: poetry-bin-${{ steps.tag.outputs.tag }}-x86_64-pc-windows-msvc.sha256sum
           asset_content_type: text/plain
