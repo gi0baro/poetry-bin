@@ -1,5 +1,5 @@
 diff --git a/poetry/core/__init__.py b/poetry/core/__init__.py
-index eed5b18..c668dc4 100644
+index a06869c..6f35040 100644
 --- a/poetry/core/__init__.py
 +++ b/poetry/core/__init__.py
 @@ -1,15 +1,5 @@
@@ -13,7 +13,7 @@ index eed5b18..c668dc4 100644
 -    from pathlib2 import Path
 +from pathlib import Path
  
- __version__ = "1.0.2"
+ __version__ = "1.0.3"
  
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 -
