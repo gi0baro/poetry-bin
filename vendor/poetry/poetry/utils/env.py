@@ -29,6 +29,7 @@ from packaging.tags import interpreter_version
 from packaging.tags import sys_tags
 
 from poetry import __path__ as __pkgpath__
+from poetry.core.packages import Package
 from poetry.core.semver import parse_constraint
 from poetry.core.semver.version import Version
 from poetry.core.toml.file import TOMLFile
@@ -1378,7 +1379,7 @@ class InterpreterLookup:
 
         for python_to_try in reversed(
             sorted(
-                self._poetry.package.AVAILABLE_PYTHONS,
+                Package.AVAILABLE_PYTHONS,
                 key=lambda v: (v.startswith("3"), -len(v), v),
             )
         ):
