@@ -1,20 +1,15 @@
 def make_dist():
     return default_python_distribution(python_version="3.9")
 
-def make_config_posix(dist):
-    python_config = dist.make_python_interpreter_config()
-    python_config.module_search_paths = ["$ORIGIN/../lib"]
-    return python_config
-
-def make_config_win(dist):
-    python_config = dist.make_python_interpreter_config()
-    python_config.module_search_paths = ["$ORIGIN/lib"]
-    return python_config
-
-def make_exe(dist, config):
+def make_exe(dist):
     policy = dist.make_python_packaging_policy()
     policy.resources_location_fallback = "filesystem-relative:lib"
 
+    config = dist.make_python_interpreter_config()
+    if not VARS.get("WIN_BUILD"):
+        config.module_search_paths = ["$ORIGIN/../lib"]
+    else:
+        config.module_search_paths = ["$ORIGIN/lib"]
     config.run_module = "poetry.console.application"
 
     exe = dist.to_python_executable(
@@ -35,20 +30,30 @@ def make_embedded_resources(exe):
 
 def make_install(exe):
     files = FileManifest()
-    files.add_python_resource("bin", exe)
+    if not VARS.get("WIN_BUILD"):
+        entrypoint = "bin"
+    else:
+        entrypoint = "."
+    files.add_python_resource(entrypoint, exe)
     return files
+
+# def make_msi(exe):
+#     return exe.to_wix_msi_builder(
+#         "poetry-bin",
+#         "Poetry",
+#         "1.0",
+#         # The author/manufacturer of your application.
+#         ""
+#     )
 
 
 register_target("dist", make_dist)
-register_target("config_posix", make_config_posix, depends=["dist"])
-register_target("config_win", make_config_win, depends=["dist"])
-register_target("exe_posix", make_exe, depends=["dist", "config_posix"])
-register_target("exe_win", make_exe, depends=["dist", "config_win"])
-register_target("resources_posix", make_embedded_resources, depends=["exe_posix"], default_build_script=True)
-register_target("posix", make_install, depends=["exe_posix"], default=True)
-register_target("win", make_install, depends=["exe_win"])
+register_target("exe", make_exe, depends=["dist"])
+register_target("resources", make_embedded_resources, depends=["exe"], default_build_script=True)
+register_target("install", make_install, depends=["exe"], default=True)
+# register_target("msi_installer", make_msi, depends=["exe"])
 
 resolve_targets()
 
-PYOXIDIZER_VERSION = "0.11.0"
-PYOXIDIZER_COMMIT = "UNKNOWN"
+PYOXIDIZER_VERSION = "0.16.0"
+PYOXIDIZER_COMMIT = "4053178f2ba11d29f497d171289cb847cd07ed77"
