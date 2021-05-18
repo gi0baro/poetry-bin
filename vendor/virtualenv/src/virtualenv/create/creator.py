@@ -12,6 +12,7 @@ from textwrap import dedent
 
 from six import add_metaclass
 
+from virtualenv import __path_pack__
 from virtualenv.discovery.cached_py_info import LogCmd
 from virtualenv.info import WIN_CPYTHON_2
 from virtualenv.util.path import Path, safe_delete
@@ -22,6 +23,7 @@ from virtualenv.version import __version__
 from . import _PATH_ASSETS
 from .pyenv_cfg import PyEnvCfg
 
+HERE = __path_pack__ / "create"
 DEBUG_SCRIPT = _PATH_ASSETS / "debug.py"
 
 

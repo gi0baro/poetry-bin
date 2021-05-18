@@ -1,8 +1,8 @@
 diff --git a/poetry/core/__init__.py b/poetry/core/__init__.py
-index a06869c..8d728ea 100644
+index a06869c..f312696 100644
 --- a/poetry/core/__init__.py
 +++ b/poetry/core/__init__.py
-@@ -1,15 +1,11 @@
+@@ -1,15 +1,14 @@
  import sys
  
 -
@@ -24,6 +24,9 @@ index a06869c..8d728ea 100644
 +    __path_assets__ = Path(__path__[0]).parents[parents] / "assets" / "core"
 +else:
 +    __path_assets__ = None
++    __vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
++    if __vendor_site__ not in sys.path:
++        sys.path.insert(0, __vendor_site__)
 diff --git a/poetry/core/json/__init__.py b/poetry/core/json/__init__.py
 index 83ecab7..893291a 100644
 --- a/poetry/core/json/__init__.py
@@ -48,10 +51,10 @@ index 83ecab7..893291a 100644
  
  class ValidationError(ValueError):
 diff --git a/poetry/core/spdx/__init__.py b/poetry/core/spdx/__init__.py
-index 713aa30..54c826b 100644
+index 713aa30..207f3bd 100644
 --- a/poetry/core/spdx/__init__.py
 +++ b/poetry/core/spdx/__init__.py
-@@ -2,12 +2,18 @@ import json
+@@ -2,12 +2,19 @@ import json
  import os
  
  from io import open
@@ -61,16 +64,18 @@ index 713aa30..54c826b 100644
  
 +from .. import __path_assets__
  from .license import License
- from .updater import Updater
+-from .updater import Updater
  
 +_ASSETS_PATH = (
 +    __path_assets__ / "spdx" if __path_assets__ else
 +    Path(__path__[0]) / "data"
 +)
++
++from .updater import Updater
  
  _licenses = None  # type: Optional[Dict[str, License]]
  
-@@ -31,7 +37,7 @@ def load_licenses():  # type: () -> None
+@@ -31,7 +38,7 @@ def load_licenses():  # type: () -> None
  
      _licenses = {}
  

@@ -103,10 +103,18 @@ index 01e6d4f..9e76424 100644
 +    Path(__path__[0])
 +)
 diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
-index 6363f8b..f55035d 100644
+index 6363f8b..9b00461 100644
 --- a/src/virtualenv/create/creator.py
 +++ b/src/virtualenv/create/creator.py
-@@ -19,10 +19,10 @@ from virtualenv.util.six import ensure_str, ensure_text
+@@ -12,6 +12,7 @@ from textwrap import dedent
+ 
+ from six import add_metaclass
+ 
++from virtualenv import __path_pack__
+ from virtualenv.discovery.cached_py_info import LogCmd
+ from virtualenv.info import WIN_CPYTHON_2
+ from virtualenv.util.path import Path, safe_delete
+@@ -19,10 +20,11 @@ from virtualenv.util.six import ensure_str, ensure_text
  from virtualenv.util.subprocess import run_cmd
  from virtualenv.version import __version__
  
@@ -115,6 +123,7 @@ index 6363f8b..f55035d 100644
  
 -HERE = Path(os.path.abspath(__file__)).parent
 -DEBUG_SCRIPT = HERE / "debug.py"
++HERE = __path_pack__ / "create"
 +DEBUG_SCRIPT = _PATH_ASSETS / "debug.py"
  
  
