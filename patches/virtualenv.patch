@@ -435,3 +435,29 @@ index 992c856..9bff6f9 100644
  BUNDLE_SUPPORT = {
      "3.10": {
          "pip": "pip-21.0.1-py3-none-any.whl",
+diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
+index 59a0991..76d40c7 100644
+--- a/tests/unit/create/test_interpreters.py
++++ b/tests/unit/create/test_interpreters.py
+@@ -29,6 +29,4 @@ def test_failed_to_find_implementation(of_id, mocker):
+     mocker.patch("virtualenv.run.plugin.creators.CreatorSelector._OPTIONS", return_value={})
+     with pytest.raises(RuntimeError) as context:
+         cli_run(["-p", of_id])
+-    assert repr(context.value) == repr(
+-        RuntimeError("No virtualenv implementation for {}".format(PythonInfo.current_system())),
+-    )
++    assert repr(context.value).startswith('RuntimeError("No virtualenv implementation for')
+diff --git a/tests/unit/test_run.py b/tests/unit/test_run.py
+index 53849f5..a6da734 100644
+--- a/tests/unit/test_run.py
++++ b/tests/unit/test_run.py
+@@ -30,9 +30,6 @@ def test_version(capsys):
+     assert not extra
+ 
+     assert __version__ in content
+-    import virtualenv
+-
+-    assert virtualenv.__file__ in content
+ 
+ 
+ @pytest.mark.parametrize("on", [True, False])

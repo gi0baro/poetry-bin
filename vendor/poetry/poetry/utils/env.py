@@ -1088,9 +1088,10 @@ class SystemEnv(Env):
     A system (i.e. not a virtualenv) Python environment.
     """
 
-    def __init__(self, path, base=None):
+    def __init__(self, path, base=None, auto_path=True):
         self._is_windows = sys.platform == "win32"
-        path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
+        if auto_path:
+            path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
         super().__init__(path)
 
     @property
@@ -1258,10 +1259,97 @@ class NullEnv(SystemEnv):
         if path is None:
             path = Path(sys.prefix)
 
-        super(NullEnv, self).__init__(path, base=base)
+        super(NullEnv, self).__init__(path, base=base, auto_path=False)
 
         self._execute = execute
         self.executed = []
+
+    @property
+    def python(self):  # type: () -> str
+        return sys.executable
+
+    @property
+    def sys_path(self):  # type: () -> List[str]
+        return sys.path
+
+    def get_version_info(self):  # type: () -> Tuple[int]
+        return sys.version_info
+
+    def get_python_implementation(self):  # type: () -> str
+        return platform.python_implementation()
+
+    def get_paths(self):  # type: () -> Dict[str, str]
+        # We can't use sysconfig.get_paths() because
+        # on some distributions it does not return the proper paths
+        # (those used by pip for instance). We go through distutils
+        # to get the proper ones.
+        import site
+
+        from distutils.command.install import SCHEME_KEYS  # noqa
+        from distutils.core import Distribution
+
+        d = Distribution()
+        d.parse_config_files()
+        obj = d.get_command_obj("install", create=True)
+        obj.finalize_options()
+
+        paths = sysconfig.get_paths().copy()
+        for key in SCHEME_KEYS:
+            if key == "headers":
+                # headers is not a path returned by sysconfig.get_paths()
+                continue
+
+            paths[key] = getattr(obj, "install_{}".format(key))
+
+        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
+            paths["usersite"] = getattr(obj, "install_usersite")
+            paths["userbase"] = getattr(obj, "install_userbase")
+
+        return paths
+
+    def get_supported_tags(self):  # type: () -> List[Tag]
+        return list(sys_tags())
+
+    def get_marker_env(self):  # type: () -> Dict[str, Any]
+        if hasattr(sys, "implementation"):
+            info = sys.implementation.version
+            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
+            kind = info.releaselevel
+            if kind != "final":
+                iver += kind[0] + str(info.serial)
+
+            implementation_name = sys.implementation.name
+        else:
+            iver = "0"
+            implementation_name = ""
+
+        return {
+            "implementation_name": implementation_name,
+            "implementation_version": iver,
+            "os_name": os.name,
+            "platform_machine": platform.machine(),
+            "platform_release": platform.release(),
+            "platform_system": platform.system(),
+            "platform_version": platform.version(),
+            "python_full_version": platform.python_version(),
+            "platform_python_implementation": platform.python_implementation(),
+            "python_version": ".".join(
+                v for v in platform.python_version().split(".")[:2]
+            ),
+            "sys_platform": sys.platform,
+            "version_info": sys.version_info,
+            # Extra information
+            "interpreter_name": interpreter_name(),
+            "interpreter_version": interpreter_version(),
+        }
+
+    def get_pip_version(self):  # type: () -> Version
+        from pip import __version__
+
+        return Version.parse(__version__)
+
+    def is_venv(self):  # type: () -> bool
+        return self._path != self._base
 
     def get_pip_command(self):  # type: () -> List[str]
         return [self._bin("python"), "-m", "pip"]

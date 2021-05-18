@@ -30,9 +30,6 @@ def test_version(capsys):
     assert not extra
 
     assert __version__ in content
-    import virtualenv
-
-    assert virtualenv.__file__ in content
 
 
 @pytest.mark.parametrize("on", [True, False])

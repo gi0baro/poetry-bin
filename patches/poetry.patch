@@ -126,7 +126,7 @@ index 937f9b30..40e41514 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 681027ac..d1506e16 100644
+index 681027ac..abae2724 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -28,6 +28,8 @@ from packaging.tags import interpreter_name
@@ -320,16 +320,17 @@ index 681027ac..d1506e16 100644
                  str(path),
              ]
          )
-@@ -1138,96 +1088,55 @@ class SystemEnv(Env):
+@@ -1138,96 +1088,56 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
 -    @property
 -    def python(self):  # type: () -> str
 -        return sys.executable
-+    def __init__(self, path, base=None):
++    def __init__(self, path, base=None, auto_path=True):
 +        self._is_windows = sys.platform == "win32"
-+        path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
++        if auto_path:
++            path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
 +        super().__init__(path)
  
      @property
@@ -338,23 +339,15 @@ index 681027ac..d1506e16 100644
 -
 -    def get_version_info(self):  # type: () -> Tuple[int]
 -        return sys.version_info
-+    def sys_path(self):
-+        output = self.run("python", "-", input_=GET_SYS_PATH)
-+        return json.loads(output)
- 
+-
 -    def get_python_implementation(self):  # type: () -> str
 -        return platform.python_implementation()
-+    def get_version_info(self):
-+        output = self.run("python", "-", input_=GET_PYTHON_VERSION)
-+        return tuple([int(s) for s in output.strip().split(".")])
- 
+-
 -    def get_pip_command(self):  # type: () -> List[str]
 -        # If we're not in a venv, assume the interpreter we're running on
 -        # has a pip and use that
 -        return [sys.executable, "-m", "pip"]
-+    def get_python_implementation(self):
-+        return self.marker_env["platform_python_implementation"]
- 
+-
 -    def get_paths(self):  # type: () -> Dict[str, str]
 -        # We can't use sysconfig.get_paths() because
 -        # on some distributions it does not return the proper paths
@@ -369,37 +362,41 @@ index 681027ac..d1506e16 100644
 -        d.parse_config_files()
 -        obj = d.get_command_obj("install", create=True)
 -        obj.finalize_options()
--
++    def sys_path(self):
++        output = self.run("python", "-", input_=GET_SYS_PATH)
++        return json.loads(output)
+ 
 -        paths = sysconfig.get_paths().copy()
 -        for key in SCHEME_KEYS:
 -            if key == "headers":
 -                # headers is not a path returned by sysconfig.get_paths()
 -                continue
-+    def get_marker_env(self):
-+        output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
-+        return json.loads(output)
++    def get_version_info(self):
++        output = self.run("python", "-", input_=GET_PYTHON_VERSION)
++        return tuple([int(s) for s in output.strip().split(".")])
  
 -            paths[key] = getattr(obj, "install_{}".format(key))
-+    def get_paths(self):
-+        output = self.run("python", "-", input_=GET_PATHS)
-+        return json.loads(output)
++    def get_python_implementation(self):
++        return self.marker_env["platform_python_implementation"]
  
 -        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
 -            paths["usersite"] = getattr(obj, "install_usersite")
 -            paths["userbase"] = getattr(obj, "install_userbase")
-+    def get_supported_tags(self):  # type: () -> List[Tag]
++    def get_marker_env(self):
++        output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
++        return json.loads(output)
+ 
+-        return paths
++    def get_paths(self):
++        output = self.run("python", "-", input_=GET_PATHS)
++        return json.loads(output)
+ 
+     def get_supported_tags(self):  # type: () -> List[Tag]
+-        return list(sys_tags())
 +        if __path_assets__:
 +            file_path = __path_assets__ / "packaging_tags.py"
 +        else:
 +            file_path = Path(packaging.tags.__file__)
- 
--        return paths
-+        with file_path.open(encoding="utf-8") as f:
-+            script = decode(f.read())
- 
--    def get_supported_tags(self):  # type: () -> List[Tag]
--        return list(sys_tags())
-+        output = self.run("python", "-", input_=script)
  
 -    def get_marker_env(self):  # type: () -> Dict[str, Any]
 -        if hasattr(sys, "implementation"):
@@ -408,12 +405,15 @@ index 681027ac..d1506e16 100644
 -            kind = info.releaselevel
 -            if kind != "final":
 -                iver += kind[0] + str(info.serial)
--
++        with file_path.open(encoding="utf-8") as f:
++            script = decode(f.read())
+ 
 -            implementation_name = sys.implementation.name
 -        else:
 -            iver = "0"
 -            implementation_name = ""
--
++        output = self.run("python", "-", input_=script)
+ 
 -        return {
 -            "implementation_name": implementation_name,
 -            "implementation_version": iver,
@@ -453,7 +453,7 @@ index 681027ac..d1506e16 100644
          return self._path != self._base
  
  
-@@ -1266,31 +1175,14 @@ class VirtualEnv(Env):
+@@ -1266,31 +1176,14 @@ class VirtualEnv(Env):
          return [self._bin("pip")]
  
      def get_supported_tags(self):  # type: () -> List[Tag]
@@ -489,7 +489,107 @@ index 681027ac..d1506e16 100644
          output = self.run("python", "-", input_=script)
  
          return [Tag(*t) for t in json.loads(output)]
-@@ -1454,3 +1346,69 @@ class MockEnv(NullEnv):
+@@ -1366,11 +1259,98 @@ class NullEnv(SystemEnv):
+         if path is None:
+             path = Path(sys.prefix)
+ 
+-        super(NullEnv, self).__init__(path, base=base)
++        super(NullEnv, self).__init__(path, base=base, auto_path=False)
+ 
+         self._execute = execute
+         self.executed = []
+ 
++    @property
++    def python(self):  # type: () -> str
++        return sys.executable
++
++    @property
++    def sys_path(self):  # type: () -> List[str]
++        return sys.path
++
++    def get_version_info(self):  # type: () -> Tuple[int]
++        return sys.version_info
++
++    def get_python_implementation(self):  # type: () -> str
++        return platform.python_implementation()
++
++    def get_paths(self):  # type: () -> Dict[str, str]
++        # We can't use sysconfig.get_paths() because
++        # on some distributions it does not return the proper paths
++        # (those used by pip for instance). We go through distutils
++        # to get the proper ones.
++        import site
++
++        from distutils.command.install import SCHEME_KEYS  # noqa
++        from distutils.core import Distribution
++
++        d = Distribution()
++        d.parse_config_files()
++        obj = d.get_command_obj("install", create=True)
++        obj.finalize_options()
++
++        paths = sysconfig.get_paths().copy()
++        for key in SCHEME_KEYS:
++            if key == "headers":
++                # headers is not a path returned by sysconfig.get_paths()
++                continue
++
++            paths[key] = getattr(obj, "install_{}".format(key))
++
++        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
++            paths["usersite"] = getattr(obj, "install_usersite")
++            paths["userbase"] = getattr(obj, "install_userbase")
++
++        return paths
++
++    def get_supported_tags(self):  # type: () -> List[Tag]
++        return list(sys_tags())
++
++    def get_marker_env(self):  # type: () -> Dict[str, Any]
++        if hasattr(sys, "implementation"):
++            info = sys.implementation.version
++            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
++            kind = info.releaselevel
++            if kind != "final":
++                iver += kind[0] + str(info.serial)
++
++            implementation_name = sys.implementation.name
++        else:
++            iver = "0"
++            implementation_name = ""
++
++        return {
++            "implementation_name": implementation_name,
++            "implementation_version": iver,
++            "os_name": os.name,
++            "platform_machine": platform.machine(),
++            "platform_release": platform.release(),
++            "platform_system": platform.system(),
++            "platform_version": platform.version(),
++            "python_full_version": platform.python_version(),
++            "platform_python_implementation": platform.python_implementation(),
++            "python_version": ".".join(
++                v for v in platform.python_version().split(".")[:2]
++            ),
++            "sys_platform": sys.platform,
++            "version_info": sys.version_info,
++            # Extra information
++            "interpreter_name": interpreter_name(),
++            "interpreter_version": interpreter_version(),
++        }
++
++    def get_pip_version(self):  # type: () -> Version
++        from pip import __version__
++
++        return Version.parse(__version__)
++
++    def is_venv(self):  # type: () -> bool
++        return self._path != self._base
++
+     def get_pip_command(self):  # type: () -> List[str]
+         return [self._bin("python"), "-m", "pip"]
+ 
+@@ -1454,3 +1434,69 @@ class MockEnv(NullEnv):
  
      def is_venv(self):  # type: () -> bool
          return self._is_venv
@@ -579,3 +679,175 @@ index 34f02afe..652fc702 100644
  
  # The typing module is not in the stdlib in Python 2.7
  typing = { version = "^3.6", python = "~2.7" }
+diff --git a/tests/conftest.py b/tests/conftest.py
+index e2b73936..ac9721ce 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -4,6 +4,7 @@ import shutil
+ import sys
+ import tempfile
+ 
++from pathlib import Path
+ from typing import Any
+ from typing import Dict
+ 
+@@ -56,7 +57,8 @@ class Config(BaseConfig):
+ @pytest.fixture
+ def config_source():
+     source = DictConfigSource()
+-    source.add_property("cache-dir", "/foo")
++    # source.add_property("cache-dir", "/foo")
++    source.add_property("cache-dir", str(Path.cwd() / ".pypoetrycache"))
+ 
+     return source
+ 
+diff --git a/tests/console/commands/self/__init__.py b/tests/console/commands/self/__init__.py
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.sha256sum b/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.sha256sum
+deleted file mode 100644
+index 3229630a..00000000
+--- a/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.sha256sum
++++ /dev/null
+@@ -1 +0,0 @@
+-be3d3b916cb47038899d6ff37e875fd08ba3fed22bcdbf5a92f3f48fd2f15da8
+diff --git a/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.tar.gz b/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.tar.gz
+deleted file mode 100644
+index 09bb17bdeb92ccdc331cba93b1337ec9129f355f..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 1041
+zcmV+s1n&DEiwFP)U%p-h1MOJdi`zyJ_p|<r#d(pzRU})o!Ehxdy+R?}8TXo(QWiy8
+zrJKlFb$5N#l>YCX*_Cv%F2aS{p-ERS`!V0Y+0l+v3#R4q<>Z=A2+w-Go|ti!m@!<$
+zcErsvoJ7l2vW}DW66RsFSR|_nNv`QstNWmIDhZh=_AXVLv#KQwMqn$7!QNM}tZn}7
+z5Y)$OgoFuR#WvsT=lNeo(Hir=SS5>iu?D^<j*@6X!fQA))cHTpe<8)5P+A=HK{84S
+z-`7HFlD<=-JZMJk+8bdzR6G+oqb1i&rls;MV?gO6lZuP#Nn>xTVah~R@b`foTEnl+
+zX2VgZ*~j!fQ!Vk0$UZVTLflI6fn|DYWf~^QYN5Cmk~0<5LX@qlEzBF9gXX0QXeRb`
+zsylkBe><UTu`g-COV)Bcz{U@-_B<~uQ>Dn(l+woY2t03ZcR&4je@AWr+zty%%2@%M
+zyyBWt-!P+qVr4P!R%mEW$P1#6HQSIadV^f}lp;$@a2L_*@#H+y9Z!Q?k34|Ksxry|
+z(jH%faZ7(@rb!UeXPeF*dLLMLZb*xak5SA9JdI}nOfwtM`_TbYfBBpfT(>-UELxYX
+zFV=CO+R1=wj=~M3OqBl2rsY*FMa`r>8dgjay6>a5UZ9dep;RVYHr_GeCb~xcDV6?=
+zeDf_C$;OHH79Zo!bMN}dj95825+}O*!ebEt55PL2`i(8c7W1KU%*Tk|2>pmsQ<R@n
+zi9%xvZGuNs_KqtmKJl|T8C|{=)3g`#91kA^GTZdBXXCaxH1%$zQMEmGR^;hWcI2LA
+z8wj2-wAkS>CpbN^hJcLQLUyo(gH<_*@YGHZrg>8oC$=n7<JPSFQ$c+)vf=IO*8gz?
+zn*Oi7kFL@Ip6UO>WEl<nzvXJ_`oGU{beeuoD6g5R<3H@;@TFLZ-&5#+=<fdh0p1J(
+zdMxNvf}G1L-7~*kOO}>M@S)L!JC)Me%%g8_@4mm^^`t%sUin7VoJ^r<s&XNx!1(&-
+z-R}18VMM^Zh8h~k)yF^ong)fC`&9eWU>X>$N=yH7Mqryf5)Rk*Q3Y*R#;Zd7vRV8J
+zK0zn&f_#_f#2RNg$yp74uquQ8k!S%u3xwyPxS8=vLC4^Sb29L9=6#OjUBE_H|1BK!
+z@~?n%^&c))gZfXRFn0BSf%KkL(fc}qQk+IX7$nm#<?x=3&M}-rpsW9V%HeDM^2HAh
+zoU8w684v0|UdHbJKbN|T(EGQ($MMGm-rVrp<_6vdl-g4<wIBNCClLOxfqz5YZxH0L
+z9~yWovOl=?am$D6^db&AB@O|HfJ49`;1F;KI0PI54grUNL%<>65O4@M1RMhY3W2`?
+LE~wAj04M+eXZ{jT
+
+diff --git a/tests/console/commands/self/test_update.py b/tests/console/commands/self/test_update.py
+deleted file mode 100644
+index 6e094111..00000000
+--- a/tests/console/commands/self/test_update.py
++++ /dev/null
+@@ -1,91 +0,0 @@
+-import os
+-
+-import pytest
+-
+-from poetry.__version__ import __version__
+-from poetry.core.packages.package import Package
+-from poetry.core.semver.version import Version
+-from poetry.utils._compat import WINDOWS
+-from poetry.utils._compat import Path
+-
+-
+-FIXTURES = Path(__file__).parent.joinpath("fixtures")
+-
+-
+-@pytest.fixture()
+-def tester(command_tester_factory):
+-    return command_tester_factory("self update")
+-
+-
+-def test_self_update_should_install_all_necessary_elements(
+-    tester, http, mocker, environ, tmp_dir
+-):
+-    os.environ["POETRY_HOME"] = tmp_dir
+-
+-    command = tester._command
+-
+-    version = Version.parse(__version__).next_minor.text
+-    mocker.patch(
+-        "poetry.repositories.pypi_repository.PyPiRepository.find_packages",
+-        return_value=[Package("poetry", version)],
+-    )
+-    mocker.patch.object(command, "_check_recommended_installation", return_value=None)
+-    mocker.patch.object(
+-        command, "_get_release_name", return_value="poetry-{}-darwin".format(version)
+-    )
+-    mocker.patch("subprocess.check_output", return_value=b"Python 3.8.2")
+-
+-    http.register_uri(
+-        "GET",
+-        command.BASE_URL + "/{}/poetry-{}-darwin.sha256sum".format(version, version),
+-        body=FIXTURES.joinpath("poetry-1.0.5-darwin.sha256sum").read_bytes(),
+-    )
+-    http.register_uri(
+-        "GET",
+-        command.BASE_URL + "/{}/poetry-{}-darwin.tar.gz".format(version, version),
+-        body=FIXTURES.joinpath("poetry-1.0.5-darwin.tar.gz").read_bytes(),
+-    )
+-
+-    tester.execute()
+-
+-    bin_ = Path(tmp_dir).joinpath("bin")
+-    lib = Path(tmp_dir).joinpath("lib")
+-    assert bin_.exists()
+-
+-    script = bin_.joinpath("poetry")
+-    assert script.exists()
+-
+-    expected_script = """\
+-# -*- coding: utf-8 -*-
+-import glob
+-import sys
+-import os
+-
+-lib = os.path.normpath(os.path.join(os.path.realpath(__file__), "../..", "lib"))
+-vendors = os.path.join(lib, "poetry", "_vendor")
+-current_vendors = os.path.join(
+-    vendors, "py{}".format(".".join(str(v) for v in sys.version_info[:2]))
+-)
+-sys.path.insert(0, lib)
+-sys.path.insert(0, current_vendors)
+-
+-if __name__ == "__main__":
+-    from poetry.console import main
+-    main()
+-"""
+-    if not WINDOWS:
+-        expected_script = "#!/usr/bin/env python\n" + expected_script
+-
+-    assert expected_script == script.read_text()
+-
+-    if WINDOWS:
+-        bat = bin_.joinpath("poetry.bat")
+-        expected_bat = '@echo off\r\npython "{}" %*\r\n'.format(
+-            str(script).replace(os.environ.get("USERPROFILE", ""), "%USERPROFILE%")
+-        )
+-        assert bat.exists()
+-        with bat.open(newline="") as f:
+-            assert expected_bat == f.read()
+-
+-    assert lib.exists()
+-    assert lib.joinpath("poetry").exists()
+diff --git a/tests/helpers.py b/tests/helpers.py
+index f380bb8d..1de03111 100644
+--- a/tests/helpers.py
++++ b/tests/helpers.py
+@@ -1,7 +1,7 @@
+ import os
+ import shutil
+ 
+-from poetry.console import Application
++from poetry.console.application import Application
+ from poetry.core.masonry.utils.helpers import escape_name
+ from poetry.core.masonry.utils.helpers import escape_version
+ from poetry.core.packages import Dependency

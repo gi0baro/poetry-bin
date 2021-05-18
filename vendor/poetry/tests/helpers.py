@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from poetry.console import Application
+from poetry.console.application import Application
 from poetry.core.masonry.utils.helpers import escape_name
 from poetry.core.masonry.utils.helpers import escape_version
 from poetry.core.packages import Dependency
