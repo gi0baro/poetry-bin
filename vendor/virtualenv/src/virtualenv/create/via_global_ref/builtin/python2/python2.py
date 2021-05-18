@@ -16,7 +16,10 @@ from virtualenv.util.zipapp import read as read_from_zipapp
 
 from ..via_global_self_do import ViaGlobalRefVirtualenvBuiltin
 
-HERE = __path_assets__
+if __path_assets__:
+    HERE = __path_assets__ / "create" / "via_global_ref"
+else:
+    HERE = Path(os.path.abspath(__file__)).parent
 
 
 @add_metaclass(abc.ABCMeta)

@@ -2,6 +2,7 @@ import json
 import os
 
 from io import open
+from pathlib import Path
 from typing import Dict
 from typing import Optional
 
@@ -9,6 +10,10 @@ from .. import __path_assets__
 from .license import License
 from .updater import Updater
 
+_ASSETS_PATH = (
+    __path_assets__ / "spdx" if __path_assets__ else
+    Path(__path__[0]) / "data"
+)
 
 _licenses = None  # type: Optional[Dict[str, License]]
 
@@ -32,7 +37,7 @@ def load_licenses():  # type: () -> None
 
     _licenses = {}
 
-    licenses_file = __path_assets__ / "licenses.json"
+    licenses_file = _ASSETS_PATH / "licenses.json"
 
     with open(licenses_file, encoding="utf-8") as f:
         data = json.loads(f.read())

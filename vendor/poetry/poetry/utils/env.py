@@ -45,6 +45,12 @@ from poetry.utils._compat import subprocess
 from poetry.utils.helpers import is_dir_writable
 from poetry.utils.helpers import paths_csv
 
+if getattr(sys, "oxidized", False):
+    parents = 1 if sys.platform.startswith("win") else 2
+    __path_assets__ = Path(__pkgpath__[0]).parents[parents] / "assets"
+else:
+    __path_assets__ = None
+
 
 GET_ENVIRONMENT_INFO = """\
 import json
@@ -1108,7 +1114,10 @@ class SystemEnv(Env):
         return json.loads(output)
 
     def get_supported_tags(self):  # type: () -> List[Tag]
-        file_path = Path(__pkgpath__[0]).parents[2] / "assets" / "packaging_tags.py"
+        if __path_assets__:
+            file_path = __path_assets__ / "packaging_tags.py"
+        else:
+            file_path = Path(packaging.tags.__file__)
 
         with file_path.open(encoding="utf-8") as f:
             script = decode(f.read())
@@ -1166,7 +1175,10 @@ class VirtualEnv(Env):
         return [self._bin("pip")]
 
     def get_supported_tags(self):  # type: () -> List[Tag]
-        file_path = Path(__pkgpath__[0]).parents[2] / "assets" / "packaging_tags.py"
+        if __path_assets__:
+            file_path = __path_assets__ / "packaging_tags.py"
+        else:
+            file_path = Path(packaging.tags.__file__)
 
         with file_path.open(encoding="utf-8") as f:
             script = decode(f.read())

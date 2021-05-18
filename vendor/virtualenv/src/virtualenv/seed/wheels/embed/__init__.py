@@ -4,7 +4,11 @@ from virtualenv import __path_assets__
 from virtualenv.seed.wheels.util import Wheel
 from virtualenv.util.path import Path
 
-BUNDLE_FOLDER = __path_assets__ / "wheels"
+if __path_assets__:
+    BUNDLE_FOLDER = __path_assets__ / "virtualenv" / "seed" / "wheels"
+else:
+    BUNDLE_FOLDER = Path(__file__).absolute().parent
+
 BUNDLE_SUPPORT = {
     "3.10": {
         "pip": "pip-21.0.1-py3-none-any.whl",

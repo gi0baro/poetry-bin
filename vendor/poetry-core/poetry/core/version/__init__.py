@@ -1,6 +1,14 @@
 import operator
 
+from pathlib import Path
 from typing import Union
+
+from .. import __path_assets__
+
+_GRAMMARS_PATH = (
+    __path_assets__ / "version" / "grammars" if __path_assets__ else
+    Path(__path__[0]) / "grammars"
+)
 
 from .exceptions import InvalidVersion
 from .legacy_version import LegacyVersion

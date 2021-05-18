@@ -14,7 +14,7 @@ from lark import UnexpectedToken
 from poetry.core.semver import parse_constraint
 from poetry.core.semver.exceptions import ParseConstraintError
 
-from .. import __path_assets__
+from . import _GRAMMARS_PATH
 from .markers import _compact_markers
 
 
@@ -31,7 +31,7 @@ class InvalidRequirement(ValueError):
 
 
 _parser = Lark.open(
-    os.path.join(__path_assets__, "grammars", "pep508.lark"), parser="lalr"
+    os.path.join(_GRAMMARS_PATH, "pep508.lark"), parser="lalr"
 )
 
 

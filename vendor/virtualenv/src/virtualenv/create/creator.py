@@ -12,7 +12,6 @@ from textwrap import dedent
 
 from six import add_metaclass
 
-from virtualenv import __path_assets__
 from virtualenv.discovery.cached_py_info import LogCmd
 from virtualenv.info import WIN_CPYTHON_2
 from virtualenv.util.path import Path, safe_delete
@@ -20,9 +19,10 @@ from virtualenv.util.six import ensure_str, ensure_text
 from virtualenv.util.subprocess import run_cmd
 from virtualenv.version import __version__
 
+from . import _PATH_ASSETS
 from .pyenv_cfg import PyEnvCfg
 
-DEBUG_SCRIPT = __path_assets__ / "debug.py"
+DEBUG_SCRIPT = _PATH_ASSETS / "debug.py"
 
 
 class CreatorMeta(object):

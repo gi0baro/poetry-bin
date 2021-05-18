@@ -12,13 +12,14 @@ import pipes
 import sys
 from collections import OrderedDict
 
-from virtualenv import __path_assets__
 from virtualenv.app_data import AppDataDisabled
 from virtualenv.discovery.py_info import PythonInfo
 from virtualenv.info import PY2
 from virtualenv.util.path import Path
 from virtualenv.util.six import ensure_text
 from virtualenv.util.subprocess import Popen, subprocess
+
+from . import _PATH_ASSETS
 
 _CACHE = OrderedDict()
 _CACHE[Path(sys.executable)] = PythonInfo()
@@ -83,7 +84,7 @@ def _get_via_file_cache(cls, app_data, path, exe, env):
 
 
 def _run_subprocess(cls, exe, app_data, env):
-    py_info_script = __path_assets__ / "py_info.py"
+    py_info_script = _PATH_ASSETS / "py_info.py"
     with app_data.ensure_extracted(py_info_script) as py_info_script:
         cmd = [exe, str(py_info_script)]
         # prevent sys.prefix from leaking into the child process - see https://bugs.python.org/issue22490

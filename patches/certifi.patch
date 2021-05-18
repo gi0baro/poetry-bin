@@ -1,11 +1,13 @@
 diff --git a/certifi/core.py b/certifi/core.py
-index 5d2b8cd..fcfa8a6 100644
+index 5d2b8cd..a3fba44 100644
 --- a/certifi/core.py
 +++ b/certifi/core.py
-@@ -8,52 +8,18 @@ This module returns the installation location of cacert.pem or its contents.
- """
- import os
+@@ -6,54 +6,25 @@ certifi.py
  
+ This module returns the installation location of cacert.pem or its contents.
+ """
+-import os
+-
 -try:
 -    from importlib.resources import path as get_path, read_text
 -
@@ -52,6 +54,8 @@ index 5d2b8cd..fcfa8a6 100644
 -        f = os.path.dirname(__file__)
 -
 -        return os.path.join(f, "cacert.pem")
++import sys
++
 +from pathlib import Path
 +
 +from . import __path__
@@ -63,7 +67,12 @@ index 5d2b8cd..fcfa8a6 100644
 +
 +
 +def where():
-+    return Path(__path__[0]).parents[2] / "assets" / "cacert.pem"
++    if getattr(sys, "oxidized", False):
++        parents = 1 if sys.platform.startswith("win") else 2
++        path = Path(__path__[0]).parents[parents] / "assets" / "certifi"
++    else:
++        path = Path(__path__[0])
++    return path / "cacert.pem"
  
  
  def contents():

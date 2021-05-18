@@ -12,7 +12,7 @@ try:
 except ImportError:
     from urllib2 import urlopen
 
-from . import __path_assets__
+from . import _ASSETS_PATH
 
 
 class Updater:
@@ -24,7 +24,7 @@ class Updater:
 
     def dump(self, file=None):  # type: (Optional[str]) -> None
         if file is None:
-            file = __path_assets__ / "licenses.json"
+            file = _ASSETS_PATH / "licenses.json"
 
         licenses_url = self._base_url + "licenses.json"
 

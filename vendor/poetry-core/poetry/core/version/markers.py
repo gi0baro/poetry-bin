@@ -1,6 +1,7 @@
 import os
 import re
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
 from typing import Dict
@@ -12,7 +13,7 @@ from lark import Lark
 from lark import Token
 from lark import Tree
 
-from .. import __path_assets__
+from . import _GRAMMARS_PATH
 
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ ALIASES = {
     "python_implementation": "platform_python_implementation",
 }
 _parser = Lark.open(
-    os.path.join(__path_assets__, "grammars", "markers.lark"), parser="lalr"
+    os.path.join(_GRAMMARS_PATH, "markers.lark"), parser="lalr"
 )
 
 

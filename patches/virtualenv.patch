@@ -29,32 +29,31 @@ index cddd1d3..1b5dbe4 100644
 -)
 +setup()
 diff --git a/src/virtualenv/__init__.py b/src/virtualenv/__init__.py
-index 5f74e3e..1fad76f 100644
+index 5f74e3e..47b1f21 100644
 --- a/src/virtualenv/__init__.py
 +++ b/src/virtualenv/__init__.py
-@@ -1,5 +1,10 @@
+@@ -1,5 +1,16 @@
  from __future__ import absolute_import, unicode_literals
  
++import sys
++
 +from pathlib import Path
 +
 +__path_pack__ = Path(__path__[0])
-+__path_assets__ = __path_pack__.parents[2] / "assets" / "virtualenv"
++if getattr(sys, "oxidized", False):
++    parents = 1 if sys.platform.startswith("win") else 2
++    __path_assets__ = __path_pack__.parents[parents] / "assets" / "virtualenv"
++else:
++    __path_assets__ = None
 +
  from .run import cli_run, session_via_cli
  from .version import __version__
  
 diff --git a/src/virtualenv/activation/via_template.py b/src/virtualenv/activation/via_template.py
-index 14f0979..d0a64e3 100644
+index 14f0979..4b01a47 100644
 --- a/src/virtualenv/activation/via_template.py
 +++ b/src/virtualenv/activation/via_template.py
-@@ -1,20 +1,17 @@
- from __future__ import absolute_import, unicode_literals
- 
- import os
--import sys
-+
- from abc import ABCMeta, abstractmethod
-+from pathlib import Path
+@@ -6,14 +6,16 @@ from abc import ABCMeta, abstractmethod
  
  from six import add_metaclass
  
@@ -67,65 +66,82 @@ index 14f0979..d0a64e3 100644
 -    from importlib.resources import read_binary
 -else:
 -    from importlib_resources import read_binary
--
++if not __path_assets__:
++    if sys.version_info >= (3, 7):
++        from importlib.resources import read_binary
++    else:
++        from importlib_resources import read_binary
+ 
  
  @add_metaclass(ABCMeta)
- class ViaTemplateActivator(Activator):
-@@ -54,7 +51,8 @@ class ViaTemplateActivator(Activator):
+@@ -54,7 +56,11 @@ class ViaTemplateActivator(Activator):
  
      def instantiate_template(self, replacements, template, creator):
          # read content as binary to avoid platform specific line normalization (\n -> \r\n)
 -        binary = read_binary(self.__module__, str(template))
-+        with (__path_assets__ / "activation" / str(template)).open("rb") as f:
-+            binary = f.read()
++        if __path_assets__:
++            with (__path_assets__ / "activation" / str(template)).open("rb") as f:
++                binary = f.read()
++        else:
++            binary = read_binary(self.__module__, str(template))
          text = binary.decode("utf-8", errors="strict")
          for key, value in replacements.items():
              value = self._repr_unicode(creator, value)
+diff --git a/src/virtualenv/create/__init__.py b/src/virtualenv/create/__init__.py
+index 01e6d4f..9e76424 100644
+--- a/src/virtualenv/create/__init__.py
++++ b/src/virtualenv/create/__init__.py
+@@ -1 +1,10 @@
+ from __future__ import absolute_import, unicode_literals
++
++from pathlib import Path
++
++from virtualenv import __path_assets__
++
++_PATH_ASSETS = (
++    __path_assets__ / "create" if __path_assets__ else
++    Path(__path__[0])
++)
 diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
-index 6363f8b..c6cf112 100644
+index 6363f8b..f55035d 100644
 --- a/src/virtualenv/create/creator.py
 +++ b/src/virtualenv/create/creator.py
-@@ -12,6 +12,7 @@ from textwrap import dedent
+@@ -19,10 +19,10 @@ from virtualenv.util.six import ensure_str, ensure_text
+ from virtualenv.util.subprocess import run_cmd
+ from virtualenv.version import __version__
  
- from six import add_metaclass
- 
-+from virtualenv import __path_assets__
- from virtualenv.discovery.cached_py_info import LogCmd
- from virtualenv.info import WIN_CPYTHON_2
- from virtualenv.util.path import Path, safe_delete
-@@ -21,8 +22,7 @@ from virtualenv.version import __version__
- 
++from . import _PATH_ASSETS
  from .pyenv_cfg import PyEnvCfg
  
 -HERE = Path(os.path.abspath(__file__)).parent
 -DEBUG_SCRIPT = HERE / "debug.py"
-+DEBUG_SCRIPT = __path_assets__ / "debug.py"
++DEBUG_SCRIPT = _PATH_ASSETS / "debug.py"
  
  
  class CreatorMeta(object):
 diff --git a/src/virtualenv/create/via_global_ref/api.py b/src/virtualenv/create/via_global_ref/api.py
-index 6f296f4..544f4ae 100644
+index 6f296f4..3865740 100644
 --- a/src/virtualenv/create/via_global_ref/api.py
 +++ b/src/virtualenv/create/via_global_ref/api.py
-@@ -6,6 +6,7 @@ from abc import ABCMeta
- 
- from six import add_metaclass
- 
-+from virtualenv import __path_assets__
- from virtualenv.info import fs_supports_symlink
+@@ -10,6 +10,7 @@ from virtualenv.info import fs_supports_symlink
  from virtualenv.util.path import Path
  from virtualenv.util.six import ensure_text
+ 
++from .. import _PATH_ASSETS
+ from ..creator import Creator, CreatorMeta
+ 
+ 
 @@ -100,7 +101,7 @@ class ViaGlobalRefApi(Creator):
  
      def env_patch_text(self):
          """Patch the distutils package to not be derailed by its configuration files"""
 -        with self.app_data.ensure_extracted(Path(__file__).parent / "_virtualenv.py") as resolved_path:
-+        with self.app_data.ensure_extracted(__path_assets__ / "_virtualenv.py") as resolved_path:
++        with self.app_data.ensure_extracted(_PATH_ASSETS / "via_global_ref" / "_virtualenv.py") as resolved_path:
              text = resolved_path.read_text()
              return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
  
 diff --git a/src/virtualenv/create/via_global_ref/builtin/python2/python2.py b/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
-index cacd56e..3f73dc6 100644
+index cacd56e..b68bc74 100644
 --- a/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
 +++ b/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
 @@ -6,6 +6,7 @@ import os
@@ -136,15 +152,33 @@ index cacd56e..3f73dc6 100644
  from virtualenv.create.describe import Python2Supports
  from virtualenv.create.via_global_ref.builtin.ref import PathRefToDest
  from virtualenv.info import IS_ZIPAPP
-@@ -15,7 +16,7 @@ from virtualenv.util.zipapp import read as read_from_zipapp
+@@ -15,7 +16,10 @@ from virtualenv.util.zipapp import read as read_from_zipapp
  
  from ..via_global_self_do import ViaGlobalRefVirtualenvBuiltin
  
 -HERE = Path(os.path.abspath(__file__)).parent
-+HERE = __path_assets__
++if __path_assets__:
++    HERE = __path_assets__ / "create" / "via_global_ref"
++else:
++    HERE = Path(os.path.abspath(__file__)).parent
  
  
  @add_metaclass(abc.ABCMeta)
+diff --git a/src/virtualenv/discovery/__init__.py b/src/virtualenv/discovery/__init__.py
+index 01e6d4f..babf6ad 100644
+--- a/src/virtualenv/discovery/__init__.py
++++ b/src/virtualenv/discovery/__init__.py
+@@ -1 +1,10 @@
+ from __future__ import absolute_import, unicode_literals
++
++from pathlib import Path
++
++from virtualenv import __path_assets__
++
++_PATH_ASSETS = (
++    __path_assets__ / "discovery" if __path_assets__ else
++    Path(__path__[0])
++)
 diff --git a/src/virtualenv/discovery/builtin.py b/src/virtualenv/discovery/builtin.py
 index 41b4390..7bbe6e7 100644
 --- a/src/virtualenv/discovery/builtin.py
@@ -161,23 +195,24 @@ index 41b4390..7bbe6e7 100644
          # 3. otherwise fallback to platform default logic
          if IS_WIN:
 diff --git a/src/virtualenv/discovery/cached_py_info.py b/src/virtualenv/discovery/cached_py_info.py
-index d16a8e2..1b7ca24 100644
+index d16a8e2..b227b72 100644
 --- a/src/virtualenv/discovery/cached_py_info.py
 +++ b/src/virtualenv/discovery/cached_py_info.py
-@@ -12,6 +12,7 @@ import pipes
- import sys
- from collections import OrderedDict
+@@ -19,6 +19,8 @@ from virtualenv.util.path import Path
+ from virtualenv.util.six import ensure_text
+ from virtualenv.util.subprocess import Popen, subprocess
  
-+from virtualenv import __path_assets__
- from virtualenv.app_data import AppDataDisabled
- from virtualenv.discovery.py_info import PythonInfo
- from virtualenv.info import PY2
-@@ -82,7 +83,7 @@ def _get_via_file_cache(cls, app_data, path, exe, env):
++from . import _PATH_ASSETS
++
+ _CACHE = OrderedDict()
+ _CACHE[Path(sys.executable)] = PythonInfo()
+ 
+@@ -82,7 +84,7 @@ def _get_via_file_cache(cls, app_data, path, exe, env):
  
  
  def _run_subprocess(cls, exe, app_data, env):
 -    py_info_script = Path(os.path.abspath(__file__)).parent / "py_info.py"
-+    py_info_script = __path_assets__ / "py_info.py"
++    py_info_script = _PATH_ASSETS / "py_info.py"
      with app_data.ensure_extracted(py_info_script) as py_info_script:
          cmd = [exe, str(py_info_script)]
          # prevent sys.prefix from leaking into the child process - see https://bugs.python.org/issue22490
@@ -372,10 +407,10 @@ index d182c6f..ee3e5bc 100644
          possible = self.options("virtualenv.seed")
          super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index 992c856..49f7c29 100644
+index 992c856..9bff6f9 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
-@@ -1,9 +1,10 @@
+@@ -1,9 +1,14 @@
  from __future__ import absolute_import, unicode_literals
  
 +from virtualenv import __path_assets__
@@ -383,7 +418,11 @@ index 992c856..49f7c29 100644
  from virtualenv.util.path import Path
  
 -BUNDLE_FOLDER = Path(__file__).absolute().parent
-+BUNDLE_FOLDER = __path_assets__ / "wheels"
++if __path_assets__:
++    BUNDLE_FOLDER = __path_assets__ / "virtualenv" / "seed" / "wheels"
++else:
++    BUNDLE_FOLDER = Path(__file__).absolute().parent
++
  BUNDLE_SUPPORT = {
      "3.10": {
          "pip": "pip-21.0.1-py3-none-any.whl",

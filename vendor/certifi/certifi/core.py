@@ -6,7 +6,7 @@ certifi.py
 
 This module returns the installation location of cacert.pem or its contents.
 """
-import os
+import sys
 
 from pathlib import Path
 
@@ -19,7 +19,12 @@ def read_text(_module, _path, encoding="ascii"):
 
 
 def where():
-    return Path(__path__[0]).parents[2] / "assets" / "cacert.pem"
+    if getattr(sys, "oxidized", False):
+        parents = 1 if sys.platform.startswith("win") else 2
+        path = Path(__path__[0]).parents[parents] / "assets" / "certifi"
+    else:
+        path = Path(__path__[0])
+    return path / "cacert.pem"
 
 
 def contents():

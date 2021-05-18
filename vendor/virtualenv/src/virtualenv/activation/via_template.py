@@ -1,9 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 
 import os
-
+import sys
 from abc import ABCMeta, abstractmethod
-from pathlib import Path
 
 from six import add_metaclass
 
@@ -11,6 +10,12 @@ from virtualenv import __path_assets__
 from virtualenv.util.six import ensure_text
 
 from .activator import Activator
+
+if not __path_assets__:
+    if sys.version_info >= (3, 7):
+        from importlib.resources import read_binary
+    else:
+        from importlib_resources import read_binary
 
 
 @add_metaclass(ABCMeta)
@@ -51,8 +56,11 @@ class ViaTemplateActivator(Activator):
 
     def instantiate_template(self, replacements, template, creator):
         # read content as binary to avoid platform specific line normalization (\n -> \r\n)
-        with (__path_assets__ / "activation" / str(template)).open("rb") as f:
-            binary = f.read()
+        if __path_assets__:
+            with (__path_assets__ / "activation" / str(template)).open("rb") as f:
+                binary = f.read()
+        else:
+            binary = read_binary(self.__module__, str(template))
         text = binary.decode("utf-8", errors="strict")
         for key, value in replacements.items():
             value = self._repr_unicode(creator, value)

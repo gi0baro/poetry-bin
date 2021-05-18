@@ -126,7 +126,7 @@ index 937f9b30..40e41514 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 681027ac..1bc79f27 100644
+index 681027ac..d1506e16 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -28,6 +28,8 @@ from packaging.tags import interpreter_name
@@ -138,7 +138,20 @@ index 681027ac..1bc79f27 100644
  from poetry.core.semver import parse_constraint
  from poetry.core.semver.version import Version
  from poetry.core.toml.file import TOMLFile
-@@ -434,7 +436,7 @@ class EnvManager(object):
+@@ -43,6 +45,12 @@ from poetry.utils._compat import subprocess
+ from poetry.utils.helpers import is_dir_writable
+ from poetry.utils.helpers import paths_csv
+ 
++if getattr(sys, "oxidized", False):
++    parents = 1 if sys.platform.startswith("win") else 2
++    __path_assets__ = Path(__pkgpath__[0]).parents[parents] / "assets"
++else:
++    __path_assets__ = None
++
+ 
+ GET_ENVIRONMENT_INFO = """\
+ import json
+@@ -434,7 +442,7 @@ class EnvManager(object):
          if self._env is not None and not reload:
              return self._env
  
@@ -147,7 +160,7 @@ index 681027ac..1bc79f27 100644
  
          venv_path = self._poetry.config.get("virtualenvs.path")
          if venv_path is None:
-@@ -470,9 +472,10 @@ class EnvManager(object):
+@@ -470,9 +478,10 @@ class EnvManager(object):
                      return VirtualEnv(venv)
  
              create_venv = self._poetry.config.get("virtualenvs.create", True)
@@ -159,7 +172,7 @@ index 681027ac..1bc79f27 100644
  
              venv_path = self._poetry.config.get("virtualenvs.path")
              if venv_path is None:
-@@ -485,7 +488,7 @@ class EnvManager(object):
+@@ -485,7 +494,7 @@ class EnvManager(object):
              venv = venv_path / name
  
              if not venv.exists():
@@ -168,7 +181,7 @@ index 681027ac..1bc79f27 100644
  
              return VirtualEnv(venv)
  
-@@ -647,8 +650,7 @@ class EnvManager(object):
+@@ -647,8 +656,7 @@ class EnvManager(object):
          if not name:
              name = self._poetry.package.name
  
@@ -178,7 +191,7 @@ index 681027ac..1bc79f27 100644
          if executable:
              python_patch = decode(
                  subprocess.check_output(
-@@ -665,7 +667,10 @@ class EnvManager(object):
+@@ -665,7 +673,10 @@ class EnvManager(object):
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -190,7 +203,7 @@ index 681027ac..1bc79f27 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -677,60 +682,7 @@ class EnvManager(object):
+@@ -677,60 +688,7 @@ class EnvManager(object):
                      self._poetry.package.python_versions, python_patch
                  )
  
@@ -252,7 +265,7 @@ index 681027ac..1bc79f27 100644
  
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -753,13 +705,21 @@ class EnvManager(object):
+@@ -753,13 +711,21 @@ class EnvManager(object):
                      "</>"
                  )
  
@@ -275,7 +288,7 @@ index 681027ac..1bc79f27 100644
          else:
              if force:
                  if not env.is_sane():
-@@ -776,22 +736,6 @@ class EnvManager(object):
+@@ -776,22 +742,6 @@ class EnvManager(object):
              elif io.is_very_verbose():
                  io.write_line("Virtualenv <c1>{}</> already exists.".format(name))
  
@@ -298,7 +311,7 @@ index 681027ac..1bc79f27 100644
          return VirtualEnv(venv)
  
      @classmethod
-@@ -805,7 +749,7 @@ class EnvManager(object):
+@@ -805,7 +755,7 @@ class EnvManager(object):
                  "--no-download",
                  "--no-periodic-update",
                  "--python",
@@ -307,7 +320,7 @@ index 681027ac..1bc79f27 100644
                  str(path),
              ]
          )
-@@ -1138,96 +1082,52 @@ class SystemEnv(Env):
+@@ -1138,96 +1088,55 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -375,7 +388,10 @@ index 681027ac..1bc79f27 100644
 -            paths["usersite"] = getattr(obj, "install_usersite")
 -            paths["userbase"] = getattr(obj, "install_userbase")
 +    def get_supported_tags(self):  # type: () -> List[Tag]
-+        file_path = Path(__pkgpath__[0]).parents[2] / "assets" / "packaging_tags.py"
++        if __path_assets__:
++            file_path = __path_assets__ / "packaging_tags.py"
++        else:
++            file_path = Path(packaging.tags.__file__)
  
 -        return paths
 +        with file_path.open(encoding="utf-8") as f:
@@ -437,7 +453,7 @@ index 681027ac..1bc79f27 100644
          return self._path != self._base
  
  
-@@ -1266,31 +1166,11 @@ class VirtualEnv(Env):
+@@ -1266,31 +1175,14 @@ class VirtualEnv(Env):
          return [self._bin("pip")]
  
      def get_supported_tags(self):  # type: () -> List[Tag]
@@ -445,7 +461,10 @@ index 681027ac..1bc79f27 100644
 -        if file_path.suffix == ".pyc":
 -            # Python 2
 -            file_path = file_path.with_suffix(".py")
-+        file_path = Path(__pkgpath__[0]).parents[2] / "assets" / "packaging_tags.py"
++        if __path_assets__:
++            file_path = __path_assets__ / "packaging_tags.py"
++        else:
++            file_path = Path(packaging.tags.__file__)
  
          with file_path.open(encoding="utf-8") as f:
              script = decode(f.read())
@@ -470,7 +489,7 @@ index 681027ac..1bc79f27 100644
          output = self.run("python", "-", input_=script)
  
          return [Tag(*t) for t in json.loads(output)]
-@@ -1454,3 +1334,69 @@ class MockEnv(NullEnv):
+@@ -1454,3 +1346,69 @@ class MockEnv(NullEnv):
  
      def is_venv(self):  # type: () -> bool
          return self._is_venv

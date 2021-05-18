@@ -2,13 +2,17 @@ import json
 import os
 
 from io import open
+from pathlib import Path
 from typing import List
 
 from jsonschema import Draft7Validator
 
 from .. import __path_assets__
 
-SCHEMA_DIR = __path_assets__ / "schemas"
+SCHEMA_DIR = (
+    __path_assets__ / "json" / "schemas" if __path_assets__ else
+    Path(__path__[0]) / "schemas"
+)
 
 
 class ValidationError(ValueError):
