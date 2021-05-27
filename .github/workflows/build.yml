@@ -22,11 +22,6 @@ jobs:
       id: build_version
       run: |
         echo ::set-output name=version::$(echo ${GITHUB_SHA} | cut -c1-8)
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: 1.52.1
-        default: true
-        profile: minimal
     - name: Build release
       run: |
         make build_linux
