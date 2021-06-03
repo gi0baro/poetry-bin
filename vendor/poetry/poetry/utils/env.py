@@ -442,7 +442,10 @@ class EnvManager(object):
         if self._env is not None and not reload:
             return self._env
 
-        python_minor = InterpreterLookup.find()[1]
+        python_minor = (
+            InterpreterLookup.find()[1] or
+            ".".join(str(c) for c in sys.version_info[:2])
+        )
 
         venv_path = self._poetry.config.get("virtualenvs.path")
         if venv_path is None:
@@ -494,7 +497,7 @@ class EnvManager(object):
             venv = venv_path / name
 
             if not venv.exists():
-                return SystemEnv(pydef_executable)
+                return SystemEnv(pydef_executable) if pydef_executable else NullEnv()
 
             return VirtualEnv(venv)
 
@@ -721,7 +724,7 @@ class EnvManager(object):
 
             if not root_venv:
                 envs = tomlkit.document()
-                envs_file = TOMLFile(Path(CACHE_DIR) / "virtualenvs" / self.ENVS_FILE)
+                envs_file = TOMLFile(venv_path / self.ENVS_FILE)
                 if envs_file.exists():
                     envs = envs_file.read()
                 envs[name] = {"minor": python_minor, "patch": python_patch}
@@ -1090,9 +1093,9 @@ class SystemEnv(Env):
 
     def __init__(self, path, base=None, auto_path=True):
         self._is_windows = sys.platform == "win32"
-        if auto_path:
+        if auto_path and path:
             path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
-        super().__init__(path)
+        super().__init__(path, base=base)
 
     @property
     def sys_path(self):
@@ -1259,7 +1262,7 @@ class NullEnv(SystemEnv):
         if path is None:
             path = Path(sys.prefix)
 
-        super(NullEnv, self).__init__(path, base=base, auto_path=False)
+        super().__init__(path, base=base, auto_path=False)
 
         self._execute = execute
         self.executed = []
@@ -1397,6 +1400,10 @@ class MockEnv(NullEnv):
         self._supported_tags = supported_tags
 
     @property
+    def python(self):  # type: () -> str
+        return self._base
+
+    @property
     def platform(self):  # type: () -> str
         return self._platform
 
@@ -1472,10 +1479,10 @@ class InterpreterLookup:
     def find(cls, constraint=None):
         executable, minor, patch = None, None, None
 
-        for executable in ["python", "python3", "python2"]:
-            match, minor, patch = cls._version_check(executable, constraint)
+        for guess in ["python", "python3", "python2"]:
+            match, minor, patch = cls._version_check(guess, constraint)
             if match:
-                return executable, minor, patch
+                return guess, minor, patch
 
         for python_to_try in reversed(
             sorted(
@@ -1483,20 +1490,21 @@ class InterpreterLookup:
                 key=lambda v: (v.startswith("3"), -len(v), v),
             )
         ):
-            if len(python_to_try) == 1:
-                if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
-                    constraint
+            if constraint:
+                if len(python_to_try) == 1:
+                    if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
+                        constraint
+                    ):
+                        continue
+                elif not constraint.allows_all(
+                    parse_constraint(python_to_try + ".*")
                 ):
                     continue
-            elif not constraint.allows_all(
-                parse_constraint(python_to_try + ".*")
-            ):
-                continue
 
-            python = "python" + python_to_try
-            match, minor, patch = cls._version_check(python, constraint)
+            guess = "python" + python_to_try
+            match, minor, patch = cls._version_check(guess, constraint)
             if match:
-                executable = python
+                executable = guess
                 break
 
         return executable, minor, patch

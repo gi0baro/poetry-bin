@@ -19,14 +19,16 @@ def test_get_cached_archive_for_link(config, mocker):
         ),
     )
 
+    cwd = Path.cwd() / ".pypoetrycache"
+
     mocker.patch.object(
         chef,
         "get_cached_archives_for_link",
         return_value=[
-            Link("file:///foo/demo-0.1.0-py2.py3-none-any"),
-            Link("file:///foo/demo-0.1.0.tar.gz"),
-            Link("file:///foo/demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl"),
-            Link("file:///foo/demo-0.1.0-cp37-cp37-macosx_10_15_x86_64.whl"),
+            Link(f"file:///{cwd}demo-0.1.0-py2.py3-none-any"),
+            Link(f"file:///{cwd}demo-0.1.0.tar.gz"),
+            Link(f"file:///{cwd}demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl"),
+            Link(f"file:///{cwd}demo-0.1.0-cp37-cp37-macosx_10_15_x86_64.whl"),
         ],
     )
 
@@ -34,7 +36,7 @@ def test_get_cached_archive_for_link(config, mocker):
         Link("https://files.python-poetry.org/demo-0.1.0.tar.gz")
     )
 
-    assert Link("file:///foo/demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl") == archive
+    assert Link(f"file:///{cwd}demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl") == archive
 
 
 def test_get_cached_archives_for_link(config, mocker):
@@ -68,11 +70,13 @@ def test_get_cache_directory_for_link(config):
         ),
     )
 
+    cwd = Path.cwd() / ".pypoetrycache"
+
     directory = chef.get_cache_directory_for_link(
         Link("https://files.python-poetry.org/poetry-1.1.0.tar.gz")
     )
     expected = Path(
-        "/foo/artifacts/ba/63/13/283a3b3b7f95f05e9e6f84182d276f7bb0951d5b0cc24422b33f7a4648"
+        f"{cwd}/artifacts/ba/63/13/283a3b3b7f95f05e9e6f84182d276f7bb0951d5b0cc24422b33f7a4648"
     )
 
     assert expected == directory

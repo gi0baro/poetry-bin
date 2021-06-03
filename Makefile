@@ -39,7 +39,7 @@ tests:
 	@cd vendor/importlib_metadata && python -m venv .venv && .venv/bin/pip install .[testing] pyfakefs && .venv/bin/python -m unittest discover && rm -r .venv
 	@cd vendor/virtualenv && python -m venv .venv && .venv/bin/pip install .[testing] && .venv/bin/pytest && rm -r .venv
 	@cd vendor/poetry-core && python -m venv .venv && .venv/bin/pip install ../virtualenv . pep517 pytest pytest-mock && .venv/bin/pytest && rm -r .venv
-	# @cd vendor/poetry && python -m venv .venv && .venv/bin/pip install ../importlib_metadata ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && .venv/bin/pytest && rm -r .venv
+	@cd vendor/poetry && python -m venv .venv && .venv/bin/pip install ../importlib_metadata ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && .venv/bin/pytest && rm -r .venv
 
 build_linux: ARCH := ${ARCH_LINUX}
 build_linux: _build_posix assets

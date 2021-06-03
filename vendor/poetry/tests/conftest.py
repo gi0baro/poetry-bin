@@ -57,7 +57,6 @@ class Config(BaseConfig):
 @pytest.fixture
 def config_source():
     source = DictConfigSource()
-    # source.add_property("cache-dir", "/foo")
     source.add_property("cache-dir", str(Path.cwd() / ".pypoetrycache"))
 
     return source

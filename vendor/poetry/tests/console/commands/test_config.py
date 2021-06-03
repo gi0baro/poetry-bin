@@ -1,6 +1,8 @@
 import json
 import os
 
+from pathlib import Path
+
 import pytest
 
 from poetry.config.config_source import ConfigSource
@@ -28,14 +30,16 @@ def test_show_config_with_local_config_file_empty(tester, mocker):
 def test_list_displays_default_value_if_not_set(tester, config):
     tester.execute("--list")
 
-    expected = """cache-dir = "/foo"
+    expected = """cache-dir = "{cache_dir}"
 experimental.new-installer = true
 installer.parallel = true
 virtualenvs.create = true
 virtualenvs.in-project = null
-virtualenvs.path = {path}  # /foo{sep}virtualenvs
+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
 """.format(
-        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
+        sep=os.path.sep,
+        cache_dir=str(Path.cwd() / ".pypoetrycache")
     )
 
     assert expected == tester.io.fetch_output()
@@ -46,14 +50,16 @@ def test_list_displays_set_get_setting(tester, config):
 
     tester.execute("--list")
 
-    expected = """cache-dir = "/foo"
+    expected = """cache-dir = "{cache_dir}"
 experimental.new-installer = true
 installer.parallel = true
 virtualenvs.create = false
 virtualenvs.in-project = null
-virtualenvs.path = {path}  # /foo{sep}virtualenvs
+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
 """.format(
-        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
+        sep=os.path.sep,
+        cache_dir=str(Path.cwd() / ".pypoetrycache")
     )
 
     assert 0 == config.set_config_source.call_count
@@ -86,14 +92,16 @@ def test_list_displays_set_get_local_setting(tester, config):
 
     tester.execute("--list")
 
-    expected = """cache-dir = "/foo"
+    expected = """cache-dir = "{cache_dir}"
 experimental.new-installer = true
 installer.parallel = true
 virtualenvs.create = false
 virtualenvs.in-project = null
-virtualenvs.path = {path}  # /foo{sep}virtualenvs
+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
 """.format(
-        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
+        sep=os.path.sep,
+        cache_dir=str(Path.cwd() / ".pypoetrycache")
     )
 
     assert 1 == config.set_config_source.call_count
