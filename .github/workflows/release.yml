@@ -8,6 +8,7 @@ on:
 jobs:
   Linux:
     runs-on: ubuntu-18.04
+    container: cr.amira.io/gi0baro/pyoxidizer/gnu:58c70ed1
 
     steps:
       - uses: actions/checkout@v2
@@ -15,18 +16,10 @@ jobs:
         id: build_version
         run: |
           echo ::set-output name=version::${GITHUB_REF#refs/tags/}
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: 1.51.0
-          default: true
-          profile: minimal
-      - name: Install PyOxidizer
-        run: |
-          cargo install pyoxidizer --version 0.11.0
       - name: Build release
         run: |
           make build_linux
-          build/x86_64-unknown-linux-gnu/release/posix/bin/poetry --version
+          build/x86_64-unknown-linux-gnu/release/install/bin/poetry --version
           make pack_linux BUILD_VERSION=${{ steps.build_version.outputs.version }}
       - name: Upload release file
         uses: actions/upload-artifact@v1
@@ -40,7 +33,10 @@ jobs:
           path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
 
   MacOS:
-    runs-on: macos-latest
+    runs-on: macos-10.15
+
+    env:
+      PYOXIDIZER_SYSTEM_RUST: "1"
 
     steps:
       - uses: actions/checkout@v2
@@ -50,23 +46,27 @@ jobs:
           echo ::set-output name=version::${GITHUB_REF#refs/tags/}
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.51.0
+          toolchain: 1.52.1
           default: true
           profile: minimal
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
       - name: Install PyOxidizer
         run: |
-          cargo install pyoxidizer --version 0.11.0
-      - name: Build release
+          pip install pyoxidizer==0.16.2
+      - name: Build x86_64 release
         run: |
           make build_mac ARCH=x86_64-apple-darwin
-          build/x86_64-apple-darwin/release/posix/bin/poetry --version
+          build/x86_64-apple-darwin/release/install/bin/poetry --version
           make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
-      - name: Upload release file
+      - name: Upload x86_64 release file
         uses: actions/upload-artifact@v1
         with:
           name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
           path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
-      - name: Upload checksum file
+      - name: Upload x86_64 checksum file
         uses: actions/upload-artifact@v1
         with:
           name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
@@ -74,6 +74,9 @@ jobs:
 
   Windows:
     runs-on: windows-2019
+
+    env:
+      PYOXIDIZER_SYSTEM_RUST: "1"
 
     steps:
     - uses: actions/checkout@v2
@@ -84,16 +87,20 @@ jobs:
         echo ::set-output name=version::${GITHUB_REF#refs/tags/}
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: 1.51.0
+        toolchain: 1.52.1
         default: true
         profile: minimal
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
     - name: Install PyOxidizer
       run: |
-        cargo install pyoxidizer --version 0.11.0
+        pip install pyoxidizer==0.16.2
     - name: Build release
       run: |
         make build_win
-        build/x86_64-pc-windows-msvc/release/win/bin/poetry --version
+        build/x86_64-pc-windows-msvc/release/install/poetry --version
         make pack_win BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload release file
       uses: actions/upload-artifact@v1
