@@ -1,18 +1,21 @@
-diff --git a/poetry/console/__init__.py b/poetry/console/__init__.py
-index c0c25738..e69de29b 100644
---- a/poetry/console/__init__.py
-+++ b/poetry/console/__init__.py
-@@ -1,5 +0,0 @@
--from .application import Application
--
--
--def main():
--    return Application().run()
+diff --git a/poetry/console/application.py b/poetry/console/application.py
+index 42cc4377..429945eb 100644
+--- a/poetry/console/application.py
++++ b/poetry/console/application.py
+@@ -74,8 +74,6 @@ COMMANDS = [
+     "plugin add",
+     "plugin remove",
+     "plugin show",
+-    # Self commands
+-    "self update",
+     # Source commands
+     "source add",
+     "source remove",
 diff --git a/poetry/console/commands/env/info.py b/poetry/console/commands/env/info.py
-index 301d88f9..b80ee500 100644
+index aecce362..3b2a1da9 100644
 --- a/poetry/console/commands/env/info.py
 +++ b/poetry/console/commands/env/info.py
-@@ -54,7 +54,7 @@ class EnvInfoCommand(Command):
+@@ -61,7 +61,7 @@ class EnvInfoCommand(Command):
                  [
                      "<info>Platform</info>: <comment>{}</>".format(env.platform),
                      "<info>OS</info>:       <comment>{}</>".format(env.os),
@@ -22,75 +25,302 @@ index 301d88f9..b80ee500 100644
              )
          )
 diff --git a/poetry/console/commands/init.py b/poetry/console/commands/init.py
-index af72318c..1d616682 100644
+index b2e4fd0a..e4884af5 100644
 --- a/poetry/console/commands/init.py
 +++ b/poetry/console/commands/init.py
-@@ -66,7 +66,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
+@@ -1,6 +1,5 @@
+ import os
+ import re
+-import sys
+ import urllib.parse
+ 
+ from pathlib import Path
+@@ -67,7 +66,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
+         from poetry.core.pyproject.toml import PyProjectTOML
          from poetry.core.vcs.git import GitConfig
          from poetry.layouts import layout
-         from poetry.utils._compat import Path
 -        from poetry.utils.env import SystemEnv
 +        from poetry.utils.env import SystemEnv, InterpreterLookup
  
          pyproject = PyProjectTOML(Path.cwd() / "pyproject.toml")
  
-@@ -141,7 +141,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
+@@ -142,7 +141,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
  
          python = self.option("python")
          if not python:
 -            current_env = SystemEnv(Path(sys.executable))
-+            executable, py_minor, py_patch = InterpreterLookup.find()
++            executable, _, _ = InterpreterLookup.find()
 +            current_env = SystemEnv(executable)
              default_python = "^{}".format(
                  ".".join(str(v) for v in current_env.version_info[:2])
              )
 diff --git a/poetry/console/commands/new.py b/poetry/console/commands/new.py
-index 481b0577..e77fad50 100644
+index 8158442f..7032b992 100644
 --- a/poetry/console/commands/new.py
 +++ b/poetry/console/commands/new.py
-@@ -24,7 +24,7 @@ class NewCommand(Command):
+@@ -1,5 +1,3 @@
+-import sys
+-
+ from cleo.helpers import argument
+ from cleo.helpers import option
+ 
+@@ -28,7 +26,7 @@ class NewCommand(Command):
+ 
          from poetry.core.vcs.git import GitConfig
          from poetry.layouts import layout
-         from poetry.utils._compat import Path
 -        from poetry.utils.env import SystemEnv
 +        from poetry.utils.env import SystemEnv, InterpreterLookup
  
          if self.option("src"):
              layout_ = layout("src")
-@@ -54,7 +54,8 @@ class NewCommand(Command):
+@@ -62,7 +60,8 @@ class NewCommand(Command):
              if author_email:
                  author += " <{}>".format(author_email)
  
 -        current_env = SystemEnv(Path(sys.executable))
-+        executable, py_minor, py_patch = InterpreterLookup.find()
++        executable, _, _ = InterpreterLookup.find()
 +        current_env = SystemEnv(executable)
          default_python = "^{}".format(
              ".".join(str(v) for v in current_env.version_info[:2])
          )
-diff --git a/poetry/console/commands/self/self.py b/poetry/console/commands/self/self.py
-index 3e5cafa9..ff1abefe 100644
---- a/poetry/console/commands/self/self.py
-+++ b/poetry/console/commands/self/self.py
-@@ -1,5 +1,4 @@
- from ..command import Command
--from .update import SelfUpdateCommand
- 
- 
- class SelfCommand(Command):
-@@ -7,7 +6,7 @@ class SelfCommand(Command):
-     name = "self"
-     description = "Interact with Poetry directly."
- 
--    commands = [SelfUpdateCommand()]
-+    commands = []
- 
-     def handle(self):
-         return self.call("help", self._config.name)
+diff --git a/poetry/console/commands/self/__init__.py b/poetry/console/commands/self/__init__.py
+deleted file mode 100644
+index e69de29b..00000000
+diff --git a/poetry/console/commands/self/update.py b/poetry/console/commands/self/update.py
+deleted file mode 100644
+index e40dc225..00000000
+--- a/poetry/console/commands/self/update.py
++++ /dev/null
+@@ -1,224 +0,0 @@
+-import os
+-import shutil
+-import site
+-
+-from functools import cmp_to_key
+-from pathlib import Path
+-from typing import TYPE_CHECKING
+-
+-from cleo.helpers import argument
+-from cleo.helpers import option
+-
+-from ..command import Command
+-
+-
+-if TYPE_CHECKING:
+-    from poetry.core.packages.package import Package
+-    from poetry.core.semver.version import Version
+-    from poetry.repositories.pool import Pool
+-
+-
+-class SelfUpdateCommand(Command):
+-
+-    name = "self update"
+-    description = "Updates Poetry to the latest version."
+-
+-    arguments = [argument("version", "The version to update to.", optional=True)]
+-    options = [
+-        option("preview", None, "Allow the installation of pre-release versions."),
+-        option(
+-            "dry-run",
+-            None,
+-            "Output the operations but do not execute anything "
+-            "(implicitly enables --verbose).",
+-        ),
+-    ]
+-
+-    _data_dir = None
+-    _bin_dir = None
+-    _pool = None
+-
+-    @property
+-    def data_dir(self) -> Path:
+-        if self._data_dir is not None:
+-            return self._data_dir
+-
+-        from poetry.locations import data_dir
+-
+-        self._data_dir = data_dir()
+-
+-        return self._data_dir
+-
+-    @property
+-    def bin_dir(self) -> Path:
+-        if self._data_dir is not None:
+-            return self._data_dir
+-
+-        from poetry.utils._compat import WINDOWS
+-
+-        if os.getenv("POETRY_HOME"):
+-            return Path(os.getenv("POETRY_HOME"), "bin").expanduser()
+-
+-        user_base = site.getuserbase()
+-
+-        if WINDOWS:
+-            bin_dir = os.path.join(user_base, "Scripts")
+-        else:
+-            bin_dir = os.path.join(user_base, "bin")
+-
+-        self._bin_dir = Path(bin_dir)
+-
+-        return self._bin_dir
+-
+-    @property
+-    def pool(self) -> "Pool":
+-        if self._pool is not None:
+-            return self._pool
+-
+-        from poetry.repositories.pool import Pool
+-        from poetry.repositories.pypi_repository import PyPiRepository
+-
+-        pool = Pool()
+-        pool.add_repository(PyPiRepository())
+-
+-        return pool
+-
+-    def handle(self) -> int:
+-        from poetry.__version__ import __version__
+-        from poetry.core.packages.dependency import Dependency
+-        from poetry.core.semver.version import Version
+-
+-        version = self.argument("version")
+-        if not version:
+-            version = ">=" + __version__
+-
+-        repo = self.pool.repositories[0]
+-        packages = repo.find_packages(
+-            Dependency("poetry", version, allows_prereleases=self.option("preview"))
+-        )
+-        if not packages:
+-            self.line("No release found for the specified version")
+-            return 1
+-
+-        packages.sort(
+-            key=cmp_to_key(
+-                lambda x, y: 0
+-                if x.version == y.version
+-                else int(x.version < y.version or -1)
+-            )
+-        )
+-
+-        release = None
+-        for package in packages:
+-            if package.is_prerelease():
+-                if self.option("preview"):
+-                    release = package
+-
+-                    break
+-
+-                continue
+-
+-            release = package
+-
+-            break
+-
+-        if release is None:
+-            self.line("No new release found")
+-            return 1
+-
+-        if release.version == Version.parse(__version__):
+-            self.line("You are using the latest version")
+-            return 0
+-
+-        self.line("Updating <c1>Poetry</c1> to <c2>{}</c2>".format(release.version))
+-        self.line("")
+-
+-        self.update(release)
+-
+-        self.line("")
+-        self.line(
+-            "<c1>Poetry</c1> (<c2>{}</c2>) is installed now. Great!".format(
+-                release.version
+-            )
+-        )
+-
+-        return 0
+-
+-    def update(self, release: "Package") -> None:
+-        from poetry.utils.env import EnvManager
+-
+-        version = release.version
+-
+-        env = EnvManager.get_system_env(naive=True)
+-
+-        # We can't use is_relative_to() since it's only available in Python 3.9+
+-        try:
+-            env.path.relative_to(self.data_dir)
+-        except ValueError:
+-            # Poetry was not installed using the recommended installer
+-            from poetry.console.exceptions import PoetrySimpleConsoleException
+-
+-            raise PoetrySimpleConsoleException(
+-                "Poetry was not installed with the recommended installer, "
+-                "so it cannot be updated automatically."
+-            )
+-
+-        self._update(version)
+-        self._make_bin()
+-
+-    def _update(self, version: "Version") -> None:
+-        from poetry.config.config import Config
+-        from poetry.core.packages.dependency import Dependency
+-        from poetry.core.packages.project_package import ProjectPackage
+-        from poetry.installation.installer import Installer
+-        from poetry.packages.locker import NullLocker
+-        from poetry.repositories.installed_repository import InstalledRepository
+-        from poetry.utils.env import EnvManager
+-
+-        env = EnvManager.get_system_env()
+-        installed = InstalledRepository.load(env)
+-
+-        root = ProjectPackage("poetry-updater", "0.0.0")
+-        root.python_versions = ".".join(str(c) for c in env.version_info[:3])
+-        root.add_dependency(Dependency("poetry", version.text))
+-
+-        installer = Installer(
+-            self.io,
+-            env,
+-            root,
+-            NullLocker(self.data_dir.joinpath("poetry.lock"), {}),
+-            self.pool,
+-            Config(),
+-            installed=installed,
+-        )
+-        installer.update(True)
+-        installer.dry_run(self.option("dry-run"))
+-        installer.run()
+-
+-    def _make_bin(self) -> None:
+-        from poetry.utils._compat import WINDOWS
+-
+-        self.line("")
+-        self.line("Updating the <c1>poetry</c1> script")
+-
+-        self.bin_dir.mkdir(parents=True, exist_ok=True)
+-
+-        script = "poetry"
+-        target_script = "venv/bin/poetry"
+-        if WINDOWS:
+-            script = "poetry.exe"
+-            target_script = "venv/Scripts/poetry.exe"
+-
+-        if self.bin_dir.joinpath(script).exists():
+-            self.bin_dir.joinpath(script).unlink()
+-
+-        try:
+-            self.bin_dir.joinpath(script).symlink_to(
+-                self.data_dir.joinpath(target_script)
+-            )
+-        except OSError:
+-            # This can happen if the user
+-            # does not have the correct permission on Windows
+-            shutil.copy(
+-                self.data_dir.joinpath(target_script), self.bin_dir.joinpath(script)
+-            )
 diff --git a/poetry/repositories/installed_repository.py b/poetry/repositories/installed_repository.py
-index 1320fdd6..03513103 100644
+index 841c0a5e..effa9a16 100644
 --- a/poetry/repositories/installed_repository.py
 +++ b/poetry/repositories/installed_repository.py
-@@ -9,10 +9,11 @@ from poetry.utils._compat import Path
+@@ -13,10 +13,11 @@ from poetry.core.utils.helpers import module_name
  from poetry.utils._compat import metadata
  from poetry.utils.env import Env
  
@@ -104,43 +334,38 @@ index 1320fdd6..03513103 100644
  
  try:
 diff --git a/poetry/utils/_compat.py b/poetry/utils/_compat.py
-index 937f9b30..40e41514 100644
+index 977c997e..d12714f9 100644
 --- a/poetry/utils/_compat.py
 +++ b/poetry/utils/_compat.py
-@@ -1,5 +1,5 @@
+@@ -1,11 +1,6 @@
  import sys
--
-+import importlib_metadata as metadata
  
- try:
-     from functools32 import lru_cache
-@@ -13,10 +13,7 @@ except ImportError:
- 
- try:
-     import zipfile as zipp
 -
+-try:
 -    from importlib import metadata
- except ImportError:
--    import importlib_metadata as metadata
-     import zipp
+-except ImportError:
+-    # compatibility for python <3.8
+-    import importlib_metadata as metadata  # noqa
++import importlib_metadata as metadata  # noqa
  
- try:
+ WINDOWS = sys.platform == "win32"
+ 
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 681027ac..bd3ffb6c 100644
+index d35fb221..2d4d52de 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
-@@ -28,6 +28,8 @@ from packaging.tags import interpreter_name
- from packaging.tags import interpreter_version
+@@ -36,6 +36,8 @@ from packaging.tags import interpreter_version
  from packaging.tags import sys_tags
+ from virtualenv.seed.wheels.embed import get_embed_wheel
  
 +from poetry import __path__ as __pkgpath__
-+from poetry.core.packages import Package
- from poetry.core.semver import parse_constraint
++from poetry.core.packages.package import Package
+ from poetry.core.semver.helpers import parse_constraint
  from poetry.core.semver.version import Version
  from poetry.core.toml.file import TOMLFile
-@@ -43,6 +45,12 @@ from poetry.utils._compat import subprocess
- from poetry.utils.helpers import is_dir_writable
+@@ -50,6 +52,13 @@ from poetry.utils.helpers import is_dir_writable
  from poetry.utils.helpers import paths_csv
+ from poetry.utils.helpers import temporary_directory
  
 +if getattr(sys, "oxidized", False):
 +    parents = 1 if sys.platform.startswith("win") else 2
@@ -148,26 +373,27 @@ index 681027ac..bd3ffb6c 100644
 +else:
 +    __path_assets__ = None
 +
++
  
  GET_ENVIRONMENT_INFO = """\
  import json
-@@ -434,7 +442,10 @@ class EnvManager(object):
+@@ -552,7 +561,10 @@ class EnvManager:
          if self._env is not None and not reload:
              return self._env
  
 -        python_minor = ".".join([str(v) for v in sys.version_info[:2]])
 +        python_minor = (
 +            InterpreterLookup.find()[1] or
-+            ".".join(str(c) for c in sys.version_info[:2])
++            ".".join(str(v) for v in sys.version_info[:2])
 +        )
  
          venv_path = self._poetry.config.get("virtualenvs.path")
          if venv_path is None:
-@@ -470,9 +481,10 @@ class EnvManager(object):
+@@ -588,9 +600,10 @@ class EnvManager:
                      return VirtualEnv(venv)
  
              create_venv = self._poetry.config.get("virtualenvs.create", True)
-+            pydef_executable, pydef_minor, pydef_patch = InterpreterLookup.find()
++            pydef_executable, _, _ = InterpreterLookup.find()
  
              if not create_venv:
 -                return SystemEnv(Path(sys.prefix))
@@ -175,7 +401,7 @@ index 681027ac..bd3ffb6c 100644
  
              venv_path = self._poetry.config.get("virtualenvs.path")
              if venv_path is None:
-@@ -485,7 +497,7 @@ class EnvManager(object):
+@@ -603,7 +616,7 @@ class EnvManager:
              venv = venv_path / name
  
              if not venv.exists():
@@ -184,7 +410,7 @@ index 681027ac..bd3ffb6c 100644
  
              return VirtualEnv(venv)
  
-@@ -647,8 +659,7 @@ class EnvManager(object):
+@@ -766,8 +779,7 @@ class EnvManager:
          if not name:
              name = self._poetry.package.name
  
@@ -194,7 +420,7 @@ index 681027ac..bd3ffb6c 100644
          if executable:
              python_patch = decode(
                  subprocess.check_output(
-@@ -665,7 +676,10 @@ class EnvManager(object):
+@@ -784,7 +796,10 @@ class EnvManager:
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -206,7 +432,7 @@ index 681027ac..bd3ffb6c 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -677,60 +691,7 @@ class EnvManager(object):
+@@ -796,61 +811,10 @@ class EnvManager:
                      self._poetry.package.python_versions, python_patch
                  )
  
@@ -216,8 +442,10 @@ index 681027ac..bd3ffb6c 100644
 -                "Trying to find and use a compatible version.</warning> ".format(
 -                    python_patch, self._poetry.package.python_versions
 -                )
--            )
--
++            executable, python_minor, python_patch = InterpreterLookup.find(
++                supported_python
+             )
+ 
 -            for python_to_try in reversed(
 -                sorted(
 -                    self._poetry.package.AVAILABLE_PYTHONS,
@@ -225,7 +453,7 @@ index 681027ac..bd3ffb6c 100644
 -                )
 -            ):
 -                if len(python_to_try) == 1:
--                    if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
+-                    if not parse_constraint(f"^{python_to_try}.0").allows_any(
 -                        supported_python
 -                    ):
 -                        continue
@@ -237,7 +465,7 @@ index 681027ac..bd3ffb6c 100644
 -                python = "python" + python_to_try
 -
 -                if io.is_debug():
--                    io.write_line("<debug>Trying {}</debug>".format(python))
+-                    io.write_line(f"<debug>Trying {python}</debug>")
 -
 -                try:
 -                    python_patch = decode(
@@ -260,15 +488,15 @@ index 681027ac..bd3ffb6c 100644
 -                    continue
 -
 -                if supported_python.allows(Version.parse(python_patch)):
--                    io.write_line("Using <c1>{}</c1> ({})".format(python, python_patch))
+-                    io.write_line(f"Using <c1>{python}</c1> ({python_patch})")
 -                    executable = python
 -                    python_minor = ".".join(python_patch.split(".")[:2])
 -                    break
-+            executable, python_minor, python_patch = InterpreterLookup.find(supported_python)
- 
+-
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -753,13 +714,21 @@ class EnvManager(object):
+                     self._poetry.package.python_versions
+@@ -872,7 +836,7 @@ class EnvManager:
                      "</>"
                  )
  
@@ -277,23 +505,18 @@ index 681027ac..bd3ffb6c 100644
  
              io.write_line(
                  "Creating virtualenv <c1>{}</> in {}".format(name, str(venv_path))
-             )
+@@ -895,7 +859,7 @@ class EnvManager:
+                 io.write_line(f"Virtualenv <c1>{name}</> already exists.")
  
-             self.build_venv(venv, executable=executable)
-+
-+            if not root_venv:
-+                envs = tomlkit.document()
-+                envs_file = TOMLFile(venv_path / self.ENVS_FILE)
-+                if envs_file.exists():
-+                    envs = envs_file.read()
-+                envs[name] = {"minor": python_minor, "patch": python_patch}
-+                envs_file.write(envs)
-         else:
-             if force:
-                 if not env.is_sane():
-@@ -776,22 +745,6 @@ class EnvManager(object):
-             elif io.is_very_verbose():
-                 io.write_line("Virtualenv <c1>{}</> already exists.".format(name))
+         if create_venv:
+-            self.build_venv(
++            build_res = self.build_venv(
+                 venv,
+                 executable=executable,
+                 flags=self._poetry.config.get("virtualenvs.options"),
+@@ -907,21 +871,13 @@ class EnvManager:
+                 with_wheel=True,
+             )
  
 -        # venv detection:
 -        # stdlib venv may symlink sys.executable, so we can't use realpath.
@@ -309,49 +532,64 @@ index 681027ac..bd3ffb6c 100644
 -        p_venv = os.path.normcase(str(venv))
 -        if any(p.startswith(p_venv) for p in paths):
 -            # Running properly in the virtualenv, don't need to do anything
--            return SystemEnv(Path(sys.prefix), self.get_base_prefix())
--
+-            return self.get_system_env()
++            if not root_venv and build_res:
++                envs = tomlkit.document()
++                envs_file = TOMLFile(venv_path / self.ENVS_FILE)
++                if envs_file.exists():
++                    envs = envs_file.read()
++                envs[name] = {"minor": python_minor, "patch": python_patch}
++                envs_file.write(envs)
+ 
          return VirtualEnv(venv)
  
-     @classmethod
-@@ -805,7 +758,7 @@ class EnvManager(object):
-                 "--no-download",
-                 "--no-periodic-update",
-                 "--python",
--                executable or sys.executable,
-+                executable or "python",
-                 str(path),
-             ]
-         )
-@@ -1138,96 +1091,56 @@ class SystemEnv(Env):
+@@ -961,7 +917,7 @@ class EnvManager:
+             "--no-download",
+             "--no-periodic-update",
+             "--python",
+-            executable or sys.executable,
++            executable or "python",
+         ]
+ 
+         for flag, value in flags.items():
+@@ -1362,94 +1318,59 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
 -    @property
--    def python(self):  # type: () -> str
+-    def python(self) -> str:
 -        return sys.executable
 +    def __init__(self, path, base=None, auto_path=True):
 +        self._is_windows = sys.platform == "win32"
 +        if auto_path and path:
-+            path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
++            path = Path(
++                self._run([path, "-W", "ignore", "-"], input_=GET_BASE_PREFIX).strip()
++            )
 +        super().__init__(path, base=base)
  
      @property
--    def sys_path(self):  # type: () -> List[str]
+     def sys_path(self) -> List[str]:
 -        return sys.path
--
--    def get_version_info(self):  # type: () -> Tuple[int]
++        output = self.run_python_script(GET_SYS_PATH)
++        return json.loads(output)
+ 
+     def get_version_info(self) -> Tuple[int]:
 -        return sys.version_info
--
--    def get_python_implementation(self):  # type: () -> str
++        output = self.run_python_script(GET_PYTHON_VERSION)
++
++        return tuple([int(s) for s in output.strip().split(".")])
+ 
+     def get_python_implementation(self) -> str:
 -        return platform.python_implementation()
--
--    def get_pip_command(self):  # type: () -> List[str]
++        return self.marker_env["platform_python_implementation"]
+ 
+     def get_pip_command(self, embedded: bool = False) -> List[str]:
 -        # If we're not in a venv, assume the interpreter we're running on
 -        # has a pip and use that
--        return [sys.executable, "-m", "pip"]
--
--    def get_paths(self):  # type: () -> Dict[str, str]
+-        return [sys.executable, self.pip_embedded if embedded else self.pip]
++        return [self.python, "-m", "pip"]
+ 
+     def get_paths(self) -> Dict[str, str]:
 -        # We can't use sysconfig.get_paths() because
 -        # on some distributions it does not return the proper paths
 -        # (those used by pip for instance). We go through distutils
@@ -365,57 +603,48 @@ index 681027ac..bd3ffb6c 100644
 -        d.parse_config_files()
 -        obj = d.get_command_obj("install", create=True)
 -        obj.finalize_options()
-+    def sys_path(self):
-+        output = self.run("python", "-", input_=GET_SYS_PATH)
-+        return json.loads(output)
- 
+-
 -        paths = sysconfig.get_paths().copy()
 -        for key in SCHEME_KEYS:
 -            if key == "headers":
 -                # headers is not a path returned by sysconfig.get_paths()
 -                continue
-+    def get_version_info(self):
-+        output = self.run("python", "-", input_=GET_PYTHON_VERSION)
-+        return tuple([int(s) for s in output.strip().split(".")])
- 
--            paths[key] = getattr(obj, "install_{}".format(key))
-+    def get_python_implementation(self):
-+        return self.marker_env["platform_python_implementation"]
- 
--        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
--            paths["usersite"] = getattr(obj, "install_usersite")
--            paths["userbase"] = getattr(obj, "install_userbase")
-+    def get_marker_env(self):
-+        output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
++        output = self.run_python_script(GET_PATHS)
 +        return json.loads(output)
  
--        return paths
-+    def get_paths(self):
-+        output = self.run("python", "-", input_=GET_PATHS)
-+        return json.loads(output)
- 
-     def get_supported_tags(self):  # type: () -> List[Tag]
--        return list(sys_tags())
+-            paths[key] = getattr(obj, f"install_{key}")
++    def get_supported_tags(self) -> List[Tag]:
 +        if __path_assets__:
 +            file_path = __path_assets__ / "packaging_tags.py"
 +        else:
 +            file_path = Path(packaging.tags.__file__)
  
--    def get_marker_env(self):  # type: () -> Dict[str, Any]
+-        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
+-            paths["usersite"] = getattr(obj, "install_usersite")
+-            paths["userbase"] = getattr(obj, "install_userbase")
++        with file_path.open(encoding="utf-8") as f:
++            script = decode(f.read())
+ 
+-        return paths
++        output = self.run("python", "-", input_=script)
+ 
+-    def get_supported_tags(self) -> List[Tag]:
+-        return list(sys_tags())
++        return [Tag(*t) for t in json.loads(output)]
+ 
+     def get_marker_env(self) -> Dict[str, Any]:
 -        if hasattr(sys, "implementation"):
 -            info = sys.implementation.version
 -            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
 -            kind = info.releaselevel
 -            if kind != "final":
 -                iver += kind[0] + str(info.serial)
-+        with file_path.open(encoding="utf-8") as f:
-+            script = decode(f.read())
- 
+-
 -            implementation_name = sys.implementation.name
 -        else:
 -            iver = "0"
 -            implementation_name = ""
-+        output = self.run("python", "-", input_=script)
++        output = self.run_python_script(GET_ENVIRONMENT_INFO)
  
 -        return {
 -            "implementation_name": implementation_name,
@@ -436,30 +665,24 @@ index 681027ac..bd3ffb6c 100644
 -            "interpreter_name": interpreter_name(),
 -            "interpreter_version": interpreter_version(),
 -        }
-+        return [Tag(*t) for t in json.loads(output)]
++        return json.loads(output)
  
--    def get_pip_version(self):  # type: () -> Version
+     def get_pip_version(self) -> Version:
 -        from pip import __version__
-+    def get_pip_command(self):
-+        return [self.python, "-m", "pip"]
- 
--        return Version.parse(__version__)
-+    def get_pip_version(self):
 +        output = self.run_pip("--version").strip()
 +        m = re.match("pip (.+?)(?: from .+)?$", output)
 +        if not m:
 +            return Version.parse("0.0")
+ 
+-        return Version.parse(__version__)
 +        return Version.parse(m.group(1))
  
--    def is_venv(self):  # type: () -> bool
-+    def is_venv(self):
+     def is_venv(self) -> bool:
          return self._path != self._base
+@@ -1489,31 +1410,14 @@ class VirtualEnv(Env):
+         return [self._bin("python"), self.pip_embedded if embedded else self.pip]
  
- 
-@@ -1266,31 +1179,14 @@ class VirtualEnv(Env):
-         return [self._bin("pip")]
- 
-     def get_supported_tags(self):  # type: () -> List[Tag]
+     def get_supported_tags(self) -> List[Tag]:
 -        file_path = Path(packaging.tags.__file__)
 -        if file_path.suffix == ".pyc":
 -            # Python 2
@@ -489,34 +712,34 @@ index 681027ac..bd3ffb6c 100644
 -            """
 -        )
 -
-         output = self.run("python", "-", input_=script)
+         output = self.run_python_script(script)
  
          return [Tag(*t) for t in json.loads(output)]
-@@ -1366,11 +1262,98 @@ class NullEnv(SystemEnv):
+@@ -1593,11 +1497,95 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
--        super(NullEnv, self).__init__(path, base=base)
+-        super().__init__(path, base=base)
 +        super().__init__(path, base=base, auto_path=False)
  
          self._execute = execute
          self.executed = []
  
 +    @property
-+    def python(self):  # type: () -> str
++    def python(self) -> str:
 +        return sys.executable
 +
 +    @property
-+    def sys_path(self):  # type: () -> List[str]
++    def sys_path(self) -> List[str]:
 +        return sys.path
 +
-+    def get_version_info(self):  # type: () -> Tuple[int]
++    def get_version_info(self) -> Tuple[int]:
 +        return sys.version_info
 +
-+    def get_python_implementation(self):  # type: () -> str
++    def get_python_implementation(self) -> str:
 +        return platform.python_implementation()
 +
-+    def get_paths(self):  # type: () -> Dict[str, str]
++    def get_paths(self) -> Dict[str, str]:
 +        # We can't use sysconfig.get_paths() because
 +        # on some distributions it does not return the proper paths
 +        # (those used by pip for instance). We go through distutils
@@ -537,7 +760,7 @@ index 681027ac..bd3ffb6c 100644
 +                # headers is not a path returned by sysconfig.get_paths()
 +                continue
 +
-+            paths[key] = getattr(obj, "install_{}".format(key))
++            paths[key] = getattr(obj, f"install_{key}")
 +
 +        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
 +            paths["usersite"] = getattr(obj, "install_usersite")
@@ -545,10 +768,10 @@ index 681027ac..bd3ffb6c 100644
 +
 +        return paths
 +
-+    def get_supported_tags(self):  # type: () -> List[Tag]
++    def get_supported_tags(self) -> List[Tag]:
 +        return list(sys_tags())
 +
-+    def get_marker_env(self):  # type: () -> Dict[str, Any]
++    def get_marker_env(self) -> Dict[str, Any]:
 +        if hasattr(sys, "implementation"):
 +            info = sys.implementation.version
 +            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
@@ -581,18 +804,15 @@ index 681027ac..bd3ffb6c 100644
 +            "interpreter_version": interpreter_version(),
 +        }
 +
-+    def get_pip_version(self):  # type: () -> Version
++    def get_pip_version(self) -> Version:
 +        from pip import __version__
 +
 +        return Version.parse(__version__)
 +
-+    def is_venv(self):  # type: () -> bool
-+        return self._path != self._base
-+
-     def get_pip_command(self):  # type: () -> List[str]
-         return [self._bin("python"), "-m", "pip"]
+     def get_pip_command(self, embedded: bool = False) -> List[str]:
+         return [self._bin("python"), self.pip_embedded if embedded else self.pip]
  
-@@ -1416,6 +1399,10 @@ class MockEnv(NullEnv):
+@@ -1665,6 +1653,10 @@ class MockEnv(NullEnv):
          self._mock_marker_env = marker_env
          self._supported_tags = supported_tags
  
@@ -601,17 +821,20 @@ index 681027ac..bd3ffb6c 100644
 +        return self._base
 +
      @property
-     def platform(self):  # type: () -> str
+     def platform(self) -> str:
          return self._platform
-@@ -1454,3 +1441,70 @@ class MockEnv(NullEnv):
+@@ -1703,3 +1695,73 @@ class MockEnv(NullEnv):
  
-     def is_venv(self):  # type: () -> bool
+     def is_venv(self) -> bool:
          return self._is_venv
 +
 +
 +class InterpreterLookup:
 +    @staticmethod
-+    def _version_check(executable, supported_python=None):
++    def _version_check(
++        executable,
++        supported_python=None
++    ) -> Tuple[bool, Optional[str], Optional[str]]:
 +        try:
 +            python_patch = decode(
 +                subprocess.check_output(
@@ -642,7 +865,7 @@ index 681027ac..bd3ffb6c 100644
 +        return False, None, None
 +
 +    @classmethod
-+    def find(cls, constraint=None):
++    def find(cls, constraint=None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
 +        executable, minor, patch = None, None, None
 +
 +        for guess in ["python", "python3", "python2"]:
@@ -675,67 +898,18 @@ index 681027ac..bd3ffb6c 100644
 +
 +        return executable, minor, patch
 diff --git a/pyproject.toml b/pyproject.toml
-index 34f02afe..652fc702 100644
+index 68f78a25..4fb31b84 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
-@@ -24,7 +24,6 @@ classifiers = [
- [tool.poetry.dependencies]
- python = "~2.7 || ^3.5"
+@@ -48,7 +48,7 @@ packaging = "^20.4"
+ virtualenv = ">=20.4.3,<20.4.5"
+ keyring = ">=21.2.0"
+ entrypoints = "^0.3"
+-importlib-metadata = {version = "^1.6.0", python = "<3.8"}
++importlib-metadata = {version = "^1.6.0"}
+ dataclasses = {version = "^0.8", python = "~3.6"}
  
--poetry-core = "~1.0.3"
- cleo = "^0.8.1"
- clikit = "^0.6.2"
- crashtest = { version = "^0.3.0", python = "^3.6" }
-@@ -38,7 +37,6 @@ shellingham = "^1.1"
- tomlkit = ">=0.7.0,<1.0.0"
- pexpect = "^4.7.0"
- packaging = "^20.4"
--virtualenv = { version = "^20.0.26" }
- 
- # The typing module is not in the stdlib in Python 2.7
- typing = { version = "^3.6", python = "~2.7" }
-diff --git a/tests/config/test_config.py b/tests/config/test_config.py
-index 4bd0cd04..d79e8631 100644
---- a/tests/config/test_config.py
-+++ b/tests/config/test_config.py
-@@ -1,5 +1,7 @@
- import os
- 
-+from pathlib import Path
-+
- import pytest
- 
- 
-@@ -11,7 +13,7 @@ def test_config_get_default_value(config, name, value):
- 
- 
- def test_config_get_processes_depended_on_values(config):
--    assert os.path.join("/foo", "virtualenvs") == config.get("virtualenvs.path")
-+    assert str(Path.cwd() / ".pypoetrycache" / "virtualenvs") == config.get("virtualenvs.path")
- 
- 
- @pytest.mark.parametrize(
-diff --git a/tests/conftest.py b/tests/conftest.py
-index e2b73936..22741344 100644
---- a/tests/conftest.py
-+++ b/tests/conftest.py
-@@ -4,6 +4,7 @@ import shutil
- import sys
- import tempfile
- 
-+from pathlib import Path
- from typing import Any
- from typing import Dict
- 
-@@ -56,7 +57,7 @@ class Config(BaseConfig):
- @pytest.fixture
- def config_source():
-     source = DictConfigSource()
--    source.add_property("cache-dir", "/foo")
-+    source.add_property("cache-dir", str(Path.cwd() / ".pypoetrycache"))
- 
-     return source
- 
+ [tool.poetry.dev-dependencies]
 diff --git a/tests/console/commands/self/__init__.py b/tests/console/commands/self/__init__.py
 deleted file mode 100644
 index e69de29b..00000000
@@ -778,19 +952,23 @@ LE~wAj04M+eXZ{jT
 
 diff --git a/tests/console/commands/self/test_update.py b/tests/console/commands/self/test_update.py
 deleted file mode 100644
-index 6e094111..00000000
+index 396965e2..00000000
 --- a/tests/console/commands/self/test_update.py
 +++ /dev/null
-@@ -1,91 +0,0 @@
--import os
+@@ -1,107 +0,0 @@
+-from pathlib import Path
 -
 -import pytest
 -
 -from poetry.__version__ import __version__
+-from poetry.console.exceptions import PoetrySimpleConsoleException
 -from poetry.core.packages.package import Package
 -from poetry.core.semver.version import Version
--from poetry.utils._compat import WINDOWS
--from poetry.utils._compat import Path
+-from poetry.factory import Factory
+-from poetry.repositories.installed_repository import InstalledRepository
+-from poetry.repositories.pool import Pool
+-from poetry.repositories.repository import Repository
+-from poetry.utils.env import EnvManager
 -
 -
 -FIXTURES = Path(__file__).parent.joinpath("fixtures")
@@ -801,227 +979,104 @@ index 6e094111..00000000
 -    return command_tester_factory("self update")
 -
 -
--def test_self_update_should_install_all_necessary_elements(
--    tester, http, mocker, environ, tmp_dir
+-def test_self_update_can_update_from_recommended_installation(
+-    tester, http, mocker, environ, tmp_venv
 -):
--    os.environ["POETRY_HOME"] = tmp_dir
+-    mocker.patch.object(EnvManager, "get_system_env", return_value=tmp_venv)
 -
--    command = tester._command
+-    command = tester.command
+-    command._data_dir = tmp_venv.path.parent
 -
--    version = Version.parse(__version__).next_minor.text
--    mocker.patch(
--        "poetry.repositories.pypi_repository.PyPiRepository.find_packages",
--        return_value=[Package("poetry", version)],
--    )
--    mocker.patch.object(command, "_check_recommended_installation", return_value=None)
--    mocker.patch.object(
--        command, "_get_release_name", return_value="poetry-{}-darwin".format(version)
--    )
--    mocker.patch("subprocess.check_output", return_value=b"Python 3.8.2")
+-    new_version = Version.parse(__version__).next_minor().text
 -
--    http.register_uri(
--        "GET",
--        command.BASE_URL + "/{}/poetry-{}-darwin.sha256sum".format(version, version),
--        body=FIXTURES.joinpath("poetry-1.0.5-darwin.sha256sum").read_bytes(),
--    )
--    http.register_uri(
--        "GET",
--        command.BASE_URL + "/{}/poetry-{}-darwin.tar.gz".format(version, version),
--        body=FIXTURES.joinpath("poetry-1.0.5-darwin.tar.gz").read_bytes(),
--    )
+-    old_poetry = Package("poetry", __version__)
+-    old_poetry.add_dependency(Factory.create_dependency("cleo", "^0.8.2"))
+-
+-    new_poetry = Package("poetry", new_version)
+-    new_poetry.add_dependency(Factory.create_dependency("cleo", "^1.0.0"))
+-
+-    installed_repository = Repository()
+-    installed_repository.add_package(old_poetry)
+-    installed_repository.add_package(Package("cleo", "0.8.2"))
+-
+-    repository = Repository()
+-    repository.add_package(new_poetry)
+-    repository.add_package(Package("cleo", "1.0.0"))
+-
+-    pool = Pool()
+-    pool.add_repository(repository)
+-
+-    command._pool = pool
+-
+-    mocker.patch.object(InstalledRepository, "load", return_value=installed_repository)
 -
 -    tester.execute()
 -
--    bin_ = Path(tmp_dir).joinpath("bin")
--    lib = Path(tmp_dir).joinpath("lib")
--    assert bin_.exists()
+-    expected_output = """\
+-Updating Poetry to 1.2.0
 -
--    script = bin_.joinpath("poetry")
--    assert script.exists()
+-Updating dependencies
+-Resolving dependencies...
 -
--    expected_script = """\
--# -*- coding: utf-8 -*-
--import glob
--import sys
--import os
+-Package operations: 0 installs, 2 updates, 0 removals
 -
--lib = os.path.normpath(os.path.join(os.path.realpath(__file__), "../..", "lib"))
--vendors = os.path.join(lib, "poetry", "_vendor")
--current_vendors = os.path.join(
--    vendors, "py{}".format(".".join(str(v) for v in sys.version_info[:2]))
--)
--sys.path.insert(0, lib)
--sys.path.insert(0, current_vendors)
+-  - Updating cleo (0.8.2 -> 1.0.0)
+-  - Updating poetry ({} -> {})
 -
--if __name__ == "__main__":
--    from poetry.console import main
--    main()
--"""
--    if not WINDOWS:
--        expected_script = "#!/usr/bin/env python\n" + expected_script
+-Updating the poetry script
 -
--    assert expected_script == script.read_text()
+-Poetry ({}) is installed now. Great!
+-""".format(
+-        __version__, new_version, new_version
+-    )
 -
--    if WINDOWS:
--        bat = bin_.joinpath("poetry.bat")
--        expected_bat = '@echo off\r\npython "{}" %*\r\n'.format(
--            str(script).replace(os.environ.get("USERPROFILE", ""), "%USERPROFILE%")
--        )
--        assert bat.exists()
--        with bat.open(newline="") as f:
--            assert expected_bat == f.read()
+-    assert tester.io.fetch_output() == expected_output
 -
--    assert lib.exists()
--    assert lib.joinpath("poetry").exists()
-diff --git a/tests/console/commands/test_config.py b/tests/console/commands/test_config.py
-index fa0bea4a..df86d165 100644
---- a/tests/console/commands/test_config.py
-+++ b/tests/console/commands/test_config.py
-@@ -1,6 +1,8 @@
- import json
- import os
- 
-+from pathlib import Path
-+
- import pytest
- 
- from poetry.config.config_source import ConfigSource
-@@ -28,14 +30,16 @@ def test_show_config_with_local_config_file_empty(tester, mocker):
- def test_list_displays_default_value_if_not_set(tester, config):
-     tester.execute("--list")
- 
--    expected = """cache-dir = "/foo"
-+    expected = """cache-dir = "{cache_dir}"
- experimental.new-installer = true
- installer.parallel = true
- virtualenvs.create = true
- virtualenvs.in-project = null
--virtualenvs.path = {path}  # /foo{sep}virtualenvs
-+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
- """.format(
--        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
-+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
-+        sep=os.path.sep,
-+        cache_dir=str(Path.cwd() / ".pypoetrycache")
-     )
- 
-     assert expected == tester.io.fetch_output()
-@@ -46,14 +50,16 @@ def test_list_displays_set_get_setting(tester, config):
- 
-     tester.execute("--list")
- 
--    expected = """cache-dir = "/foo"
-+    expected = """cache-dir = "{cache_dir}"
- experimental.new-installer = true
- installer.parallel = true
- virtualenvs.create = false
- virtualenvs.in-project = null
--virtualenvs.path = {path}  # /foo{sep}virtualenvs
-+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
- """.format(
--        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
-+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
-+        sep=os.path.sep,
-+        cache_dir=str(Path.cwd() / ".pypoetrycache")
-     )
- 
-     assert 0 == config.set_config_source.call_count
-@@ -86,14 +92,16 @@ def test_list_displays_set_get_local_setting(tester, config):
- 
-     tester.execute("--list")
- 
--    expected = """cache-dir = "/foo"
-+    expected = """cache-dir = "{cache_dir}"
- experimental.new-installer = true
- installer.parallel = true
- virtualenvs.create = false
- virtualenvs.in-project = null
--virtualenvs.path = {path}  # /foo{sep}virtualenvs
-+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
- """.format(
--        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
-+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
-+        sep=os.path.sep,
-+        cache_dir=str(Path.cwd() / ".pypoetrycache")
-     )
- 
-     assert 1 == config.set_config_source.call_count
-diff --git a/tests/helpers.py b/tests/helpers.py
-index f380bb8d..1de03111 100644
---- a/tests/helpers.py
-+++ b/tests/helpers.py
-@@ -1,7 +1,7 @@
- import os
- import shutil
- 
--from poetry.console import Application
-+from poetry.console.application import Application
- from poetry.core.masonry.utils.helpers import escape_name
- from poetry.core.masonry.utils.helpers import escape_version
- from poetry.core.packages import Dependency
-diff --git a/tests/installation/test_chef.py b/tests/installation/test_chef.py
-index 9fcbbea1..7d0d98b1 100644
---- a/tests/installation/test_chef.py
-+++ b/tests/installation/test_chef.py
-@@ -19,14 +19,16 @@ def test_get_cached_archive_for_link(config, mocker):
-         ),
-     )
- 
-+    cwd = Path.cwd() / ".pypoetrycache"
-+
-     mocker.patch.object(
-         chef,
-         "get_cached_archives_for_link",
-         return_value=[
--            Link("file:///foo/demo-0.1.0-py2.py3-none-any"),
--            Link("file:///foo/demo-0.1.0.tar.gz"),
--            Link("file:///foo/demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl"),
--            Link("file:///foo/demo-0.1.0-cp37-cp37-macosx_10_15_x86_64.whl"),
-+            Link(f"file:///{cwd}demo-0.1.0-py2.py3-none-any"),
-+            Link(f"file:///{cwd}demo-0.1.0.tar.gz"),
-+            Link(f"file:///{cwd}demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl"),
-+            Link(f"file:///{cwd}demo-0.1.0-cp37-cp37-macosx_10_15_x86_64.whl"),
-         ],
-     )
- 
-@@ -34,7 +36,7 @@ def test_get_cached_archive_for_link(config, mocker):
-         Link("https://files.python-poetry.org/demo-0.1.0.tar.gz")
-     )
- 
--    assert Link("file:///foo/demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl") == archive
-+    assert Link(f"file:///{cwd}demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl") == archive
- 
- 
- def test_get_cached_archives_for_link(config, mocker):
-@@ -68,11 +70,13 @@ def test_get_cache_directory_for_link(config):
-         ),
-     )
- 
-+    cwd = Path.cwd() / ".pypoetrycache"
-+
-     directory = chef.get_cache_directory_for_link(
-         Link("https://files.python-poetry.org/poetry-1.1.0.tar.gz")
-     )
-     expected = Path(
--        "/foo/artifacts/ba/63/13/283a3b3b7f95f05e9e6f84182d276f7bb0951d5b0cc24422b33f7a4648"
-+        f"{cwd}/artifacts/ba/63/13/283a3b3b7f95f05e9e6f84182d276f7bb0951d5b0cc24422b33f7a4648"
-     )
- 
-     assert expected == directory
+-
+-def test_self_update_does_not_update_non_recommended_installation(
+-    tester, http, mocker, environ, tmp_venv
+-):
+-    mocker.patch.object(EnvManager, "get_system_env", return_value=tmp_venv)
+-
+-    command = tester.command
+-
+-    new_version = Version.parse(__version__).next_minor().text
+-
+-    old_poetry = Package("poetry", __version__)
+-    old_poetry.add_dependency(Factory.create_dependency("cleo", "^0.8.2"))
+-
+-    new_poetry = Package("poetry", new_version)
+-    new_poetry.add_dependency(Factory.create_dependency("cleo", "^1.0.0"))
+-
+-    installed_repository = Repository()
+-    installed_repository.add_package(old_poetry)
+-    installed_repository.add_package(Package("cleo", "0.8.2"))
+-
+-    repository = Repository()
+-    repository.add_package(new_poetry)
+-    repository.add_package(Package("cleo", "1.0.0"))
+-
+-    pool = Pool()
+-    pool.add_repository(repository)
+-
+-    command._pool = pool
+-
+-    with pytest.raises(PoetrySimpleConsoleException):
+-        tester.execute()
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index cd5e1b9f..687d63ce 100644
+index d09012c8..b8744cd0 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
 @@ -148,7 +148,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
      )
      mocker.patch(
-         "poetry.utils._compat.subprocess.Popen.communicate",
+         "subprocess.Popen.communicate",
 -        side_effect=[("/prefix", None), ("/prefix", None)],
 +        side_effect=[("/prefix", None), ("/prefix", None), ("/prefix", None)],
      )
      m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
  
-@@ -397,21 +397,21 @@ def test_deactivate_non_activated_but_existing(
+@@ -412,21 +412,21 @@ def test_deactivate_non_activated_but_existing(
  
      (
          Path(tmp_dir)
@@ -1032,7 +1087,7 @@ index cd5e1b9f..687d63ce 100644
      config.merge({"virtualenvs": {"path": str(tmp_dir)}})
  
      mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
+         "subprocess.check_output",
 -        side_effect=check_output_wrapper(),
 +        side_effect=check_output_wrapper(Version.parse("3.9.5")),
      )
@@ -1046,140 +1101,105 @@ index cd5e1b9f..687d63ce 100644
      )
      assert Path("/prefix")
  
-@@ -421,8 +421,8 @@ def test_deactivate_activated(tmp_dir, manager, poetry, config, mocker):
+@@ -436,8 +436,8 @@ def test_deactivate_activated(tmp_dir, manager, poetry, config, mocker):
          del os.environ["VIRTUAL_ENV"]
  
      venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
 -    version = Version.parse(".".join(str(c) for c in sys.version_info[:3]))
--    other_version = Version.parse("3.4") if version.major == 2 else version.next_minor
+-    other_version = Version.parse("3.4") if version.major == 2 else version.next_minor()
 +    version = Version.parse("3.9.5")
 +    other_version = Version.parse("3.4.0")
      (
          Path(tmp_dir) / "{}-py{}.{}".format(venv_name, version.major, version.minor)
      ).mkdir()
-@@ -443,7 +443,7 @@ def test_deactivate_activated(tmp_dir, manager, poetry, config, mocker):
+@@ -458,7 +458,7 @@ def test_deactivate_activated(tmp_dir, manager, poetry, config, mocker):
  
      mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
+         "subprocess.check_output",
 -        side_effect=check_output_wrapper(),
 +        side_effect=check_output_wrapper(Version.parse("3.9.5")),
      )
  
      manager.deactivate(NullIO())
-@@ -645,7 +645,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
+@@ -710,7 +710,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
      mocker.patch("sys.version_info", (2, 7, 16))
      mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
+         "subprocess.check_output",
 -        side_effect=check_output_wrapper(Version.parse("3.7.5")),
 +        side_effect=["3.7.5", "3.7.5", "2.7.16", "3.7.5"],
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -654,7 +654,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
-     manager.create_venv(NullIO())
- 
-     m.assert_called_with(
--        Path("/foo/virtualenvs/{}-py3.7".format(venv_name)), executable="python3"
-+        Path("{}/virtualenvs/{}-py3.7".format(config.get("cache-dir"), venv_name)), executable="python3"
-     )
- 
- 
-@@ -669,7 +669,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
+@@ -738,7 +738,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
+     venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
  
      mocker.patch("sys.version_info", (2, 7, 16))
-     mocker.patch(
--        "poetry.utils._compat.subprocess.check_output", side_effect=["3.5.3", "3.9.0"]
-+        "poetry.utils._compat.subprocess.check_output", side_effect=[
-+            "3.5.3",
-+            "3.9.0",
-+            "3.5.3",
-+            "3.5.3",
-+            "2.7.16",
-+            "3.5.3",
-+            "3.9.0"
-+        ]
-     )
+-    mocker.patch("subprocess.check_output", side_effect=["3.5.3", "3.9.0"])
++    mocker.patch("subprocess.check_output", side_effect=[
++        "3.5.3",
++        "3.9.0",
++        "3.5.3",
++        "3.5.3",
++        "2.7.16",
++        "3.5.3",
++        "3.9.0"
++    ])
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -678,7 +686,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
-     manager.create_venv(NullIO())
- 
-     m.assert_called_with(
--        Path("/foo/virtualenvs/{}-py3.9".format(venv_name)), executable="python3.9"
-+        Path("{}/virtualenvs/{}-py3.9".format(config.get("cache-dir"), venv_name)), executable="python3.9"
      )
- 
- 
-@@ -691,7 +699,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
-     poetry.package.python_versions = "^4.8"
- 
-     mocker.patch(
--        "poetry.utils._compat.subprocess.check_output", side_effect=["", "", "", ""]
-+        "poetry.utils._compat.subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 12)]
-     )
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -718,7 +726,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
+@@ -763,7 +771,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
  
      poetry.package.python_versions = "^4.8"
  
--    mocker.patch("poetry.utils._compat.subprocess.check_output", side_effect=["3.8.0"])
-+    mocker.patch("poetry.utils._compat.subprocess.check_output", side_effect=["3.8.0" for _ in range(1 + 12)])
+-    mocker.patch("subprocess.check_output", side_effect=["", "", "", ""])
++    mocker.patch("subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 13)])
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -748,10 +756,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
+@@ -789,7 +797,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
+ 
+     poetry.package.python_versions = "^4.8"
+ 
+-    mocker.patch("subprocess.check_output", side_effect=["3.8.0"])
++    mocker.patch("subprocess.check_output", side_effect=["3.8.0" for _ in range(1 + 12)])
+     m = mocker.patch(
+         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
+     )
+@@ -819,10 +827,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
      )
      venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
  
 -    mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
--    check_output = mocker.patch(
-+    mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
+     check_output = mocker.patch(
+         "subprocess.check_output",
 -        side_effect=check_output_wrapper(Version.parse("3.6.9")),
 +        side_effect=["2.7.16" for _ in range(3)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -759,14 +766,13 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
+@@ -830,11 +837,10 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
  
      manager.create_venv(NullIO())
  
 -    assert not check_output.called
      m.assert_called_with(
-         Path(
--            "/foo/virtualenvs/{}-py{}.{}".format(
--                venv_name, version.major, version.minor
-+            "{}/virtualenvs/{}-py{}.{}".format(
-+                config.get("cache-dir"), venv_name, version.major, version.minor
-             )
-         ),
+         config_virtualenvs_path
+         / "{}-py{}.{}".format(venv_name, version.major, version.minor),
 -        executable=None,
 +        executable="python3",
-     )
- 
- 
-@@ -799,8 +805,8 @@ def test_create_venv_uses_patch_version_to_detect_compatibility_with_executable(
-     assert check_output.called
-     m.assert_called_with(
-         Path(
--            "/foo/virtualenvs/{}-py{}.{}".format(
--                venv_name, version.major, version.minor - 1
-+            "{}/virtualenvs/{}-py{}.{}".format(
-+                config.get("cache-dir"), venv_name, version.major, version.minor - 1
-             )
-         ),
-         executable="python{}.{}".format(version.major, version.minor - 1),
-@@ -828,7 +834,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+         flags={"always-copy": False, "system-site-packages": False},
+         with_pip=True,
+         with_setuptools=True,
+@@ -901,7 +907,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
      )
      mocker.patch(
-         "poetry.utils._compat.subprocess.Popen.communicate",
+         "subprocess.Popen.communicate",
 -        side_effect=[("/prefix", None), ("/prefix", None)],
 +        side_effect=[("/prefix", None), ("/prefix", None), ("/prefix", None)],
      )
      m = mocker.patch("poetry.utils.env.EnvManager.build_venv")
  
-@@ -841,7 +847,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+@@ -921,7 +927,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
  
  
  def test_system_env_has_correct_paths():
@@ -1188,12 +1208,13 @@ index cd5e1b9f..687d63ce 100644
  
      paths = env.paths
  
-@@ -851,17 +857,6 @@ def test_system_env_has_correct_paths():
+@@ -931,18 +937,6 @@ def test_system_env_has_correct_paths():
      assert env.site_packages.path == Path(paths["purelib"])
  
  
 -@pytest.mark.parametrize(
--    ("enabled",), [(True,), (False,)],
+-    ("enabled",),
+-    [(True,), (False,)],
 -)
 -def test_system_env_usersite(mocker, enabled):
 -    mocker.patch("site.check_enableusersite", return_value=enabled)

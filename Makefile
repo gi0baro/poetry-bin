@@ -25,6 +25,7 @@ clean_vendor:
 patches:
 	@cd src/certifi && git diff --binary HEAD > ../../patches/certifi.patch
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
+	@cd src/jsonschema && git diff --binary HEAD > ../../patches/jsonschema.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
 	@cd src/virtualenv && git diff --binary HEAD > ../../patches/virtualenv.patch
@@ -38,8 +39,8 @@ tests:
 	@cd vendor/certifi && python -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest && rm -r .venv
 	@cd vendor/importlib_metadata && python -m venv .venv && .venv/bin/pip install .[testing] pyfakefs && .venv/bin/python -m unittest discover && rm -r .venv
 	@cd vendor/virtualenv && python -m venv .venv && .venv/bin/pip install .[testing] && .venv/bin/pytest && rm -r .venv
-	@cd vendor/poetry-core && python -m venv .venv && .venv/bin/pip install ../virtualenv . pep517 pytest pytest-mock && .venv/bin/pytest && rm -r .venv
-	@cd vendor/poetry && python -m venv .venv && .venv/bin/pip install ../importlib_metadata ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && .venv/bin/pytest && rm -r .venv
+	@cd vendor/poetry-core && python -m venv .venv && .venv/bin/pip install ../jsonschema ../virtualenv . pep517 pytest pytest-mock && .venv/bin/pytest && rm -r .venv
+	@cd vendor/poetry && python -m venv .venv && .venv/bin/pip install ../importlib_metadata ../jsonschema ../virtualenv ../poetry-core . deepdiff httpretty pytest pytest-mock==3.6.1 && .venv/bin/pytest && rm -r .venv
 
 build_linux: ARCH := ${ARCH_LINUX}
 build_linux: _build_posix assets
@@ -65,11 +66,13 @@ assets: _path_assets
 	@mkdir -p ${ASSETSPATH}/core/json
 	@mkdir -p ${ASSETSPATH}/core/spdx
 	@mkdir -p ${ASSETSPATH}/core/version
+	@mkdir -p ${ASSETSPATH}/jsonschema
 	@mkdir -p ${ASSETSPATH}/virtualenv/activation
 	@mkdir -p ${ASSETSPATH}/virtualenv/create/via_global_ref
 	@mkdir -p ${ASSETSPATH}/virtualenv/discovery
 	@mkdir -p ${ASSETSPATH}/virtualenv/seed
 	@cp vendor/certifi/certifi/cacert.pem ${ASSETSPATH}/certifi/cacert.pem
+	@cp -R vendor/jsonschema/jsonschema/schemas ${ASSETSPATH}/jsonschema/schemas
 	@cp -R vendor/poetry-core/poetry/core/json/schemas ${ASSETSPATH}/core/json/schemas
 	@cp vendor/poetry-core/poetry/core/spdx/data/licenses.json ${ASSETSPATH}/core/spdx/licenses.json
 	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars

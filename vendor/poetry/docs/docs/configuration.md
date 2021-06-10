@@ -34,6 +34,8 @@ which will give you something similar to this:
 cache-dir = "/path/to/cache/directory"
 virtualenvs.create = true
 virtualenvs.in-project = null
+virtualenvs.options.always-copy = true
+virtualenvs.options.system-site-packages = false
 virtualenvs.path = "{cache-dir}/virtualenvs"  # /path/to/cache/directory/virtualenvs
 ```
 
@@ -89,7 +91,6 @@ This also works for secret settings, like credentials:
 export POETRY_HTTP_BASIC_MY_REPOSITORY_PASSWORD=secret
 ```
 
-
 ## Available settings
 
 ### `cache-dir`: string
@@ -116,7 +117,10 @@ Defaults to `true`.
 Create a new virtual environment if one doesn't already exist.
 Defaults to `true`.
 
-!!!note:
+If set to `false`, poetry will install dependencies into the current python environment.
+
+!!!note
+
         When setting this configuration to `false`, the Python environment used must have `pip`
         installed and available.
 
@@ -125,15 +129,28 @@ Defaults to `true`.
 Create the virtualenv inside the project's root directory.
 Defaults to `None`.
 
-If set to `true`, the virtualenv wil be created and expected in a folder named `.venv` within the root directory of the project.
+If set to `true`, the virtualenv will be created and expected in a folder named
+`.venv` within the root directory of the project.
 
-If not set explicitly (default), `poetry` will use the virtualenv from the `.venv` directory when one is available. If set to `false`, `poetry` will ignore any existing `.venv` directory.
-
+If not set explicitly (default), `poetry` will use the virtualenv from the `.venv`
+directory when one is available. If set to `false`, `poetry` will ignore any
+existing `.venv` directory.
 
 ### `virtualenvs.path`: string
 
 Directory where virtual environments will be created.
 Defaults to `{cache-dir}/virtualenvs` (`{cache-dir}\virtualenvs` on Windows).
+
+### `virtualenvs.options.always-copy`: boolean
+
+If set to `true` the `--always-copy` parameter is passed to `virtualenv` on creation of the venv. Thus all needed files are copied into the venv instead of symlinked.
+Defaults to `false`.
+
+### `virtualenvs.options.system-site-packages`: boolean
+
+Give the virtual environment access to the system site-packages directory.
+Applies on virtualenv creation.
+Defaults to `false`.
 
 ### `repositories.<name>`: string
 

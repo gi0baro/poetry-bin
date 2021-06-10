@@ -1,27 +1,11 @@
-# This file is dual licensed under the terms of the Apache License, Version
-# 2.0, and the BSD License. See the LICENSE file in the root of this repository
-# for complete details.
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+import urllib.parse as urlparse
 
-import os
-
-from lark import Lark
-from lark import UnexpectedCharacters
-from lark import UnexpectedToken
-
-from poetry.core.semver import parse_constraint
 from poetry.core.semver.exceptions import ParseConstraintError
+from poetry.core.semver.helpers import parse_constraint
 
-from . import _GRAMMARS_PATH
+from .grammars import GRAMMAR_PEP_508_CONSTRAINTS
 from .markers import _compact_markers
-
-
-try:
-    import urllib.parse as urlparse
-except ImportError:
-    import urlparse
+from .parser import Parser
 
 
 class InvalidRequirement(ValueError):
@@ -30,9 +14,8 @@ class InvalidRequirement(ValueError):
     """
 
 
-_parser = Lark.open(
-    os.path.join(_GRAMMARS_PATH, "pep508.lark"), parser="lalr"
-)
+# Parser: PEP 508 Constraints
+_parser = Parser(GRAMMAR_PEP_508_CONSTRAINTS, "lalr")
 
 
 class Requirement(object):
@@ -44,7 +27,10 @@ class Requirement(object):
     string.
     """
 
-    def __init__(self, requirement_string):  # type: (str) -> None
+    def __init__(self, requirement_string: str) -> None:
+        from lark import UnexpectedCharacters
+        from lark import UnexpectedToken
+
         try:
             parsed = _parser.parse(requirement_string)
         except (UnexpectedCharacters, UnexpectedToken) as e:
@@ -102,7 +88,7 @@ class Requirement(object):
 
         self.marker = marker
 
-    def __str__(self):  # type: () -> str
+    def __str__(self) -> str:
         parts = [self.name]
 
         if self.extras:
@@ -119,5 +105,5 @@ class Requirement(object):
 
         return "".join(parts)
 
-    def __repr__(self):  # type: () -> str
+    def __repr__(self) -> str:
         return "<Requirement({0!r})>".format(str(self))

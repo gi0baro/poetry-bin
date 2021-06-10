@@ -6,23 +6,23 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+from . import _ASSETS_PATH
+
 
 try:
     from urllib.request import urlopen
 except ImportError:
     from urllib2 import urlopen
 
-from . import _ASSETS_PATH
-
 
 class Updater:
 
     BASE_URL = "https://raw.githubusercontent.com/spdx/license-list-data/master/json/"
 
-    def __init__(self, base_url=BASE_URL):  # type: (str) -> None
+    def __init__(self, base_url: str = BASE_URL) -> None:
         self._base_url = base_url
 
-    def dump(self, file=None):  # type: (Optional[str]) -> None
+    def dump(self, file: Optional[str] = None) -> None:
         if file is None:
             file = _ASSETS_PATH / "licenses.json"
 
@@ -33,7 +33,7 @@ class Updater:
                 json.dumps(self.get_licenses(licenses_url), indent=2, sort_keys=True)
             )
 
-    def get_licenses(self, url):  # type: (str) -> Dict[str, Any]
+    def get_licenses(self, url: str) -> Dict[str, Any]:
         licenses = {}
         with urlopen(url) as r:
             data = json.loads(r.read().decode())

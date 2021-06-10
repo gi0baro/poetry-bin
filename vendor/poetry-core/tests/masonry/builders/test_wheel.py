@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
 import os
 import shutil
 import zipfile
+
+from pathlib import Path
 
 import pytest
 
 from poetry.core.factory import Factory
 from poetry.core.masonry.builders.wheel import WheelBuilder
-from poetry.core.utils._compat import Path
 from tests.masonry.builders.test_sdist import project
 
 
@@ -182,6 +182,7 @@ def test_wheel_includes_inline_table():
     assert whl.exists()
 
     with zipfile.ZipFile(str(whl)) as z:
+        assert "both.txt" in z.namelist()
         assert "wheel_only.txt" in z.namelist()
         assert "notes.txt" not in z.namelist()
 

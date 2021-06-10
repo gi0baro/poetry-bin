@@ -1,27 +1,21 @@
-# -*- coding: utf-8 -*-
 import logging
 import re
 import shutil
 import sys
 import tempfile
+import warnings
 
 from collections import defaultdict
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import ContextManager
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
 from typing import Union
-
-from poetry.core.utils._compat import Path
-from poetry.core.utils._compat import to_str
-from poetry.core.vcs import get_vcs
-
-from ..metadata import Metadata
-from ..utils.module import Module
-from ..utils.package_include import PackageInclude
 
 
 if TYPE_CHECKING:
@@ -41,20 +35,32 @@ logger = logging.getLogger(__name__)
 
 
 class Builder(object):
-    format = None  # type: Optional[str]
+    format: Optional[str] = None
 
     def __init__(
-        self, poetry, ignore_packages_formats=False, executable=None
-    ):  # type: ("Poetry", bool, Optional[Union[Path, str]]) -> None
+        self,
+        poetry: "Poetry",
+        ignore_packages_formats: bool = False,
+        executable: Optional[Union[Path, str]] = None,
+    ) -> None:
+        from poetry.core.masonry.metadata import Metadata
+        from poetry.core.masonry.utils.module import Module
+
         self._poetry = poetry
         self._package = poetry.package
         self._path = poetry.file.parent
-        self._excluded_files = None  # type: Optional[Set[str]]
+        self._excluded_files: Optional[Set[str]] = None
         self._executable = Path(executable or sys.executable)
 
         packages = []
         for p in self._package.packages:
-            formats = p.get("format", [])
+            formats = p.get("format") or None
+
+            # Default to including the package in both sdist & wheel
+            # if the `format` key is not provided in the inline include table.
+            if formats is None:
+                formats = ["sdist", "wheel"]
+
             if not isinstance(formats, list):
                 formats = [formats]
 
@@ -92,14 +98,16 @@ class Builder(object):
         self._meta = Metadata.from_package(self._package)
 
     @property
-    def executable(self):  # type: () -> Path
+    def executable(self) -> Path:
         return self._executable
 
-    def build(self):  # type: () -> None
+    def build(self) -> None:
         raise NotImplementedError()
 
-    def find_excluded_files(self):  # type: () -> Set[str]
+    def find_excluded_files(self) -> Set[str]:
         if self._excluded_files is None:
+            from poetry.core.vcs import get_vcs
+
             # Checking VCS
             vcs = get_vcs(self._path)
             if not vcs:
@@ -134,7 +142,7 @@ class Builder(object):
 
         return self._excluded_files
 
-    def is_excluded(self, filepath):  # type: (Union[str, Path]) -> bool
+    def is_excluded(self, filepath: Union[str, Path]) -> bool:
         exclude_path = Path(filepath)
 
         while True:
@@ -148,12 +156,12 @@ class Builder(object):
 
         return False
 
-    def find_files_to_add(
-        self, exclude_build=True
-    ):  # type: (bool) -> Set[BuildIncludeFile]
+    def find_files_to_add(self, exclude_build: bool = True) -> Set["BuildIncludeFile"]:
         """
         Finds all files to add to the tarball
         """
+        from poetry.core.masonry.utils.package_include import PackageInclude
+
         to_add = set()
 
         for include in self._module.includes:
@@ -219,11 +227,11 @@ class Builder(object):
 
         return to_add
 
-    def get_metadata_content(self):  # type: () -> str
+    def get_metadata_content(self) -> str:
         content = METADATA_BASE.format(
             name=self._meta.name,
             version=self._meta.version,
-            summary=to_str(self._meta.summary),
+            summary=str(self._meta.summary),
         )
 
         # Optional fields
@@ -237,18 +245,16 @@ class Builder(object):
             content += "Keywords: {}\n".format(self._meta.keywords)
 
         if self._meta.author:
-            content += "Author: {}\n".format(to_str(self._meta.author))
+            content += "Author: {}\n".format(str(self._meta.author))
 
         if self._meta.author_email:
-            content += "Author-email: {}\n".format(to_str(self._meta.author_email))
+            content += "Author-email: {}\n".format(str(self._meta.author_email))
 
         if self._meta.maintainer:
-            content += "Maintainer: {}\n".format(to_str(self._meta.maintainer))
+            content += "Maintainer: {}\n".format(str(self._meta.maintainer))
 
         if self._meta.maintainer_email:
-            content += "Maintainer-email: {}\n".format(
-                to_str(self._meta.maintainer_email)
-            )
+            content += "Maintainer-email: {}\n".format(str(self._meta.maintainer_email))
 
         if self._meta.requires_python:
             content += "Requires-Python: {}\n".format(self._meta.requires_python)
@@ -263,7 +269,7 @@ class Builder(object):
             content += "Requires-Dist: {}\n".format(dep)
 
         for url in sorted(self._meta.project_urls, key=lambda u: u[0]):
-            content += "Project-URL: {}\n".format(to_str(url))
+            content += "Project-URL: {}\n".format(str(url))
 
         if self._meta.description_content_type:
             content += "Description-Content-Type: {}\n".format(
@@ -271,35 +277,80 @@ class Builder(object):
             )
 
         if self._meta.description is not None:
-            content += "\n" + to_str(self._meta.description) + "\n"
+            content += "\n" + str(self._meta.description) + "\n"
 
         return content
 
-    def convert_entry_points(self):  # type: () -> Dict[str, List[str]]
+    def convert_entry_points(self) -> Dict[str, List[str]]:
         result = defaultdict(list)
 
         # Scripts -> Entry points
-        for name, ep in self._poetry.local_config.get("scripts", {}).items():
-            extras = ""
-            if isinstance(ep, dict):
-                extras = "[{}]".format(", ".join(ep["extras"]))
-                ep = ep["callable"]
+        for name, specification in self._poetry.local_config.get("scripts", {}).items():
+            if isinstance(specification, str):
+                # TODO: deprecate this in favour or reference
+                specification = {"reference": specification, "type": "console"}
 
-            result["console_scripts"].append("{} = {}{}".format(name, ep, extras))
+            if "callable" in specification:
+                warnings.warn(
+                    f"Use of callable in script specification ({name}) is deprecated. Use reference instead.",
+                    DeprecationWarning,
+                )
+                specification = {
+                    "reference": specification["callable"],
+                    "type": "console",
+                }
+
+            if specification.get("type") != "console":
+                continue
+
+            extras = specification.get("extras", [])
+            extras = f"[{', '.join(extras)}]" if extras else ""
+            reference = specification.get("reference")
+
+            if reference:
+                result["console_scripts"].append(f"{name} = {reference}{extras}")
 
         # Plugins -> entry points
         plugins = self._poetry.local_config.get("plugins", {})
         for groupname, group in plugins.items():
-            for name, ep in sorted(group.items()):
-                result[groupname].append("{} = {}".format(name, ep))
+            for name, specification in sorted(group.items()):
+                result[groupname].append(f"{name} = {specification}")
 
         for groupname in result:
             result[groupname] = sorted(result[groupname])
 
         return dict(result)
 
+    def convert_script_files(self) -> List[Path]:
+        script_files: List[Path] = []
+
+        for name, specification in self._poetry.local_config.get("scripts", {}).items():
+            if isinstance(specification, dict) and specification.get("type") == "file":
+                source = specification["reference"]
+
+                if Path(source).is_absolute():
+                    raise RuntimeError(
+                        f"{source} in {name} is an absolute path. Expected relative path."
+                    )
+
+                abs_path = Path.joinpath(self._path, source)
+
+                if not abs_path.exists():
+                    raise RuntimeError(
+                        f"{abs_path} in script specification ({name}) is not found."
+                    )
+
+                if not abs_path.is_file():
+                    raise RuntimeError(
+                        f"{abs_path} in script specification ({name}) is not a file."
+                    )
+
+                script_files.append(abs_path)
+
+        return script_files
+
     @classmethod
-    def convert_author(cls, author):  # type: (str) -> Dict[str, str]
+    def convert_author(cls, author: str) -> Dict[str, str]:
         m = AUTHOR_REGEX.match(author)
 
         name = m.group("name")
@@ -309,7 +360,7 @@ class Builder(object):
 
     @classmethod
     @contextmanager
-    def temporary_directory(cls, *args, **kwargs):  # type: (*Any, **Any) -> None
+    def temporary_directory(cls, *args: Any, **kwargs: Any) -> ContextManager[str]:
         try:
             from tempfile import TemporaryDirectory
 
@@ -326,9 +377,9 @@ class Builder(object):
 class BuildIncludeFile:
     def __init__(
         self,
-        path,  # type: Union[Path, str]
-        project_root,  # type: Union[Path, str]
-        source_root=None,  # type: Optional[Union[Path, str]]
+        path: Union[Path, str],
+        project_root: Union[Path, str],
+        source_root: Optional[Union[Path, str]] = None,
     ):
         """
         :param project_root: the full path of the project's root
@@ -351,24 +402,26 @@ class BuildIncludeFile:
             # python 3.5 are dropped, until we can use resolve(strict=False).
             pass
 
-    def __eq__(self, other):  # type: (Union[BuildIncludeFile, Path]) -> bool
+    def __eq__(self, other: Union["BuildIncludeFile", Path]) -> bool:
         if hasattr(other, "path"):
             return self.path == other.path
+
         return self.path == other
 
-    def __ne__(self, other):  # type: (Union[BuildIncludeFile, Path]) -> bool
+    def __ne__(self, other: Union["BuildIncludeFile", Path]) -> bool:
         return not self.__eq__(other)
 
-    def __hash__(self):  # type: () -> int
+    def __hash__(self) -> int:
         return hash(self.path)
 
-    def __repr__(self):  # type: () -> str
+    def __repr__(self) -> str:
         return str(self.path)
 
-    def relative_to_project_root(self):  # type: () -> Path
+    def relative_to_project_root(self) -> Path:
         return self.path.relative_to(self.project_root)
 
-    def relative_to_source_root(self):  # type: () -> Path
+    def relative_to_source_root(self) -> Path:
         if self.source_root is not None:
             return self.path.relative_to(self.source_root)
+
         return self.path

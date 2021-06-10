@@ -1,11 +1,70 @@
 # Change Log
 
-## [1.0.3] - 2021-04-09
+## [1.1.0a5] - 2021-05-21
+
+### Added
+
+- Added support for script files in addition to standard entry points. ([#40](https://github.com/python-poetry/poetry-core/pull/40))
 
 ### Fixed
 
-- Fixed an error when handling single-digit Python markers ([#156](https://github.com/python-poetry/poetry-core/pull/156)).
-- Fixed dependency markers not being properly copied when changing the constraint ([#163](https://github.com/python-poetry/poetry-core/pull/163)).
+- Fixed an error in the way python markers with a precision >= 3 were handled. ([#178](https://github.com/python-poetry/poetry-core/pull/178))
+
+
+## [1.1.0a4] - 2021-04-30
+
+### Changed
+
+- Files in source distributions now have a deterministic time to improve reproducibility. ([#142](https://github.com/python-poetry/poetry-core/pull/142))
+
+### Fixed
+
+- Fixed an error where leading zeros in the local build part of version specifications were discarded. ([#167](https://github.com/python-poetry/poetry-core/pull/167))
+- Fixed the PEP 508 representation of file dependencies. ([#153](https://github.com/python-poetry/poetry-core/pull/153))
+- Fixed the copy of `Package` instances which led to file hashes not being available. ([#159](https://github.com/python-poetry/poetry-core/pull/159))
+- Fixed an error in the parsing of caret requirements with a pre-release lower bound. ([#171](https://github.com/python-poetry/poetry-core/pull/171))
+- Fixed an error where some pre-release versions were not flagged as pre-releases. ([#170](https://github.com/python-poetry/poetry-core/pull/170))
+
+
+## [1.1.0a3] - 2021-04-09
+
+### Fixed
+
+- Fixed dependency markers not being properly copied when changing the constraint ([#162](https://github.com/python-poetry/poetry-core/pull/162)).
+
+
+## [1.1.0a2] - 2021-04-08
+
+### Fixed
+
+- Fixed performance regressions when parsing version constraints ([#152](https://github.com/python-poetry/poetry-core/pull/152)).
+- Fixed how local build versions are handled and compared ([#157](https://github.com/python-poetry/poetry-core/pull/157), [#158](https://github.com/python-poetry/poetry-core/pull/158)).
+- Fixed errors when parsing some environment markers ([#155](https://github.com/python-poetry/poetry-core/pull/155)).
+
+
+## [1.1.0a1] - 2021-03-30
+
+This version is the first to drop support for Python 2.7 and 3.5.
+
+If you are still using these versions you should update the `requires` property of the `build-system` section
+to restrict the version of `poetry-core`:
+
+```toml
+[build-system]
+requires = ["poetry-core<1.1.0"]
+build-backend = "poetry.core.masonry.api"
+```
+
+### Changed
+
+- Dropped support for Python 2.7 and 3.5 ([#131](https://github.com/python-poetry/poetry-core/pull/131)).
+- Reorganized imports internally to improve performances ([#131](https://github.com/python-poetry/poetry-core/pull/131)).
+- Directory dependencies are now in non-develop mode by default ([#98](https://github.com/python-poetry/poetry-core/pull/98)).
+- Improved support for PEP 440 specific versions that do not abide by semantic versioning ([#140](https://github.com/python-poetry/poetry-core/pull/140)).
+
+### Fixed
+
+- Fixed path dependencies PEP 508 representation ([#141](https://github.com/python-poetry/poetry-core/pull/141)).
 
 
 ## [1.0.2] - 2021-02-05
@@ -147,8 +206,12 @@ No changes.
 - Fixed support for stub-only packages ([#28](https://github.com/python-poetry/core/pull/28)).
 
 
-[Unreleased]: https://github.com/python-poetry/poetry-core/compare/1.0.3...master
-[1.0.3]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.3
+[Unreleased]: https://github.com/python-poetry/poetry-core/compare/1.1.0a5...master
+[1.1.0a5]: https://github.com/python-poetry/poetry-core/releases/tag/1.1.0a5
+[1.1.0a4]: https://github.com/python-poetry/poetry-core/releases/tag/1.1.0a4
+[1.1.0a3]: https://github.com/python-poetry/poetry-core/releases/tag/1.1.0a3
+[1.1.0a2]: https://github.com/python-poetry/poetry-core/releases/tag/1.1.0a2
+[1.1.0a1]: https://github.com/python-poetry/poetry-core/releases/tag/1.1.0a1
 [1.0.2]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.2
 [1.0.1]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.1
 [1.0.0]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.0

@@ -1,22 +1,20 @@
-# -*- coding: utf-8 -*-
 import ast
 import gzip
+import hashlib
 import shutil
 import tarfile
 
 from email.parser import Parser
+from pathlib import Path
 
 import pytest
 
 from poetry.core.factory import Factory
 from poetry.core.masonry.builders.sdist import SdistBuilder
 from poetry.core.masonry.utils.package_include import PackageInclude
-from poetry.core.packages import Package
 from poetry.core.packages.dependency import Dependency
+from poetry.core.packages.package import Package
 from poetry.core.packages.vcs_dependency import VCSDependency
-from poetry.core.utils._compat import Path
-from poetry.core.utils._compat import encode
-from poetry.core.utils._compat import to_str
 
 
 fixtures_dir = Path(__file__).parent / "fixtures"
@@ -132,6 +130,7 @@ def test_make_setup():
             "my-script = my_package:main",
         ]
     }
+    assert ns["scripts"] == [str(Path("bin") / "script.sh")]
     assert ns["extras_require"] == {
         'time:python_version ~= "2.7" and sys_platform == "win32" or python_version in "3.4 3.5"': [
             "pendulum>=1.4,<2.0"
@@ -157,7 +156,7 @@ def test_make_pkg_info_any_python():
     builder = SdistBuilder(poetry)
     pkg_info = builder.build_pkg_info()
     p = Parser()
-    parsed = p.parsestr(to_str(pkg_info))
+    parsed = p.parsestr(pkg_info.decode())
 
     assert "Requires-Python" not in parsed
 
@@ -172,6 +171,7 @@ def test_find_files_to_add():
         [
             Path("LICENSE"),
             Path("README.rst"),
+            Path("bin/script.sh"),
             Path("my_package/__init__.py"),
             Path("my_package/data1/test.json"),
             Path("my_package/sub_pkg1/__init__.py"),
@@ -193,7 +193,7 @@ def test_make_pkg_info_multi_constraints_dependency():
     builder = SdistBuilder(poetry)
     pkg_info = builder.build_pkg_info()
     p = Parser()
-    parsed = p.parsestr(to_str(pkg_info))
+    parsed = p.parsestr(pkg_info.decode())
 
     requires = parsed.get_all("Requires-Dist")
     assert requires == [
@@ -253,6 +253,24 @@ def test_package():
         assert "my-package-1.2.3/LICENSE" in tar.getnames()
 
 
+def test_sdist_reproducibility():
+    poetry = Factory().create_poetry(project("complete"))
+
+    hashes = set()
+
+    for _ in range(2):
+        builder = SdistBuilder(poetry)
+        builder.build()
+
+        sdist = fixtures_dir / "complete" / "dist" / "my-package-1.2.3.tar.gz"
+
+        assert sdist.exists()
+
+        hashes.add(hashlib.sha256(sdist.read_bytes()).hexdigest())
+
+    assert len(hashes) == 1
+
+
 def test_setup_py_context():
     poetry = Factory().create_poetry(project("complete"))
 
@@ -269,8 +287,8 @@ def test_setup_py_context():
 
             with open(str(setup), "rb") as f:
                 # we convert to string  and replace line endings here for compatibility
-                data = to_str(encode(f.read())).replace("\r\n", "\n")
-                assert data == to_str(builder.build_setup())
+                data = f.read().decode().replace("\r\n", "\n")
+                assert data == builder.build_setup().decode()
 
         assert not project_setup_py.exists()
     finally:
@@ -441,6 +459,13 @@ def test_default_with_excluded_data(mocker):
         assert "my-package-1.2.3/PKG-INFO" in names
         # all last modified times should be set to a valid timestamp
         for tarinfo in tar.getmembers():
+            if tarinfo.name in [
+                "my-package-1.2.3/setup.py",
+                "my-package-1.2.3/PKG-INFO",
+            ]:
+                # generated files have timestamp set to 0
+                assert 0 == tarinfo.mtime
+                continue
             assert 0 < tarinfo.mtime
 
 
@@ -483,7 +508,7 @@ def test_proper_python_requires_if_two_digits_precision_version_specified():
     builder = SdistBuilder(poetry)
     pkg_info = builder.build_pkg_info()
     p = Parser()
-    parsed = p.parsestr(to_str(pkg_info))
+    parsed = p.parsestr(pkg_info.decode())
 
     assert parsed["Requires-Python"] == ">=3.6,<3.7"
 
@@ -494,7 +519,7 @@ def test_proper_python_requires_if_three_digits_precision_version_specified():
     builder = SdistBuilder(poetry)
     pkg_info = builder.build_pkg_info()
     p = Parser()
-    parsed = p.parsestr(to_str(pkg_info))
+    parsed = p.parsestr(pkg_info.decode())
 
     assert parsed["Requires-Python"] == "==2.7.15"
 
@@ -532,6 +557,7 @@ def test_includes_with_inline_table():
     assert sdist.exists()
 
     with tarfile.open(str(sdist), "r") as tar:
+        assert "with-include-1.2.3/both.txt" in tar.getnames()
         assert "with-include-1.2.3/wheel_only.txt" not in tar.getnames()
         assert "with-include-1.2.3/tests/__init__.py" in tar.getnames()
         assert "with-include-1.2.3/tests/test_foo/test.py" in tar.getnames()

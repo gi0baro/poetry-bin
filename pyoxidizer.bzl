@@ -17,11 +17,13 @@ def make_exe(dist):
         packaging_policy=policy,
         config=config,
     )
+    exe.add_python_resources(exe.pip_install(["./vendor/certifi"])
+    exe.add_python_resources(exe.pip_install(["./vendor/importlib_metadata"])
+    exe.add_python_resources(exe.pip_install(["./vendor/jsonschema"])
+    exe.add_python_resources(exe.pip_install(["./vendor/virtualenv"])
+
+    exe.add_python_resources(exe.pip_install(["./vendor/poetry-core"])
     exe.add_python_resources(exe.pip_install(["./vendor/poetry"]))
-    exe.add_python_resources(exe.read_package_root("vendor/certifi", ["certifi"]))
-    exe.add_python_resources(exe.read_package_root("vendor/poetry-core", ["poetry"]))
-    exe.add_python_resources(exe.pip_install(["./vendor/virtualenv"]))
-    exe.add_python_resources(exe.pip_install(["./vendor/importlib_metadata"]))
 
     return exe
 

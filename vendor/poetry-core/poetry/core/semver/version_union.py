@@ -4,12 +4,13 @@ from typing import List
 
 from .empty_constraint import EmptyConstraint
 from .version_constraint import VersionConstraint
+from .version_range_constraint import VersionRangeConstraint
 
 
 if TYPE_CHECKING:
-    from . import VersionTypes  # noqa
-    from .version import Version
-    from .version_range import VersionRange
+    from poetry.core.semver.helpers import VersionTypes
+    from poetry.core.semver.version import Version
+    from poetry.core.semver.version_range import VersionRange
 
 
 class VersionUnion(VersionConstraint):
@@ -21,15 +22,15 @@ class VersionUnion(VersionConstraint):
     as a non-compound value.
     """
 
-    def __init__(self, *ranges):  # type: (*"VersionRange") -> None
+    def __init__(self, *ranges: "VersionRange") -> None:
         self._ranges = list(ranges)
 
     @property
-    def ranges(self):  # type: () -> List["VersionRange"]
+    def ranges(self) -> List["VersionRange"]:
         return self._ranges
 
     @classmethod
-    def of(cls, *ranges):  # type: (*"VersionTypes") -> "VersionTypes"
+    def of(cls, *ranges: "VersionTypes") -> "VersionTypes":
         from .version_range import VersionRange
 
         flattened = []
@@ -53,7 +54,7 @@ class VersionUnion(VersionConstraint):
         # about everything in flattened. _EmptyVersions and VersionUnions are
         # filtered out above.
         for constraint in flattened:
-            if isinstance(constraint, VersionRange):
+            if isinstance(constraint, VersionRangeConstraint):
                 continue
 
             raise ValueError("Unknown VersionConstraint type {}.".format(constraint))
@@ -76,16 +77,16 @@ class VersionUnion(VersionConstraint):
 
         return VersionUnion(*merged)
 
-    def is_empty(self):  # type: () -> bool
+    def is_empty(self) -> bool:
         return False
 
-    def is_any(self):  # type: () -> bool
+    def is_any(self) -> bool:
         return False
 
-    def allows(self, version):  # type: ("Version") -> bool
+    def allows(self, version: "Version") -> bool:
         return any([constraint.allows(version) for constraint in self._ranges])
 
-    def allows_all(self, other):  # type: ("VersionTypes") -> bool
+    def allows_all(self, other: "VersionTypes") -> bool:
         our_ranges = iter(self._ranges)
         their_ranges = iter(self._ranges_for(other))
 
@@ -100,7 +101,7 @@ class VersionUnion(VersionConstraint):
 
         return their_current_range is None
 
-    def allows_any(self, other):  # type: ("VersionTypes") -> bool
+    def allows_any(self, other: "VersionTypes") -> bool:
         our_ranges = iter(self._ranges)
         their_ranges = iter(self._ranges_for(other))
 
@@ -118,7 +119,7 @@ class VersionUnion(VersionConstraint):
 
         return False
 
-    def intersect(self, other):  # type: ("VersionTypes") -> "VersionTypes"
+    def intersect(self, other: "VersionTypes") -> "VersionTypes":
         our_ranges = iter(self._ranges)
         their_ranges = iter(self._ranges_for(other))
         new_ranges = []
@@ -139,10 +140,10 @@ class VersionUnion(VersionConstraint):
 
         return VersionUnion.of(*new_ranges)
 
-    def union(self, other):  # type: ("VersionTypes") -> "VersionTypes"
+    def union(self, other: "VersionTypes") -> "VersionTypes":
         return VersionUnion.of(self, other)
 
-    def difference(self, other):  # type: ("VersionTypes") -> "VersionTypes"
+    def difference(self, other: "VersionTypes") -> "VersionTypes":
         our_ranges = iter(self._ranges)
         their_ranges = iter(self._ranges_for(other))
         new_ranges = []
@@ -152,7 +153,7 @@ class VersionUnion(VersionConstraint):
             "their_range": next(their_ranges, None),
         }
 
-        def their_next_range():  # type: () -> bool
+        def their_next_range() -> bool:
             state["their_range"] = next(their_ranges, None)
             if state["their_range"]:
                 return True
@@ -165,7 +166,7 @@ class VersionUnion(VersionConstraint):
 
             return False
 
-        def our_next_range(include_current=True):  # type: (bool) -> bool
+        def our_next_range(include_current: bool = True) -> bool:
             if include_current:
                 new_ranges.append(state["current"])
 
@@ -222,33 +223,31 @@ class VersionUnion(VersionConstraint):
 
         return VersionUnion.of(*new_ranges)
 
-    def _ranges_for(self, constraint):  # type: ("VersionTypes") -> List["VersionRange"]
-        from .version_range import VersionRange
-
+    def _ranges_for(self, constraint: "VersionTypes") -> List["VersionRangeConstraint"]:
         if constraint.is_empty():
             return []
 
         if isinstance(constraint, VersionUnion):
             return constraint.ranges
 
-        if isinstance(constraint, VersionRange):
+        if isinstance(constraint, VersionRangeConstraint):
             return [constraint]
 
         raise ValueError("Unknown VersionConstraint type {}".format(constraint))
 
-    def excludes_single_version(self):  # type: () -> bool
+    def excludes_single_version(self) -> bool:
         from .version import Version
         from .version_range import VersionRange
 
         return isinstance(VersionRange().difference(self), Version)
 
-    def __eq__(self, other):  # type: (Any) -> bool
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, VersionUnion):
             return False
 
         return self._ranges == other.ranges
 
-    def __hash__(self):  # type: () -> int
+    def __hash__(self) -> int:
         h = hash(self._ranges[0])
 
         for range in self._ranges[1:]:
@@ -256,7 +255,7 @@ class VersionUnion(VersionConstraint):
 
         return h
 
-    def __str__(self):  # type: () -> str
+    def __str__(self) -> str:
         from .version_range import VersionRange
 
         if self.excludes_single_version():
@@ -264,5 +263,5 @@ class VersionUnion(VersionConstraint):
 
         return " || ".join([str(r) for r in self._ranges])
 
-    def __repr__(self):  # type: () -> str
+    def __repr__(self) -> str:
         return "<VersionUnion {}>".format(str(self))

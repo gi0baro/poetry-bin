@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from __future__ import unicode_literals
+
+from pathlib import Path
 
 import pytest
 
 from poetry.core.factory import Factory
 from poetry.core.toml import TOMLFile
-from poetry.core.utils._compat import PY2
-from poetry.core.utils._compat import Path
 
 
 fixtures_dir = Path(__file__).parent / "fixtures"
@@ -100,6 +99,15 @@ def test_create_poetry():
         == 'python_version ~= "2.7" and sys_platform == "win32" or python_version in "3.4 3.5"'
     )
 
+    dataclasses = dependencies["dataclasses"]
+    assert dataclasses.name == "dataclasses"
+    assert dataclasses.pretty_constraint == "^0.7"
+    assert dataclasses.python_versions == ">=3.6.1,<3.7"
+    assert (
+        str(dataclasses.marker)
+        == 'python_full_version >= "3.6.1" and python_version < "3.7"'
+    )
+
     assert "db" in package.extras
 
     classifiers = package.classifiers
@@ -118,6 +126,7 @@ def test_create_poetry():
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Software Development :: Build Tools",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ]
@@ -168,16 +177,10 @@ def test_validate_fails():
     content = complete.read()["tool"]["poetry"]
     content["this key is not in the schema"] = ""
 
-    if PY2:
-        expected = (
-            "Additional properties are not allowed "
-            "(u'this key is not in the schema' was unexpected)"
-        )
-    else:
-        expected = (
-            "Additional properties are not allowed "
-            "('this key is not in the schema' was unexpected)"
-        )
+    expected = (
+        "Additional properties are not allowed "
+        "('this key is not in the schema' was unexpected)"
+    )
 
     assert Factory.validate(content) == {"errors": [expected], "warnings": []}
 
@@ -188,13 +191,7 @@ def test_create_poetry_fails_on_invalid_configuration():
             Path(__file__).parent / "fixtures" / "invalid_pyproject" / "pyproject.toml"
         )
 
-    if PY2:
-        expected = """\
-The Poetry configuration is invalid:
-  - u'description' is a required property
-"""
-    else:
-        expected = """\
+    expected = """\
 The Poetry configuration is invalid:
   - 'description' is a required property
 """

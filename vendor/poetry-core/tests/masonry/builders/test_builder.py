@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 import sys
 
 from email.parser import Parser
+from pathlib import Path
 
 import pytest
 
 from poetry.core.factory import Factory
 from poetry.core.masonry.builders.builder import Builder
 from poetry.core.utils._compat import PY37
-from poetry.core.utils._compat import Path
 
 
 def test_builder_find_excluded_files(mocker):
@@ -93,6 +92,7 @@ def test_get_metadata_content():
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "Topic :: Software Development :: Build Tools",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ]
@@ -154,3 +154,109 @@ def test_metadata_with_url_dependencies():
         "demo @ https://python-poetry.org/distributions/demo-0.1.0-py2.py3-none-any.whl"
         == requires_dist
     )
+
+
+def test_missing_script_files_throws_error():
+    builder = Builder(
+        Factory().create_poetry(
+            Path(__file__).parent / "fixtures" / "script_reference_file_missing"
+        )
+    )
+
+    with pytest.raises(RuntimeError) as err:
+        builder.convert_script_files()
+
+    assert "is not found." in err.value.args[0]
+
+
+def test_invalid_script_files_definition():
+    with pytest.raises(RuntimeError) as err:
+        Builder(
+            Factory().create_poetry(
+                Path(__file__).parent
+                / "fixtures"
+                / "script_reference_file_invalid_definition"
+            )
+        )
+
+    assert "configuration is invalid" in err.value.args[0]
+    assert "[scripts.invalid_definition]" in err.value.args[0]
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        "script_callable_legacy_table",
+    ],
+)
+def test_entrypoint_scripts_legacy_warns(fixture):
+    with pytest.warns(DeprecationWarning):
+        Builder(
+            Factory().create_poetry(Path(__file__).parent / "fixtures" / fixture)
+        ).convert_entry_points()
+
+
+@pytest.mark.parametrize(
+    "fixture, result",
+    [
+        (
+            "script_callable_legacy_table",
+            {
+                "console_scripts": [
+                    "extra-script-legacy = my_package.extra_legacy:main",
+                    "script-legacy = my_package.extra_legacy:main",
+                ]
+            },
+        ),
+        (
+            "script_callable_legacy_string",
+            {"console_scripts": ["script-legacy = my_package:main"]},
+        ),
+        (
+            "script_reference_console",
+            {
+                "console_scripts": [
+                    "extra-script = my_package.extra:main[time]",
+                    "script = my_package.extra:main",
+                ]
+            },
+        ),
+        (
+            "script_reference_file",
+            {},
+        ),
+    ],
+)
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_builder_convert_entry_points(fixture, result):
+    entry_points = Builder(
+        Factory().create_poetry(Path(__file__).parent / "fixtures" / fixture)
+    ).convert_entry_points()
+    assert entry_points == result
+
+
+@pytest.mark.parametrize(
+    "fixture, result",
+    [
+        (
+            "script_callable_legacy_table",
+            [],
+        ),
+        (
+            "script_callable_legacy_string",
+            [],
+        ),
+        (
+            "script_reference_console",
+            [],
+        ),
+        (
+            "script_reference_file",
+            [Path("bin") / "script.sh"],
+        ),
+    ],
+)
+def test_builder_convert_script_files(fixture, result):
+    project_root = Path(__file__).parent / "fixtures" / fixture
+    script_files = Builder(Factory().create_poetry(project_root)).convert_script_files()
+    assert [p.relative_to(project_root) for p in script_files] == result

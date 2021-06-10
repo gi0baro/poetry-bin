@@ -1,8 +1,7 @@
 import pytest
 
-from poetry.core.packages import Dependency
-from poetry.core.packages import Package
-from poetry.core.packages import dependency_from_pep_508
+from poetry.core.packages.dependency import Dependency
+from poetry.core.packages.package import Package
 from poetry.core.version.markers import parse_marker
 
 
@@ -11,6 +10,23 @@ def test_accepts():
     package = Package("A", "1.4")
 
     assert dependency.accepts(package)
+
+
+@pytest.mark.parametrize(
+    "constraint,result",
+    [
+        ("^1.0", False),
+        ("^1.0.dev0", True),
+        ("^1.0.0", False),
+        ("^1.0.0.dev0", True),
+        ("^1.0.0.alpha0", True),
+        ("^1.0.0.alpha0+local", True),
+        ("^1.0.0.rc0+local", True),
+        ("^1.0.0-1", False),
+    ],
+)
+def test_allows_prerelease(constraint, result):
+    assert Dependency("A", constraint).allows_prereleases() == result
 
 
 def test_accepts_prerelease():
@@ -119,7 +135,9 @@ def test_to_pep_508_in_extras():
 
 
 def test_to_pep_508_in_extras_parsed():
-    dependency = dependency_from_pep_508('foo[bar] (>=1.23,<2.0) ; extra == "baz"')
+    dependency = Dependency.create_from_pep_508(
+        'foo[bar] (>=1.23,<2.0) ; extra == "baz"'
+    )
 
     result = dependency.to_pep_508()
     assert result == 'foo[bar] (>=1.23,<2.0); extra == "baz"'

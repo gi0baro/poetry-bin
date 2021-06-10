@@ -1,0 +1,90 @@
+diff --git a/jsonschema/__init__.py b/jsonschema/__init__.py
+index 6b630cd..5a14042 100644
+--- a/jsonschema/__init__.py
++++ b/jsonschema/__init__.py
+@@ -8,6 +8,17 @@ Most commonly, `validate` is the quickest way to simply validate a given
+ instance under a schema, and will create a validator for you.
+ """
+ 
++import sys
++
++from pathlib import Path
++
++if getattr(sys, "oxidized", False):
++    parents = 2 if sys.platform.startswith("win") else 3
++    __path_assets__ = Path(__path__[0]).parents[parents] / "assets" / "jsonschema"
++else:
++    __path_assets__ = Path(__path__[0])
++
++
+ from jsonschema.exceptions import (
+     ErrorTree, FormatError, RefResolutionError, SchemaError, ValidationError
+ )
+@@ -27,8 +38,5 @@ from jsonschema.validators import (
+     RefResolver,
+     validate,
+ )
+-try:
+-    from importlib import metadata
+-except ImportError: # for Python<3.8
+-    import importlib_metadata as metadata
+-__version__ = metadata.version("jsonschema")
++
++__version__ = "3.2.0"
+diff --git a/jsonschema/_utils.py b/jsonschema/_utils.py
+index ceb8801..f5c849e 100644
+--- a/jsonschema/_utils.py
++++ b/jsonschema/_utils.py
+@@ -5,6 +5,8 @@ import re
+ 
+ from jsonschema.compat import MutableMapping, str_types, urlsplit
+ 
++from . import __path_assets__
++
+ 
+ class URIDict(MutableMapping):
+     """
+@@ -51,8 +53,9 @@ def load_schema(name):
+     Load a schema from ./schemas/``name``.json and return it.
+     """
+ 
+-    data = pkgutil.get_data("jsonschema", "schemas/{0}.json".format(name))
+-    return json.loads(data.decode("utf-8"))
++    with (__path_assets__ / "schemas" / "{0}.json".format(name)).open() as f:
++        data = f.read()
++    return json.loads(data)
+ 
+ 
+ def indent(string, times=1):
+diff --git a/setup.cfg b/setup.cfg
+index c8290bd..9363c86 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -1,5 +1,6 @@
+ [metadata]
+ name = jsonschema
++version = 3.2.0
+ url = https://github.com/Julian/jsonschema
+ project_urls =
+     Docs = https://python-jsonschema.readthedocs.io/en/latest/
+@@ -25,11 +26,10 @@ classifiers =
+ 
+ [options]
+ packages = find:
+-setup_requires = setuptools_scm
+ install_requires =
+     attrs>=17.4.0
+     importlib_metadata;python_version<'3.8'
+-    pyrsistent>=0.14.0
++    pyrsistent==0.16.1
+     setuptools
+     six>=1.11.0
+     functools32;python_version<'3'
+diff --git a/setup.py b/setup.py
+index 460aabe..8bf1ba9 100644
+--- a/setup.py
++++ b/setup.py
+@@ -1,2 +1,2 @@
+ from setuptools import setup
+-setup(use_scm_version=True)
++setup()

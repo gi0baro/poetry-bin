@@ -5,7 +5,6 @@ from io import open
 from pathlib import Path
 from typing import List
 
-from jsonschema import Draft7Validator
 
 from .. import __path_assets__
 
@@ -20,7 +19,7 @@ class ValidationError(ValueError):
     pass
 
 
-def validate_object(obj, schema_name):  # type: (dict, str) -> List[str]
+def validate_object(obj: dict, schema_name: str) -> List[str]:
     schema = os.path.join(SCHEMA_DIR, "{}.json".format(schema_name))
 
     if not os.path.exists(schema):
@@ -28,6 +27,8 @@ def validate_object(obj, schema_name):  # type: (dict, str) -> List[str]
 
     with open(schema, encoding="utf-8") as f:
         schema = json.loads(f.read())
+
+    from jsonschema import Draft7Validator
 
     validator = Draft7Validator(schema)
     validation_errors = sorted(validator.iter_errors(obj), key=lambda e: e.path)

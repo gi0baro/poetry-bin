@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
 import ast
@@ -11,13 +10,13 @@ import tarfile
 import tempfile
 import zipfile
 
+from pathlib import Path
+
 import pytest
 
 from poetry.core import __version__
 from poetry.core.factory import Factory
-from poetry.core.masonry import Builder
-from poetry.core.utils._compat import Path
-from poetry.core.utils._compat import decode
+from poetry.core.masonry.builder import Builder
 
 
 fixtures_dir = Path(__file__).parent / "fixtures"
@@ -71,7 +70,7 @@ def test_wheel_c_extension():
     assert has_compiled_extension
 
     try:
-        wheel_data = decode(zip.read("extended-0.1.dist-info/WHEEL"))
+        wheel_data = zip.read("extended-0.1.dist-info/WHEEL").decode()
 
         assert (
             re.match(
@@ -88,7 +87,7 @@ $""".format(
             is not None
         )
 
-        records = decode(zip.read("extended-0.1.dist-info/RECORD"))
+        records = zip.read("extended-0.1.dist-info/RECORD").decode()
 
         assert re.search(r"\s+extended/extended.*\.(so|pyd)", records) is not None
     finally:
@@ -128,7 +127,7 @@ def test_wheel_c_extension_with_no_setup():
     assert has_compiled_extension
 
     try:
-        wheel_data = decode(zip.read("extended-0.1.dist-info/WHEEL"))
+        wheel_data = zip.read("extended-0.1.dist-info/WHEEL").decode()
 
         assert (
             re.match(
@@ -145,7 +144,7 @@ $""".format(
             is not None
         )
 
-        records = decode(zip.read("extended-0.1.dist-info/RECORD"))
+        records = zip.read("extended-0.1.dist-info/RECORD").decode()
 
         assert re.search(r"\s+extended/extended.*\.(so|pyd)", records) is not None
     finally:
@@ -185,7 +184,7 @@ def test_wheel_c_extension_src_layout():
     assert has_compiled_extension
 
     try:
-        wheel_data = decode(zip.read("extended-0.1.dist-info/WHEEL"))
+        wheel_data = zip.read("extended-0.1.dist-info/WHEEL").decode()
 
         assert (
             re.match(
@@ -202,7 +201,7 @@ $""".format(
             is not None
         )
 
-        records = decode(zip.read("extended-0.1.dist-info/RECORD"))
+        records = zip.read("extended-0.1.dist-info/RECORD").decode()
 
         assert re.search(r"\s+extended/extended.*\.(so|pyd)", records) is not None
     finally:
@@ -224,11 +223,16 @@ def test_complete():
 
     try:
         assert "my_package/sub_pgk1/extra_file.xml" not in zip.namelist()
+        assert "my-package-1.2.3.data/scripts/script.sh" in zip.namelist()
+        assert (
+            "Hello World"
+            in zip.read("my-package-1.2.3.data/scripts/script.sh").decode()
+        )
 
         entry_points = zip.read("my_package-1.2.3.dist-info/entry_points.txt")
 
         assert (
-            decode(entry_points.decode())
+            entry_points.decode()
             == """\
 [console_scripts]
 extra-script=my_package.extra:main[time]
@@ -237,7 +241,7 @@ my-script=my_package:main
 
 """
         )
-        wheel_data = decode(zip.read("my_package-1.2.3.dist-info/WHEEL"))
+        wheel_data = zip.read("my_package-1.2.3.dist-info/WHEEL").decode()
 
         assert (
             wheel_data
@@ -250,7 +254,7 @@ Tag: py3-none-any
                 __version__
             )
         )
-        wheel_data = decode(zip.read("my_package-1.2.3.dist-info/METADATA"))
+        wheel_data = zip.read("my_package-1.2.3.dist-info/METADATA").decode()
 
         assert (
             wheel_data
@@ -273,6 +277,7 @@ Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
 Classifier: Topic :: Software Development :: Build Tools
 Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Provides-Extra: time
@@ -289,6 +294,27 @@ My Package
 
 """
         )
+        actual_records = zip.read("my_package-1.2.3.dist-info/RECORD").decode()
+
+        # For some reason, the ordering of the files and the SHA hashes
+        # vary per operating systems and Python versions.
+        # So instead of 1:1 assertion, let's do a bit clunkier one:
+
+        expected_records = [
+            "my_package/__init__.py",
+            "my_package/data1/test.json",
+            "my_package/sub_pkg1/__init__.py",
+            "my_package/sub_pkg2/__init__.py",
+            "my_package/sub_pkg2/data2/data.json",
+            "my_package-1.2.3.dist-info/entry_points.txt",
+            "my_package-1.2.3.dist-info/LICENSE",
+            "my_package-1.2.3.dist-info/WHEEL",
+            "my_package-1.2.3.dist-info/METADATA",
+        ]
+
+        for expected_record in expected_records:
+            assert expected_record in actual_records
+
     finally:
         zip.close()
 
@@ -317,6 +343,7 @@ def test_complete_no_vcs():
         "my_package/sub_pkg1/__init__.py",
         "my_package/sub_pkg2/__init__.py",
         "my_package/sub_pkg2/data2/data.json",
+        "my-package-1.2.3.data/scripts/script.sh",
         "my_package/sub_pkg3/foo.py",
         "my_package-1.2.3.dist-info/entry_points.txt",
         "my_package-1.2.3.dist-info/LICENSE",
@@ -331,7 +358,7 @@ def test_complete_no_vcs():
         entry_points = zip.read("my_package-1.2.3.dist-info/entry_points.txt")
 
         assert (
-            decode(entry_points.decode())
+            entry_points.decode()
             == """\
 [console_scripts]
 extra-script=my_package.extra:main[time]
@@ -340,7 +367,7 @@ my-script=my_package:main
 
 """
         )
-        wheel_data = decode(zip.read("my_package-1.2.3.dist-info/WHEEL"))
+        wheel_data = zip.read("my_package-1.2.3.dist-info/WHEEL").decode()
 
         assert (
             wheel_data
@@ -353,7 +380,7 @@ Tag: py3-none-any
                 __version__
             )
         )
-        wheel_data = decode(zip.read("my_package-1.2.3.dist-info/METADATA"))
+        wheel_data = zip.read("my_package-1.2.3.dist-info/METADATA").decode()
 
         assert (
             wheel_data
@@ -376,6 +403,7 @@ Classifier: Programming Language :: Python :: 3.6
 Classifier: Programming Language :: Python :: 3.7
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
 Classifier: Topic :: Software Development :: Build Tools
 Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Provides-Extra: time
