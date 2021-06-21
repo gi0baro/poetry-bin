@@ -12,6 +12,17 @@ index f8aceb2..837bb1c 100644
  .python-version
  
  *wheel-store*
+diff --git a/setup.cfg b/setup.cfg
+index 049b17e..d5d581f 100644
+--- a/setup.cfg
++++ b/setup.cfg
+@@ -1,5 +1,6 @@
+ [metadata]
+ name = virtualenv
++version = 20.4.2
+ description = Virtual Python Environment builder
+ long_description = file: README.md
+ long_description_content_type = text/markdown
 diff --git a/setup.py b/setup.py
 index cddd1d3..1b5dbe4 100644
 --- a/setup.py
@@ -416,7 +427,7 @@ index d182c6f..ee3e5bc 100644
          possible = self.options("virtualenv.seed")
          super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index 992c856..9bff6f9 100644
+index 992c856..6e638bd 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -1,9 +1,14 @@
@@ -428,7 +439,7 @@ index 992c856..9bff6f9 100644
  
 -BUNDLE_FOLDER = Path(__file__).absolute().parent
 +if __path_assets__:
-+    BUNDLE_FOLDER = __path_assets__ / "virtualenv" / "seed" / "wheels"
++    BUNDLE_FOLDER = __path_assets__ / "seed" / "wheels"
 +else:
 +    BUNDLE_FOLDER = Path(__file__).absolute().parent
 +

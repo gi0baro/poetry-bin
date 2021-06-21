@@ -5,7 +5,7 @@ from virtualenv.seed.wheels.util import Wheel
 from virtualenv.util.path import Path
 
 if __path_assets__:
-    BUNDLE_FOLDER = __path_assets__ / "virtualenv" / "seed" / "wheels"
+    BUNDLE_FOLDER = __path_assets__ / "seed" / "wheels"
 else:
     BUNDLE_FOLDER = Path(__file__).absolute().parent
 
