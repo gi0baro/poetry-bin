@@ -5,6 +5,49 @@ Release History
 
 .. towncrier release notes start
 
+v20.4.7 (2021-05-24)
+--------------------
+
+Bugfixes - 20.4.7
+~~~~~~~~~~~~~~~~~
+- Upgrade embedded pip to ``21.1.2`` and setuptools to ``57.0.0`` - by :user:`gaborbernat`. (`#2123 <https://github.com/pypa/virtualenv/issues/2123>`_)
+
+
+v20.4.6 (2021-05-05)
+--------------------
+
+Bugfixes - 20.4.6
+~~~~~~~~~~~~~~~~~
+- Fix ``site.getsitepackages()`` broken on python2 on debian - by :user:`freundTech`. (`#2105 <https://github.com/pypa/virtualenv/issues/2105>`_)
+
+
+v20.4.5 (2021-05-05)
+--------------------
+
+Bugfixes - 20.4.5
+~~~~~~~~~~~~~~~~~
+- Bump pip to ``21.1.1`` from ``21.0.1`` - by :user:`gaborbernat`. (`#2104 <https://github.com/pypa/virtualenv/issues/2104>`_)
+- Fix ``site.getsitepackages()`` ignoring ``--system-site-packages`` on python2 - by :user:`freundTech`. (`#2106 <https://github.com/pypa/virtualenv/issues/2106>`_)
+
+
+v20.4.4 (2021-04-20)
+--------------------
+
+Bugfixes - 20.4.4
+~~~~~~~~~~~~~~~~~
+- Built in discovery class is always preferred over plugin supplied classes. (`#2087 <https://github.com/pypa/virtualenv/issues/2087>`_)
+- Upgrade embeded setuptools to ``56.0.0`` by :user:`gaborbernat`. (`#2094 <https://github.com/pypa/virtualenv/issues/2094>`_)
+
+
+v20.4.3 (2021-03-16)
+--------------------
+
+Bugfixes - 20.4.3
+~~~~~~~~~~~~~~~~~
+- Bump embeded setuptools from ``52.0.0`` to ``54.1.2`` - by :user:`gaborbernat` (`#2069 <https://github.com/pypa/virtualenv/issues/2069>`_)
+- Fix PyPy3 stdlib on Windows is incorrect - by :user:`gaborbernat`. (`#2071 <https://github.com/pypa/virtualenv/issues/2071>`_)
+
+
 v20.4.2 (2021-02-01)
 --------------------
 

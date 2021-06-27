@@ -15,14 +15,14 @@ jobs:
 
   test:
     name: test ${{ matrix.py }} - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os:
-          - ubuntu
-          - windows
-          - macos
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
         py:
           - 3.9
           - 3.8
@@ -33,8 +33,8 @@ jobs:
           - 2.7
           - pypy2
         include:
-          - { os: macos, py: brew@py3 }
-          - { os: ubuntu, py: 3.4.10 }
+          - { os: macos-latest, py: brew@py3 }
+          - { os: "ubuntu-18.04", py: 3.4.10 }
     steps:
       - name: Install OS dependencies
         run: |
@@ -42,7 +42,6 @@ jobs:
             echo "try $i" && \
             ${{ runner.os == 'Linux' && 'sudo apt-get update -y && sudo apt-get install fish csh' || true}} && \
             ${{ runner.os == 'macOS' && 'brew install fish tcsh' || true}} && \
-            ${{ runner.os == 'Windows' && ( matrix.py == '2.7' || matrix.py == 'pypy2' ) && 'choco install vcpython27 --yes -f' || true }} && \
             exit 0 || true;
           done
           exit 1
@@ -101,13 +100,13 @@ jobs:
 
   check:
     name: ${{ matrix.tox_env }} - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os:
-          - ubuntu
-          - windows
+          - ubuntu-latest
+          - windows-latest
         tox_env:
           - dev
           - docs
@@ -115,8 +114,8 @@ jobs:
           - upgrade
           - zipapp
         exclude:
-          - { os: windows, tox_env: readme }
-          - { os: windows, tox_env: docs }
+          - { os: windows-latest, tox_env: readme }
+          - { os: windows-latest, tox_env: docs }
     steps:
       - uses: actions/checkout@v2
         with:

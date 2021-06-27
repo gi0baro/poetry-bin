@@ -1,11 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 
+import ast
 import difflib
 import gc
 import json
 import logging
 import os
 import shutil
+import site
 import stat
 import subprocess
 import sys
@@ -621,3 +623,62 @@ def test_pth_in_site_vs_PYTHONPATH(tmp_path):
         env=env,
     )
     assert out == "ok\n"
+
+
+def test_getsitepackages_system_site(tmp_path):
+    # Test without --system-site-packages
+    session = cli_run([ensure_text(str(tmp_path))])
+
+    system_site_packages = get_expected_system_site_packages(session)
+
+    out = subprocess.check_output(
+        [str(session.creator.exe), "-c", r"import site; print(site.getsitepackages())"],
+        universal_newlines=True,
+    )
+    site_packages = ast.literal_eval(out)
+
+    for system_site_package in system_site_packages:
+        assert system_site_package not in site_packages
+
+    # Test with --system-site-packages
+    session = cli_run([ensure_text(str(tmp_path)), "--system-site-packages"])
+
+    system_site_packages = get_expected_system_site_packages(session)
+
+    out = subprocess.check_output(
+        [str(session.creator.exe), "-c", r"import site; print(site.getsitepackages())"],
+        universal_newlines=True,
+    )
+    site_packages = ast.literal_eval(out)
+
+    for system_site_package in system_site_packages:
+        assert system_site_package in site_packages
+
+
+def get_expected_system_site_packages(session):
+    base_prefix = session.creator.pyenv_cfg["base-prefix"]
+    base_exec_prefix = session.creator.pyenv_cfg["base-exec-prefix"]
+    old_prefixes = site.PREFIXES
+    site.PREFIXES = [base_prefix, base_exec_prefix]
+    system_site_packages = site.getsitepackages()
+    site.PREFIXES = old_prefixes
+
+    return system_site_packages
+
+
+def test_get_site_packages(tmp_path):
+    case_sensitive = fs_is_case_sensitive()
+    session = cli_run([ensure_text(str(tmp_path))])
+    env_site_packages = [str(session.creator.purelib), str(session.creator.platlib)]
+    out = subprocess.check_output(
+        [str(session.creator.exe), "-c", r"import site; print(site.getsitepackages())"],
+        universal_newlines=True,
+    )
+    site_packages = ast.literal_eval(out)
+
+    if not case_sensitive:
+        env_site_packages = [x.lower() for x in env_site_packages]
+        site_packages = [x.lower() for x in site_packages]
+
+    for env_site_package in env_site_packages:
+        assert env_site_package in site_packages

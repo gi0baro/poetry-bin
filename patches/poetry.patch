@@ -126,7 +126,7 @@ index 937f9b30..40e41514 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 681027ac..bd3ffb6c 100644
+index d6875245..b8fa5191 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -28,6 +28,8 @@ from packaging.tags import interpreter_name
@@ -163,28 +163,7 @@ index 681027ac..bd3ffb6c 100644
  
          venv_path = self._poetry.config.get("virtualenvs.path")
          if venv_path is None:
-@@ -470,9 +481,10 @@ class EnvManager(object):
-                     return VirtualEnv(venv)
- 
-             create_venv = self._poetry.config.get("virtualenvs.create", True)
-+            pydef_executable, pydef_minor, pydef_patch = InterpreterLookup.find()
- 
-             if not create_venv:
--                return SystemEnv(Path(sys.prefix))
-+                return SystemEnv(pydef_executable)
- 
-             venv_path = self._poetry.config.get("virtualenvs.path")
-             if venv_path is None:
-@@ -485,7 +497,7 @@ class EnvManager(object):
-             venv = venv_path / name
- 
-             if not venv.exists():
--                return SystemEnv(Path(sys.prefix))
-+                return SystemEnv(pydef_executable) if pydef_executable else NullEnv()
- 
-             return VirtualEnv(venv)
- 
-@@ -647,8 +659,7 @@ class EnvManager(object):
+@@ -647,8 +658,7 @@ class EnvManager(object):
          if not name:
              name = self._poetry.package.name
  
@@ -194,7 +173,7 @@ index 681027ac..bd3ffb6c 100644
          if executable:
              python_patch = decode(
                  subprocess.check_output(
-@@ -665,7 +676,10 @@ class EnvManager(object):
+@@ -665,7 +675,10 @@ class EnvManager(object):
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -206,7 +185,7 @@ index 681027ac..bd3ffb6c 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -677,60 +691,7 @@ class EnvManager(object):
+@@ -677,60 +690,7 @@ class EnvManager(object):
                      self._poetry.package.python_versions, python_patch
                  )
  
@@ -268,7 +247,7 @@ index 681027ac..bd3ffb6c 100644
  
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -753,13 +714,21 @@ class EnvManager(object):
+@@ -753,13 +713,21 @@ class EnvManager(object):
                      "</>"
                  )
  
@@ -291,7 +270,7 @@ index 681027ac..bd3ffb6c 100644
          else:
              if force:
                  if not env.is_sane():
-@@ -776,22 +745,6 @@ class EnvManager(object):
+@@ -776,22 +744,6 @@ class EnvManager(object):
              elif io.is_very_verbose():
                  io.write_line("Virtualenv <c1>{}</> already exists.".format(name))
  
@@ -309,12 +288,12 @@ index 681027ac..bd3ffb6c 100644
 -        p_venv = os.path.normcase(str(venv))
 -        if any(p.startswith(p_venv) for p in paths):
 -            # Running properly in the virtualenv, don't need to do anything
--            return SystemEnv(Path(sys.prefix), self.get_base_prefix())
+-            return SystemEnv(Path(sys.prefix), Path(self.get_base_prefix()))
 -
          return VirtualEnv(venv)
  
      @classmethod
-@@ -805,7 +758,7 @@ class EnvManager(object):
+@@ -805,7 +757,7 @@ class EnvManager(object):
                  "--no-download",
                  "--no-periodic-update",
                  "--python",
@@ -323,7 +302,31 @@ index 681027ac..bd3ffb6c 100644
                  str(path),
              ]
          )
-@@ -1138,96 +1091,56 @@ class SystemEnv(Env):
+@@ -845,8 +797,12 @@ class EnvManager(object):
+         want to retrieve Poetry's custom virtual environment
+         (e.g. plugin installation or self update).
+         """
+-        prefix, base_prefix = Path(sys.prefix), Path(cls.get_base_prefix())
+-        if naive is False:
++        pydef_executable, _, _ = InterpreterLookup.find()
++        prefix, base_prefix = (
++            Path(pydef_executable) if pydef_executable else None,
++            Path(cls.get_base_prefix())
++        )
++        if naive is False and prefix:
+             from poetry.locations import data_dir
+ 
+             try:
+@@ -856,7 +812,7 @@ class EnvManager(object):
+             else:
+                 prefix = base_prefix
+ 
+-        return SystemEnv(prefix)
++        return SystemEnv(prefix) if prefix else NullEnv()
+ 
+     @classmethod
+     def get_base_prefix(cls):  # type: () -> str
+@@ -1164,96 +1120,56 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -456,7 +459,7 @@ index 681027ac..bd3ffb6c 100644
          return self._path != self._base
  
  
-@@ -1266,31 +1179,14 @@ class VirtualEnv(Env):
+@@ -1292,31 +1208,14 @@ class VirtualEnv(Env):
          return [self._bin("pip")]
  
      def get_supported_tags(self):  # type: () -> List[Tag]
@@ -492,7 +495,7 @@ index 681027ac..bd3ffb6c 100644
          output = self.run("python", "-", input_=script)
  
          return [Tag(*t) for t in json.loads(output)]
-@@ -1366,11 +1262,98 @@ class NullEnv(SystemEnv):
+@@ -1392,11 +1291,98 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -592,7 +595,7 @@ index 681027ac..bd3ffb6c 100644
      def get_pip_command(self):  # type: () -> List[str]
          return [self._bin("python"), "-m", "pip"]
  
-@@ -1416,6 +1399,10 @@ class MockEnv(NullEnv):
+@@ -1442,6 +1428,10 @@ class MockEnv(NullEnv):
          self._mock_marker_env = marker_env
          self._supported_tags = supported_tags
  
@@ -603,7 +606,7 @@ index 681027ac..bd3ffb6c 100644
      @property
      def platform(self):  # type: () -> str
          return self._platform
-@@ -1454,3 +1441,70 @@ class MockEnv(NullEnv):
+@@ -1480,3 +1470,70 @@ class MockEnv(NullEnv):
  
      def is_venv(self):  # type: () -> bool
          return self._is_venv
@@ -675,7 +678,7 @@ index 681027ac..bd3ffb6c 100644
 +
 +        return executable, minor, patch
 diff --git a/pyproject.toml b/pyproject.toml
-index 34f02afe..652fc702 100644
+index 312ecee0..a43f25f2 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -24,7 +24,6 @@ classifiers = [
@@ -778,10 +781,10 @@ LE~wAj04M+eXZ{jT
 
 diff --git a/tests/console/commands/self/test_update.py b/tests/console/commands/self/test_update.py
 deleted file mode 100644
-index 6e094111..00000000
+index 5b86d446..00000000
 --- a/tests/console/commands/self/test_update.py
 +++ /dev/null
-@@ -1,91 +0,0 @@
+@@ -1,159 +0,0 @@
 -import os
 -
 -import pytest
@@ -789,8 +792,13 @@ index 6e094111..00000000
 -from poetry.__version__ import __version__
 -from poetry.core.packages.package import Package
 -from poetry.core.semver.version import Version
+-from poetry.factory import Factory
+-from poetry.repositories.installed_repository import InstalledRepository
+-from poetry.repositories.pool import Pool
+-from poetry.repositories.repository import Repository
 -from poetry.utils._compat import WINDOWS
 -from poetry.utils._compat import Path
+-from poetry.utils.env import EnvManager
 -
 -
 -FIXTURES = Path(__file__).parent.joinpath("fixtures")
@@ -809,10 +817,13 @@ index 6e094111..00000000
 -    command = tester._command
 -
 -    version = Version.parse(__version__).next_minor.text
--    mocker.patch(
--        "poetry.repositories.pypi_repository.PyPiRepository.find_packages",
--        return_value=[Package("poetry", version)],
--    )
+-    repository = Repository()
+-    repository.add_package(Package("poetry", version))
+-
+-    pool = Pool()
+-    pool.add_repository(repository)
+-
+-    command._pool = pool
 -    mocker.patch.object(command, "_check_recommended_installation", return_value=None)
 -    mocker.patch.object(
 -        command, "_get_release_name", return_value="poetry-{}-darwin".format(version)
@@ -873,6 +884,66 @@ index 6e094111..00000000
 -
 -    assert lib.exists()
 -    assert lib.joinpath("poetry").exists()
+-
+-
+-def test_self_update_can_update_from_recommended_installation(
+-    tester, http, mocker, environ, tmp_venv
+-):
+-    mocker.patch.object(EnvManager, "get_system_env", return_value=tmp_venv)
+-    target_script = tmp_venv.path.parent.joinpath("venv/bin/poetry")
+-    if WINDOWS:
+-        target_script = tmp_venv.path.parent.joinpath("venv/Scripts/poetry.exe")
+-
+-    target_script.parent.mkdir(parents=True, exist_ok=True)
+-    target_script.touch()
+-
+-    command = tester._command
+-    command._data_dir = tmp_venv.path.parent
+-
+-    new_version = Version.parse(__version__).next_minor.text
+-
+-    old_poetry = Package("poetry", __version__)
+-    old_poetry.add_dependency(Factory.create_dependency("cleo", "^0.8.2"))
+-
+-    new_poetry = Package("poetry", new_version)
+-    new_poetry.add_dependency(Factory.create_dependency("cleo", "^1.0.0"))
+-
+-    installed_repository = Repository()
+-    installed_repository.add_package(old_poetry)
+-    installed_repository.add_package(Package("cleo", "0.8.2"))
+-
+-    repository = Repository()
+-    repository.add_package(new_poetry)
+-    repository.add_package(Package("cleo", "1.0.0"))
+-
+-    pool = Pool()
+-    pool.add_repository(repository)
+-
+-    command._pool = pool
+-
+-    mocker.patch.object(InstalledRepository, "load", return_value=installed_repository)
+-
+-    tester.execute()
+-
+-    expected_output = """\
+-Updating Poetry to {}
+-
+-Updating dependencies
+-Resolving dependencies...
+-
+-Package operations: 0 installs, 2 updates, 0 removals
+-
+-  - Updating cleo (0.8.2 -> 1.0.0)
+-  - Updating poetry ({} -> {})
+-
+-Updating the poetry script
+-
+-Poetry (1.2.0) is installed now. Great!
+-""".format(
+-        new_version, __version__, new_version
+-    )
+-
+-    assert tester.io.fetch_output() == expected_output
 diff --git a/tests/console/commands/test_config.py b/tests/console/commands/test_config.py
 index fa0bea4a..df86d165 100644
 --- a/tests/console/commands/test_config.py

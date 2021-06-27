@@ -481,10 +481,9 @@ class EnvManager(object):
                     return VirtualEnv(venv)
 
             create_venv = self._poetry.config.get("virtualenvs.create", True)
-            pydef_executable, pydef_minor, pydef_patch = InterpreterLookup.find()
 
             if not create_venv:
-                return SystemEnv(pydef_executable)
+                return self.get_system_env()
 
             venv_path = self._poetry.config.get("virtualenvs.path")
             if venv_path is None:
@@ -497,7 +496,7 @@ class EnvManager(object):
             venv = venv_path / name
 
             if not venv.exists():
-                return SystemEnv(pydef_executable) if pydef_executable else NullEnv()
+                return self.get_system_env()
 
             return VirtualEnv(venv)
 
@@ -786,7 +785,37 @@ class EnvManager(object):
             elif file_path.is_dir():
                 shutil.rmtree(str(file_path))
 
-    def get_base_prefix(self):  # type: () -> Path
+    @classmethod
+    def get_system_env(cls, naive=False):  # type: (bool) -> "SystemEnv"
+        """
+        Retrieve the current Python environment.
+        This can be the base Python environment or an activated virtual environment.
+        This method also works around the issue that the virtual environment
+        used by Poetry internally (when installed via the custom installer)
+        is incorrectly detected as the system environment. Note that this workaround
+        happens only when `naive` is False since there are times where we actually
+        want to retrieve Poetry's custom virtual environment
+        (e.g. plugin installation or self update).
+        """
+        pydef_executable, _, _ = InterpreterLookup.find()
+        prefix, base_prefix = (
+            Path(pydef_executable) if pydef_executable else None,
+            Path(cls.get_base_prefix())
+        )
+        if naive is False and prefix:
+            from poetry.locations import data_dir
+
+            try:
+                prefix.relative_to(data_dir())
+            except ValueError:
+                pass
+            else:
+                prefix = base_prefix
+
+        return SystemEnv(prefix) if prefix else NullEnv()
+
+    @classmethod
+    def get_base_prefix(cls):  # type: () -> str
         if hasattr(sys, "real_prefix"):
             return sys.real_prefix
 
@@ -946,7 +975,7 @@ class Env(object):
         return self._supported_tags
 
     @classmethod
-    def get_base_prefix(cls):  # type: () -> Path
+    def get_base_prefix(cls):  # type: () -> str
         if hasattr(sys, "real_prefix"):
             return sys.real_prefix
 
