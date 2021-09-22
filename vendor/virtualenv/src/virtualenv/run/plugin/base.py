@@ -1,12 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 
-import sys
 from collections import OrderedDict
 
-if sys.version_info >= (3, 8):
-    from importlib.metadata import entry_points
-else:
-    from importlib_metadata import entry_points
+from importlib.metadata import entry_points
 
 
 class PluginLoader(object):

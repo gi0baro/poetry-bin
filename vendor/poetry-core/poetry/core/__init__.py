@@ -2,7 +2,7 @@ import sys
 
 from pathlib import Path
 
-__version__ = "1.0.3"
+__version__ = "1.0.6"
 
 if getattr(sys, "oxidized", False):
     parents = 2 if sys.platform.startswith("win") else 3

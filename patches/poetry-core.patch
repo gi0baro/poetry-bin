@@ -1,5 +1,5 @@
 diff --git a/poetry/core/__init__.py b/poetry/core/__init__.py
-index a06869c..f312696 100644
+index 1c56044..1cac7d3 100644
 --- a/poetry/core/__init__.py
 +++ b/poetry/core/__init__.py
 @@ -1,15 +1,14 @@
@@ -13,7 +13,7 @@ index a06869c..f312696 100644
 -    from pathlib2 import Path
 +from pathlib import Path
  
- __version__ = "1.0.3"
+ __version__ = "1.0.6"
  
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 -
@@ -127,7 +127,7 @@ index 62d0349..02ca001 100644
  from .legacy_version import LegacyVersion
  from .version import Version
 diff --git a/poetry/core/version/markers.py b/poetry/core/version/markers.py
-index 894e1dc..99ede17 100644
+index ac6c2b6..4454d1f 100644
 --- a/poetry/core/version/markers.py
 +++ b/poetry/core/version/markers.py
 @@ -1,6 +1,7 @@

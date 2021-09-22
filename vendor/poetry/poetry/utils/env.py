@@ -110,7 +110,7 @@ env = {
     "platform_version": platform.version(),
     "python_full_version": platform.python_version(),
     "platform_python_implementation": platform.python_implementation(),
-    "python_version": platform.python_version()[:3],
+    "python_version": ".".join(platform.python_version_tuple()[:2]),
     "sys_platform": sys.platform,
     "version_info": tuple(sys.version_info),
     # Extra information
@@ -151,6 +151,38 @@ import json
 import sysconfig
 
 print(json.dumps(sysconfig.get_paths()))
+"""
+
+GET_PATHS_FOR_GENERIC_ENVS = """\
+# We can't use sysconfig.get_paths() because
+# on some distributions it does not return the proper paths
+# (those used by pip for instance). We go through distutils
+# to get the proper ones.
+import json
+import site
+import sysconfig
+
+from distutils.command.install import SCHEME_KEYS  # noqa
+from distutils.core import Distribution
+
+d = Distribution()
+d.parse_config_files()
+obj = d.get_command_obj("install", create=True)
+obj.finalize_options()
+
+paths = sysconfig.get_paths().copy()
+for key in SCHEME_KEYS:
+    if key == "headers":
+        # headers is not a path returned by sysconfig.get_paths()
+        continue
+
+    paths[key] = getattr(obj, f"install_{key}")
+
+if site.check_enableusersite() and hasattr(obj, "install_usersite"):
+    paths["usersite"] = getattr(obj, "install_usersite")
+    paths["userbase"] = getattr(obj, "install_userbase")
+
+print(json.dumps(paths))
 """
 
 
@@ -626,7 +658,7 @@ class EnvManager(object):
 
         self.remove_venv(venv)
 
-        return VirtualEnv(venv)
+        return VirtualEnv(venv, venv)
 
     def create_venv(
         self, io, name=None, executable=None, force=False
@@ -713,7 +745,7 @@ class EnvManager(object):
                     "</>"
                 )
 
-                return SystemEnv(executable)
+                return self.get_system_env()
 
             io.write_line(
                 "Creating virtualenv <c1>{}</> in {}".format(name, str(venv_path))
@@ -786,7 +818,9 @@ class EnvManager(object):
                 shutil.rmtree(str(file_path))
 
     @classmethod
-    def get_system_env(cls, naive=False):  # type: (bool) -> "SystemEnv"
+    def get_system_env(
+        cls, naive=False
+    ):  # type: (bool) -> Union["SystemEnv", "GenericEnv"]
         """
         Retrieve the current Python environment.
         This can be the base Python environment or an activated virtual environment.
@@ -802,17 +836,21 @@ class EnvManager(object):
             Path(pydef_executable) if pydef_executable else None,
             Path(cls.get_base_prefix())
         )
-        if naive is False and prefix:
-            from poetry.locations import data_dir
-
-            try:
-                prefix.relative_to(data_dir())
-            except ValueError:
-                pass
+        env = SystemEnv(prefix) if prefix else NullEnv()
+        if not naive and prefix:
+            if prefix.joinpath("poetry_env").exists():
+                env = GenericEnv(base_prefix, child_env=env)
             else:
-                prefix = base_prefix
+                from poetry.locations import data_dir
 
-        return SystemEnv(prefix) if prefix else NullEnv()
+                try:
+                    prefix.relative_to(data_dir())
+                except ValueError:
+                    pass
+                else:
+                    env = GenericEnv(base_prefix, child_env=env)
+
+        return env
 
     @classmethod
     def get_base_prefix(cls):  # type: () -> str
@@ -848,6 +886,11 @@ class Env(object):
 
         self._base = base or path
 
+        self._executable = "python"
+        self._pip_executable = "pip"
+
+        self.find_executables()
+
         self._marker_env = None
         self._pip_version = None
         self._site_packages = None
@@ -878,7 +921,7 @@ class Env(object):
         """
         Path to current python executable
         """
-        return self._bin("python")
+        return self._bin(self._executable)
 
     @property
     def marker_env(self):
@@ -888,11 +931,15 @@ class Env(object):
         return self._marker_env
 
     @property
+    def parent_env(self):  # type: () -> GenericEnv
+        return GenericEnv(self.base, child_env=self)
+
+    @property
     def pip(self):  # type: () -> str
         """
         Path to current pip executable
         """
-        return self._bin("pip")
+        return self._bin(self._pip_executable)
 
     @property
     def platform(self):  # type: () -> str
@@ -984,6 +1031,35 @@ class Env(object):
 
         return sys.prefix
 
+    def find_executables(self):  # type: () -> None
+        python_executables = sorted(
+            [
+                p.name
+                for p in self._bin_dir.glob("python*")
+                if re.match(r"python(?:\d+(?:\.\d+)?)?(?:\.exe)?$", p.name)
+            ]
+        )
+        if python_executables:
+            executable = python_executables[0]
+            if executable.endswith(".exe"):
+                executable = executable[:-4]
+
+            self._executable = executable
+
+        pip_executables = sorted(
+            [
+                p.name
+                for p in self._bin_dir.glob("pip*")
+                if re.match(r"pip(?:\d+(?:\.\d+)?)?(?:\.exe)?$", p.name)
+            ]
+        )
+        if pip_executables:
+            pip_executable = pip_executables[0]
+            if pip_executable.endswith(".exe"):
+                pip_executable = pip_executable[:-4]
+
+            self._pip_executable = pip_executable
+
     def get_version_info(self):  # type: () -> Tuple[int]
         raise NotImplementedError()
 
@@ -1018,6 +1094,9 @@ class Env(object):
         bin = self._bin(bin)
         cmd = [bin] + list(args)
         return self._run(cmd, **kwargs)
+
+    def run_python(self, *args, **kwargs):
+        return self.run(self._executable, *args, **kwargs)
 
     def run_pip(self, *args, **kwargs):
         pip = self.get_pip_command()
@@ -1089,7 +1168,11 @@ class Env(object):
         """
         Return path to the given executable.
         """
-        bin_path = (self._bin_dir / bin).with_suffix(".exe" if self._is_windows else "")
+        if self._is_windows and not bin.endswith(".exe"):
+            bin_path = self._bin_dir / (bin + ".exe")
+        else:
+            bin_path = self._bin_dir / bin
+
         if not bin_path.exists():
             # On Windows, some executables can be in the base path
             # This is especially true when installing Python with
@@ -1100,7 +1183,11 @@ class Env(object):
             # that creates a fake virtual environment pointing to
             # a base Python install.
             if self._is_windows:
-                bin_path = (self._path / bin).with_suffix(".exe")
+                if not bin.endswith(".exe"):
+                    bin_path = self._bin_dir / (bin + ".exe")
+                else:
+                    bin_path = self._path / bin
+
                 if bin_path.exists():
                     return str(bin_path)
 
@@ -1186,16 +1273,18 @@ class VirtualEnv(Env):
         # In this case we need to get sys.base_prefix
         # from inside the virtualenv.
         if base is None:
-            self._base = Path(self.run("python", "-", input_=GET_BASE_PREFIX).strip())
+            self._base = Path(
+                self.run(self._executable, "-", input_=GET_BASE_PREFIX).strip()
+            )
 
     @property
     def sys_path(self):  # type: () -> List[str]
-        output = self.run("python", "-", input_=GET_SYS_PATH)
+        output = self.run(self._executable, "-", input_=GET_SYS_PATH)
 
         return json.loads(output)
 
     def get_version_info(self):  # type: () -> Tuple[int]
-        output = self.run("python", "-", input_=GET_PYTHON_VERSION)
+        output = self.run(self._executable, "-", input_=GET_PYTHON_VERSION)
 
         return tuple([int(s) for s in output.strip().split(".")])
 
@@ -1205,7 +1294,7 @@ class VirtualEnv(Env):
     def get_pip_command(self):  # type: () -> List[str]
         # We're in a virtualenv that is known to be sane,
         # so assume that we have a functional pip
-        return [self._bin("pip")]
+        return [self._bin(self._pip_executable)]
 
     def get_supported_tags(self):  # type: () -> List[Tag]
         if __path_assets__:
@@ -1216,12 +1305,12 @@ class VirtualEnv(Env):
         with file_path.open(encoding="utf-8") as f:
             script = decode(f.read())
 
-        output = self.run("python", "-", input_=script)
+        output = self.run(self._executable, "-", input_=script)
 
         return [Tag(*t) for t in json.loads(output)]
 
     def get_marker_env(self):  # type: () -> Dict[str, Any]
-        output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
+        output = self.run(self._executable, "-", input_=GET_ENVIRONMENT_INFO)
 
         return json.loads(output)
 
@@ -1234,7 +1323,7 @@ class VirtualEnv(Env):
         return Version.parse(m.group(1))
 
     def get_paths(self):  # type: () -> Dict[str, str]
-        output = self.run("python", "-", input_=GET_PATHS)
+        output = self.run(self._executable, "-", input_=GET_PATHS)
 
         return json.loads(output)
 
@@ -1284,6 +1373,86 @@ class VirtualEnv(Env):
 
     def _updated_path(self):
         return os.pathsep.join([str(self._bin_dir), os.environ.get("PATH", "")])
+
+
+class GenericEnv(VirtualEnv):
+    def __init__(
+        self, path, base=None, child_env=None
+    ):  # type: (Path, Optional[Path], Optional[Env]) -> None
+        self._child_env = child_env
+
+        super(GenericEnv, self).__init__(path, base=base)
+
+    def find_executables(self):  # type: () -> None
+        patterns = [("python*", "pip*")]
+
+        if self._child_env:
+            minor_version = "{}.{}".format(
+                self._child_env.version_info[0], self._child_env.version_info[1]
+            )
+            major_version = "{}".format(self._child_env.version_info[0])
+            patterns = [
+                ("python{}".format(minor_version), "pip{}".format(minor_version)),
+                ("python{}".format(major_version), "pip{}".format(major_version)),
+            ]
+
+        python_executable = None
+        pip_executable = None
+
+        for python_pattern, pip_pattern in patterns:
+            if python_executable and pip_executable:
+                break
+
+            if not python_executable:
+                python_executables = sorted(
+                    [
+                        p.name
+                        for p in self._bin_dir.glob(python_pattern)
+                        if re.match(r"python(?:\d+(?:\.\d+)?)?(?:\.exe)?$", p.name)
+                    ]
+                )
+
+                if python_executables:
+                    executable = python_executables[0]
+                    if executable.endswith(".exe"):
+                        executable = executable[:-4]
+
+                    python_executable = executable
+
+            if not pip_executable:
+                pip_executables = sorted(
+                    [
+                        p.name
+                        for p in self._bin_dir.glob(pip_pattern)
+                        if re.match(r"pip(?:\d+(?:\.\d+)?)?(?:\.exe)?$", p.name)
+                    ]
+                )
+                if pip_executables:
+                    pip_executable = pip_executables[0]
+                    if pip_executable.endswith(".exe"):
+                        pip_executable = pip_executable[:-4]
+
+                    pip_executable = pip_executable
+
+            if python_executable:
+                self._executable = python_executable
+
+            if pip_executable:
+                self._pip_executable = pip_executable
+
+    def get_paths(self):  # type: () -> Dict[str, str]
+        output = self.run(self._executable, "-", input_=GET_PATHS_FOR_GENERIC_ENVS)
+
+        return json.loads(output)
+
+    def execute(self, bin, *args, **kwargs):  # type: (str, str, Any) -> Optional[int]
+        return super(VirtualEnv, self).execute(bin, *args, **kwargs)
+
+    def _run(self, cmd, **kwargs):  # type: (List[str], Any) -> Optional[int]
+        return super(VirtualEnv, self)._run(cmd, **kwargs)
+
+    def is_venv(self):  # type: () -> bool
+        return self._path != self._base
 
 
 class NullEnv(SystemEnv):

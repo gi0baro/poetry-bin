@@ -6,6 +6,8 @@ from collections import namedtuple
 from typing import Any
 from typing import Optional
 
+from poetry.core.utils._compat import PY36
+from poetry.core.utils._compat import WINDOWS
 from poetry.core.utils._compat import Path
 from poetry.core.utils._compat import decode
 
@@ -92,6 +94,11 @@ PATTERNS = [
 ]
 
 
+class GitError(RuntimeError):
+
+    pass
+
+
 class ParsedUrl:
     def __init__(
         self,
@@ -149,6 +156,47 @@ class ParsedUrl:
 GitUrl = namedtuple("GitUrl", ["url", "revision"])
 
 
+_executable = None
+
+
+def executable():
+    global _executable
+
+    if _executable is not None:
+        return _executable
+
+    if WINDOWS and PY36:
+        # Finding git via where.exe
+        where = "%WINDIR%\\System32\\where.exe"
+        paths = decode(
+            subprocess.check_output([where, "git"], shell=True, encoding="oem")
+        ).split("\n")
+        for path in paths:
+            if not path:
+                continue
+
+            path = Path(path.strip())
+            try:
+                path.relative_to(Path.cwd())
+            except ValueError:
+                _executable = str(path)
+
+                break
+    else:
+        _executable = "git"
+
+    if _executable is None:
+        raise RuntimeError("Unable to find a valid git executable")
+
+    return _executable
+
+
+def _reset_executable():
+    global _executable
+
+    _executable = None
+
+
 class GitConfig:
     def __init__(self, requires_git_presence=False):  # type: (bool) -> None
         self._config = {}
@@ -156,7 +204,7 @@ class GitConfig:
         try:
             config_list = decode(
                 subprocess.check_output(
-                    ["git", "config", "-l"], stderr=subprocess.STDOUT
+                    [executable(), "config", "-l"], stderr=subprocess.STDOUT
                 )
             )
 
@@ -209,7 +257,9 @@ class Git:
         return self._config
 
     def clone(self, repository, dest):  # type: (str, Path) -> str
-        return self.run("clone", "--recurse-submodules", repository, str(dest))
+        self._check_parameter(repository)
+
+        return self.run("clone", "--recurse-submodules", "--", repository, str(dest))
 
     def checkout(self, rev, folder=None):  # type: (str, Optional[Path]) -> str
         args = []
@@ -223,6 +273,8 @@ class Git:
                 "--work-tree",
                 folder.as_posix(),
             ]
+
+        self._check_parameter(rev)
 
         args += ["checkout", rev]
 
@@ -240,6 +292,8 @@ class Git:
                 "--work-tree",
                 folder.as_posix(),
             ]
+
+        self._check_parameter(rev)
 
         # We need "^0" (an alternative to "^{commit}") to ensure that the
         # commit SHA of the commit the tag points to is returned, even in
@@ -299,5 +353,14 @@ class Git:
             ) + args
 
         return decode(
-            subprocess.check_output(["git"] + list(args), stderr=subprocess.STDOUT)
+            subprocess.check_output(
+                [executable()] + list(args), stderr=subprocess.STDOUT
+            )
         ).strip()
+
+    def _check_parameter(self, parameter):  # type: (str) -> None
+        """
+        Checks a git parameter to avoid unwanted code execution.
+        """
+        if parameter.strip().startswith("-"):
+            raise GitError("Invalid Git parameter: {}".format(parameter))

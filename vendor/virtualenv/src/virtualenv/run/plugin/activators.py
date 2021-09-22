@@ -19,9 +19,9 @@ class ActivationSelector(ComponentBuilder):
                 ("cshell", "cshell:CShellActivator"),
                 ("batch", "batch:BatchActivator"),
                 ("fish", "fish:FishActivator"),
+                ("nushell", "nushell:NushellActivator"),
                 ("powershell", "powershell:PowerShellActivator"),
-                ("python", "python:PythonActivator"),
-                ("xonsh", "xonsh:XonshActivator")
+                ("python", "python:PythonActivator")
             ]
         ]
     }

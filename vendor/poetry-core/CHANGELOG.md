@@ -1,5 +1,29 @@
 # Change Log
 
+## [1.0.6] - 2021-09-21
+
+### Added
+
+- Added support for more hash types gen generating hashes. ([#207](https://github.com/python-poetry/poetry-core/pull/207))
+
+
+## [1.0.5] - 2021-09-18
+
+### Fixed
+
+- Fixed the copy of `Package` instances which led to file hashes not being available. ([#193](https://github.com/python-poetry/poetry-core/pull/193))
+- Fixed an issue where unsafe parameters could be passed to `git` commands. ([#203](https://github.com/python-poetry/poetry-core/pull/203))
+- Fixed an issue where the wrong `git` executable could be used on Windows. ([#205](https://github.com/python-poetry/poetry-core/pull/205))
+
+
+## [1.0.4] - 2021-08-19
+
+### Fixed
+
+- Fixed an error in the way python markers with a precision >= 3 were handled. ([#180](https://github.com/python-poetry/poetry-core/pull/180))
+- Fixed an error in the evaluation of `in/not in` markers ([#189](https://github.com/python-poetry/poetry-core/pull/189))
+
+
 ## [1.0.3] - 2021-04-09
 
 ### Fixed
@@ -147,7 +171,10 @@ No changes.
 - Fixed support for stub-only packages ([#28](https://github.com/python-poetry/core/pull/28)).
 
 
-[Unreleased]: https://github.com/python-poetry/poetry-core/compare/1.0.3...master
+[Unreleased]: https://github.com/python-poetry/poetry-core/compare/1.0.6...1.1
+[1.0.6]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.6
+[1.0.5]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.5
+[1.0.4]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.4
 [1.0.3]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.3
 [1.0.2]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.2
 [1.0.1]: https://github.com/python-poetry/poetry-core/releases/tag/1.0.1

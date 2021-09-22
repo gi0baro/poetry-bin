@@ -29,6 +29,13 @@ patches:
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
 	@cd src/virtualenv && git diff --binary HEAD > ../../patches/virtualenv.patch
 
+apply_patches:
+	@cd src/certifi && git apply --reject --ignore-whitespace ../../patches/certifi.patch
+	@cd src/importlib_metadata && git apply --reject --ignore-whitespace ../../patches/importlib_metadata.patch
+	@cd src/poetry-core && git apply --reject --ignore-whitespace ../../patches/poetry-core.patch
+	@cd src/poetry && git apply --reject --ignore-whitespace ../../patches/poetry.patch
+	@cd src/virtualenv && git apply --reject --ignore-whitespace ../../patches/virtualenv.patch
+
 vendor: clean_vendor
 	@mkdir -p vendor
 	@cp -R src/* vendor
@@ -79,9 +86,10 @@ assets: _path_assets
 	@cp vendor/virtualenv/src/virtualenv/activation/batch/pydoc.bat ${ASSETSPATH}/virtualenv/activation/pydoc.bat
 	@cp vendor/virtualenv/src/virtualenv/activation/cshell/activate.csh ${ASSETSPATH}/virtualenv/activation/activate.csh
 	@cp vendor/virtualenv/src/virtualenv/activation/fish/activate.fish ${ASSETSPATH}/virtualenv/activation/activate.fish
+	@cp vendor/virtualenv/src/virtualenv/activation/nushell/activate.nu ${ASSETSPATH}/virtualenv/activation/activate.nu
+	@cp vendor/virtualenv/src/virtualenv/activation/nushell/deactivate.nu ${ASSETSPATH}/virtualenv/activation/deactivate.nu
 	@cp vendor/virtualenv/src/virtualenv/activation/powershell/activate.ps1 ${ASSETSPATH}/virtualenv/activation/activate.ps1
 	@cp vendor/virtualenv/src/virtualenv/activation/python/activate_this.py ${ASSETSPATH}/virtualenv/activation/activate_this.py
-	@cp vendor/virtualenv/src/virtualenv/activation/xonsh/activate.xsh ${ASSETSPATH}/virtualenv/activation/activate.xsh
 	@cp vendor/virtualenv/src/virtualenv/create/debug.py ${ASSETSPATH}/virtualenv/create/debug.py
 	@cp vendor/virtualenv/src/virtualenv/create/via_global_ref/_virtualenv.py ${ASSETSPATH}/virtualenv/create/via_global_ref/_virtualenv.py
 	@cp vendor/virtualenv/src/virtualenv/create/via_global_ref/builtin/python2/site.py ${ASSETSPATH}/virtualenv/create/via_global_ref/site.py

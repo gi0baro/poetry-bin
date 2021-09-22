@@ -5,6 +5,68 @@ Release History
 
 .. towncrier release notes start
 
+v20.8.0 (2021-09-16)
+--------------------
+
+* upgrade embedded setuptools to ``58.0.4`` from ``57.4.0`` and pip to ``21.2.4`` from ``21.2.3``
+* Add nushell activation script
+
+v20.7.2 (2021-08-10)
+--------------------
+
+Bugfixes - 20.7.2
+~~~~~~~~~~~~~~~~~
+- Upgrade embedded pip to ``21.2.3`` from ``21.2.2`` and wheel to ``0.37.0`` from ``0.36.2`` - by :user:`gaborbernat`. (`#2168 <https://github.com/pypa/virtualenv/issues/2168>`_)
+
+
+v20.7.1 (2021-08-09)
+--------------------
+
+Bugfixes - 20.7.1
+~~~~~~~~~~~~~~~~~
+- Fix unpacking dictionary items in PythonInfo.install_path (`#2165 <https://github.com/pypa/virtualenv/issues/2165>`_)
+
+
+v20.7.0 (2021-07-31)
+--------------------
+
+Bugfixes - 20.7.0
+~~~~~~~~~~~~~~~~~
+- upgrade embedded pip to ``21.2.2`` from ``21.1.3`` and setuptools to ``57.4.0`` from ``57.1.0`` - by :user:`gaborbernat` (`#2159 <https://github.com/pypa/virtualenv/issues/2159>`_)
+
+Deprecations and Removals - 20.7.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Removed ``xonsh`` activator due to this breaking fairly often the CI and lack of support from those packages
+  maintainers, upstream is encouraged to continue supporting the project as a
+  `plugin <https://github.com/xonsh/xonsh/issues/3689>`_  - by :user:`gaborbernat`. (`#2160 <https://github.com/pypa/virtualenv/issues/2160>`_)
+
+
+v20.6.0 (2021-07-14)
+--------------------
+
+Features - 20.6.0
+~~~~~~~~~~~~~~~~~
+- Support Python interpreters without ``distutils`` (fallback to ``syconfig`` in these cases) - by :user:`gaborbernat`. (`#1910 <https://github.com/pypa/virtualenv/issues/1910>`_)
+
+
+v20.5.0 (2021-07-13)
+--------------------
+
+Features - 20.5.0
+~~~~~~~~~~~~~~~~~
+- Plugins now use 'selectable' entry points - by :user:`jaraco`. (`#2093 <https://github.com/pypa/virtualenv/issues/2093>`_)
+- add libffi-7.dll to the hard-coded list of dlls for PyPy (`#2141 <https://github.com/pypa/virtualenv/issues/2141>`_)
+- Use the better maintained ``platformdirs`` instead of ``appdirs`` - by :user:`gaborbernat`. (`#2142 <https://github.com/pypa/virtualenv/issues/2142>`_)
+
+Bugfixes - 20.5.0
+~~~~~~~~~~~~~~~~~
+- Bump pip the embedded pip ``21.1.3`` and setuptools to ``57.1.0`` - by :user:`gaborbernat`. (`#2135 <https://github.com/pypa/virtualenv/issues/2135>`_)
+
+Deprecations and Removals - 20.5.0
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- Drop python ``3.4`` support as it has been over 2 years since EOL - by :user:`gaborbernat`. (`#2141 <https://github.com/pypa/virtualenv/issues/2141>`_)
+
+
 v20.4.7 (2021-05-24)
 --------------------
 
@@ -128,7 +190,7 @@ Features - 20.2.0
 ~~~~~~~~~~~~~~~~~
 - Optionally skip VCS ignore directive for entire virtualenv directory, using option :option:`no-vcs-ignore`, by default ``False``. (`#2003 <https://github.com/pypa/virtualenv/issues/2003>`_)
 - Add ``--read-only-app-data`` option to allow for creation based on an existing
-  app data cache which is non-writable.  This may be useful (for example) to
+  app data cache which is non-writable. This may be useful (for example) to
   produce a docker image where the app-data is pre-populated.
 
   .. code-block:: dockerfile
