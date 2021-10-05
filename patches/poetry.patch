@@ -1045,7 +1045,7 @@ index 9fcbbea1..7d0d98b1 100644
  
      assert expected == directory
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 369cf7c9..c6e9fc8f 100644
+index 369cf7c9..eea60119 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
 @@ -150,7 +150,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
@@ -1151,7 +1151,7 @@ index 369cf7c9..c6e9fc8f 100644
  
      mocker.patch(
 -        "poetry.utils._compat.subprocess.check_output", side_effect=["", "", "", ""]
-+        "poetry.utils._compat.subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 12)]
++        "poetry.utils._compat.subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 13)]
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""

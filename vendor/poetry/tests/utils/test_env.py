@@ -701,7 +701,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
     poetry.package.python_versions = "^4.8"
 
     mocker.patch(
-        "poetry.utils._compat.subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 12)]
+        "poetry.utils._compat.subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 13)]
     )
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
