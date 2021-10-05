@@ -126,7 +126,7 @@ index 937f9b30..40e41514 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index ac249370..8f7590e5 100644
+index b1cff78c..da3b882b 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -28,6 +28,8 @@ from packaging.tags import interpreter_name
@@ -311,7 +311,7 @@ index ac249370..8f7590e5 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1251,96 +1207,56 @@ class SystemEnv(Env):
+@@ -1254,96 +1210,56 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -444,7 +444,7 @@ index ac249370..8f7590e5 100644
          return self._path != self._base
  
  
-@@ -1381,31 +1297,14 @@ class VirtualEnv(Env):
+@@ -1382,31 +1298,14 @@ class VirtualEnv(Env):
          return [self._bin(self._pip_executable)]
  
      def get_supported_tags(self):  # type: () -> List[Tag]
@@ -477,10 +477,10 @@ index ac249370..8f7590e5 100644
 -            """
 -        )
 -
-         output = self.run(self._executable, "-", input_=script)
+         output = self.run_python_script(script)
  
          return [Tag(*t) for t in json.loads(output)]
-@@ -1561,11 +1460,98 @@ class NullEnv(SystemEnv):
+@@ -1562,11 +1461,98 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -580,7 +580,7 @@ index ac249370..8f7590e5 100644
      def get_pip_command(self):  # type: () -> List[str]
          return [self._bin("python"), "-m", "pip"]
  
-@@ -1611,6 +1597,10 @@ class MockEnv(NullEnv):
+@@ -1612,6 +1598,10 @@ class MockEnv(NullEnv):
          self._mock_marker_env = marker_env
          self._supported_tags = supported_tags
  
@@ -591,7 +591,7 @@ index ac249370..8f7590e5 100644
      @property
      def platform(self):  # type: () -> str
          return self._platform
-@@ -1649,3 +1639,70 @@ class MockEnv(NullEnv):
+@@ -1650,3 +1640,70 @@ class MockEnv(NullEnv):
  
      def is_venv(self):  # type: () -> bool
          return self._is_venv
