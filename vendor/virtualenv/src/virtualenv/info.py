@@ -14,6 +14,7 @@ IS_CPYTHON = IMPLEMENTATION == "CPython"
 PY3 = sys.version_info[0] == 3
 PY2 = sys.version_info[0] == 2
 IS_WIN = sys.platform == "win32"
+IS_MAC_ARM64 = sys.platform == "darwin" and platform.machine() == "arm64"
 ROOT = os.path.realpath(__path_pack__.parent)
 IS_ZIPAPP = False
 WIN_CPYTHON_2 = IS_CPYTHON and IS_WIN and PY2

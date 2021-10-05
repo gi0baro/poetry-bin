@@ -237,10 +237,10 @@ index 31beff5..35a0249 100644
          cmd = [exe, str(py_info_script)]
          # prevent sys.prefix from leaking into the child process - see https://bugs.python.org/issue22490
 diff --git a/src/virtualenv/info.py b/src/virtualenv/info.py
-index afe4097..6331d60 100644
+index 7d5e86d..f416921 100644
 --- a/src/virtualenv/info.py
 +++ b/src/virtualenv/info.py
-@@ -6,14 +6,16 @@ import platform
+@@ -6,6 +6,8 @@ import platform
  import sys
  import tempfile
  
@@ -249,9 +249,10 @@ index afe4097..6331d60 100644
  IMPLEMENTATION = platform.python_implementation()
  IS_PYPY = IMPLEMENTATION == "PyPy"
  IS_CPYTHON = IMPLEMENTATION == "CPython"
- PY3 = sys.version_info[0] == 3
+@@ -13,8 +15,8 @@ PY3 = sys.version_info[0] == 3
  PY2 = sys.version_info[0] == 2
  IS_WIN = sys.platform == "win32"
+ IS_MAC_ARM64 = sys.platform == "darwin" and platform.machine() == "arm64"
 -ROOT = os.path.realpath(os.path.join(os.path.abspath(__file__), os.path.pardir, os.path.pardir))
 -IS_ZIPAPP = os.path.isfile(ROOT)
 +ROOT = os.path.realpath(__path_pack__.parent)
@@ -439,7 +440,7 @@ index d182c6f..ee3e5bc 100644
          possible = self.options("virtualenv.seed")
          super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index a882d70..feaf73b 100644
+index feb8031..f399f8b 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -1,9 +1,14 @@
@@ -460,11 +461,11 @@ index a882d70..feaf73b 100644
          "pip": "pip-21.2.4-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
-index 0000000..e5cec9d
+index 0000000..e97498a
 --- /dev/null
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
-+__version__ = "20.8.0"
++__version__ = "20.8.1"
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index 59a0991..76d40c7 100644
 --- a/tests/unit/create/test_interpreters.py
