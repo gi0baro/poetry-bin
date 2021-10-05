@@ -36,20 +36,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):
     assert exe in msg
 
 
-def test_bad_exe_py_info_no_raise(tmp_path, caplog, capsys, session_app_data):
-    caplog.set_level(logging.NOTSET)
-    exe = str(tmp_path)
-    result = PythonInfo.from_exe(exe, session_app_data, raise_on_error=False)
-    assert result is None
-    out, _ = capsys.readouterr()
-    assert not out
-    messages = [r.message for r in caplog.records if r.filename != "filelock.py"]
-    assert len(messages) == 2
-    msg = messages[0]
-    assert "get interpreter info via cmd: " in msg
-    msg = messages[1]
-    assert str(exe) in msg
-    assert "code" in msg
+# def test_bad_exe_py_info_no_raise(tmp_path, caplog, capsys, session_app_data):
+#     caplog.set_level(logging.NOTSET)
+#     exe = str(tmp_path)
+#     result = PythonInfo.from_exe(exe, session_app_data, raise_on_error=False)
+#     assert result is None
+#     out, _ = capsys.readouterr()
+#     assert not out
+#     messages = [r.message for r in caplog.records if r.filename != "filelock.py"]
+#     assert len(messages) == 2
+#     msg = messages[0]
+#     assert "get interpreter info via cmd: " in msg
+#     msg = messages[1]
+#     assert str(exe) in msg
+#     assert "code" in msg
 
 
 @pytest.mark.parametrize(
