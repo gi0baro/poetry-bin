@@ -104,6 +104,7 @@ jobs:
       run: |
         pip install pyoxidizer==0.17.0
     - name: Build x86_64 release
+      shell: bash
       run: |
         make build_win
         build/x86_64-pc-windows-msvc/release/install/poetry --version
