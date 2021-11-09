@@ -1,7 +1,8 @@
 .PHONY: _path_build _path_lib _path_assets _build_posix _build_win assets pack patches sign
 
 ARCH_LINUX := x86_64-unknown-linux-gnu
-ARCH_MAC := x86_64-apple-darwin
+ARCH_MAC_INTEL := x86_64-apple-darwin
+ARCH_MAC_ARM := aarch64-apple-darwin
 ARCH_WIN := x86_64-pc-windows-msvc
 TARGET := install
 BUILD_VERSION := latest
@@ -51,7 +52,7 @@ tests:
 build_linux: ARCH := ${ARCH_LINUX}
 build_linux: _build_posix assets
 
-build_mac: ARCH := ${ARCH_MAC}
+build_mac: ARCH := ${ARCH_MAC_INTEL}
 build_mac: _build_posix assets sign
 
 build_win: ARCH := ${ARCH_WIN}
@@ -104,7 +105,7 @@ sign: _path_build _path_lib
 pack_linux: ARCH := ${ARCH_LINUX}
 pack_linux: pack
 
-pack_mac: ARCH := ${ARCH_MAC}
+pack_mac: ARCH := ${ARCH_MAC_INTEL}
 pack_mac: pack
 
 pack_win: ARCH := ${ARCH_WIN}
