@@ -13,7 +13,7 @@ index f8aceb2..837bb1c 100644
  
  *wheel-store*
 diff --git a/setup.cfg b/setup.cfg
-index f093ca4..49bf695 100644
+index 06858ad..10f34b3 100644
 --- a/setup.cfg
 +++ b/setup.cfg
 @@ -1,5 +1,6 @@
@@ -274,7 +274,7 @@ index e8e7ab1..7cbcd0a 100644
      )
  
 diff --git a/src/virtualenv/run/plugin/activators.py b/src/virtualenv/run/plugin/activators.py
-index dea2827..a92b087 100644
+index 8180981..036b2c4 100644
 --- a/src/virtualenv/run/plugin/activators.py
 +++ b/src/virtualenv/run/plugin/activators.py
 @@ -2,11 +2,30 @@ from __future__ import absolute_import, unicode_literals
@@ -440,7 +440,7 @@ index d182c6f..ee3e5bc 100644
          possible = self.options("virtualenv.seed")
          super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index feb8031..f399f8b 100644
+index fa222ed..5131ba0 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -1,9 +1,14 @@
@@ -458,14 +458,14 @@ index feb8031..f399f8b 100644
 +
  BUNDLE_SUPPORT = {
      "3.10": {
-         "pip": "pip-21.2.4-py3-none-any.whl",
+         "pip": "pip-21.3.1-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
-index 0000000..e97498a
+index 0000000..8c2231e
 --- /dev/null
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
-+__version__ = "20.8.1"
++__version__ = "20.10.0"
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index 59a0991..76d40c7 100644
 --- a/tests/unit/create/test_interpreters.py
@@ -479,10 +479,10 @@ index 59a0991..76d40c7 100644
 -    )
 +    assert repr(context.value).startswith('RuntimeError("No virtualenv implementation for')
 diff --git a/tests/unit/discovery/py_info/test_py_info.py b/tests/unit/discovery/py_info/test_py_info.py
-index 7810cfa..0137f51 100644
+index 053a6f9..3c69c60 100644
 --- a/tests/unit/discovery/py_info/test_py_info.py
 +++ b/tests/unit/discovery/py_info/test_py_info.py
-@@ -36,20 +36,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):
+@@ -37,20 +37,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):
      assert exe in msg
  
  
@@ -493,7 +493,7 @@ index 7810cfa..0137f51 100644
 -    assert result is None
 -    out, _ = capsys.readouterr()
 -    assert not out
--    messages = [r.message for r in caplog.records if r.filename != "filelock.py"]
+-    messages = [r.message for r in caplog.records if r.name != "filelock"]
 -    assert len(messages) == 2
 -    msg = messages[0]
 -    assert "get interpreter info via cmd: " in msg
@@ -507,7 +507,7 @@ index 7810cfa..0137f51 100644
 +#     assert result is None
 +#     out, _ = capsys.readouterr()
 +#     assert not out
-+#     messages = [r.message for r in caplog.records if r.filename != "filelock.py"]
++#     messages = [r.message for r in caplog.records if r.name != "filelock"]
 +#     assert len(messages) == 2
 +#     msg = messages[0]
 +#     assert "get interpreter info via cmd: " in msg

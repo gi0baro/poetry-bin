@@ -1,17 +1,10 @@
-codecov:
-  require_ci_to_pass: yes
-  wait_for_ci: yes
-
-comment: no # do not comment PR with the result
-
 coverage:
-  precision: 3
-  round: down
-  range: 80..90
   status:
-    project: no
-    patch: no
-    changes: no
+    patch:
+      default:
+        informational: true
+
+comment: false  # do not comment PR with the result
 
 ignore:
   - "src/virtualenv/create/via_global_ref/builtin/python2/site.py"
