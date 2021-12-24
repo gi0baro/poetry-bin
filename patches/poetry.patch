@@ -126,7 +126,7 @@ index 937f9b30..40e41514 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index b1cff78c..da3b882b 100644
+index b1cff78c..5aed63b3 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -28,6 +28,8 @@ from packaging.tags import interpreter_name
@@ -321,7 +321,7 @@ index b1cff78c..da3b882b 100644
 +    def __init__(self, path, base=None, auto_path=True):
 +        self._is_windows = sys.platform == "win32"
 +        if auto_path and path:
-+            path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
++            path = Path(self._run([str(path), "-"], input_=GET_BASE_PREFIX).strip())
 +        super().__init__(path, base=base)
  
      @property

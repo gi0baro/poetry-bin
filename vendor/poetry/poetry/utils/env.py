@@ -1213,7 +1213,7 @@ class SystemEnv(Env):
     def __init__(self, path, base=None, auto_path=True):
         self._is_windows = sys.platform == "win32"
         if auto_path and path:
-            path = Path(self._run([path, "-"], input_=GET_BASE_PREFIX).strip())
+            path = Path(self._run([str(path), "-"], input_=GET_BASE_PREFIX).strip())
         super().__init__(path, base=base)
 
     @property
