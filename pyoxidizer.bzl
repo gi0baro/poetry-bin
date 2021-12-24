@@ -20,7 +20,7 @@ def make_exe():
     exe.add_python_resources(exe.read_package_root("vendor/poetry-core", ["poetry"]))
     exe.add_python_resources(exe.pip_install(["./vendor/virtualenv"]))
     exe.add_python_resources(exe.pip_install(["./vendor/importlib_metadata"]))
-    exe.add_python_resources(exe.read_package_root("vendor/certifi", ["certifi"]))
+    exe.add_python_resources(exe.pip_install(["./vendor/requests"]))
 
     return exe
 

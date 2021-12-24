@@ -24,17 +24,17 @@ clean_vendor:
 	@rm -rf vendor
 
 patches:
-	@cd src/certifi && git diff --binary HEAD > ../../patches/certifi.patch
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
+	@cd src/requests && git diff --binary HEAD > ../../patches/requests.patch
 	@cd src/virtualenv && git diff --binary HEAD > ../../patches/virtualenv.patch
 
 apply_patches:
-	@cd src/certifi && git apply --reject --ignore-whitespace ../../patches/certifi.patch
 	@cd src/importlib_metadata && git apply --reject --ignore-whitespace ../../patches/importlib_metadata.patch
 	@cd src/poetry-core && git apply --reject --ignore-whitespace ../../patches/poetry-core.patch
 	@cd src/poetry && git apply --reject --ignore-whitespace ../../patches/poetry.patch
+	@cd src/requests && git apply --reject --ignore-whitespace ../../patches/requests.patch
 	@cd src/virtualenv && git apply --reject --ignore-whitespace ../../patches/virtualenv.patch
 
 vendor: clean_vendor
@@ -43,11 +43,32 @@ vendor: clean_vendor
 	@find vendor -type d -name .git | xargs rm -r
 
 tests:
-	@cd vendor/certifi && python -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest && rm -r .venv
-	@cd vendor/importlib_metadata && python -m venv .venv && .venv/bin/pip install .[testing] pyfakefs && .venv/bin/python -m unittest discover && rm -r .venv
-	@cd vendor/virtualenv && python -m venv .venv && .venv/bin/pip install .[testing] && .venv/bin/pytest && rm -r .venv
-	@cd vendor/poetry-core && python -m venv .venv && .venv/bin/pip install ../virtualenv . pep517 pytest pytest-mock && .venv/bin/pytest && rm -r .venv
-	@cd vendor/poetry && python -m venv .venv && .venv/bin/pip install ../importlib_metadata ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && .venv/bin/pytest && rm -r .venv
+	@cd vendor/importlib_metadata && \
+		python -m venv .venv && \
+		.venv/bin/pip install .[testing] pyfakefs && \
+		.venv/bin/python -m unittest discover && \
+		rm -r .venv
+	@cd vendor/requests && \
+		python -m venv .venv && \
+		.venv/bin/pip install -e .[socks] && \
+		.venv/bin/pip install -r requirements-dev.txt && \
+		.venv/bin/pytest tests && \
+		rm -r .venv
+	@cd vendor/virtualenv && \
+		python -m venv .venv && \
+		.venv/bin/pip install .[testing] && \
+		.venv/bin/pytest && \
+		rm -r .venv
+	@cd vendor/poetry-core && \
+		python -m venv .venv && \
+		.venv/bin/pip install ../requests ../virtualenv . pep517 pytest pytest-mock && \
+		.venv/bin/pytest && \
+		rm -r .venv
+	@cd vendor/poetry && \
+		python -m venv .venv && \
+		.venv/bin/pip install ../importlib_metadata ../requests ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && \
+		.venv/bin/pytest && \
+		rm -r .venv
 
 build_linux: ARCH := ${ARCH_LINUX}
 build_linux: _build_posix assets
@@ -69,7 +90,6 @@ _build_win: _path_build _path_lib clean_build
 
 assets: _path_assets
 	@mkdir -p ${ASSETSPATH}
-	@mkdir -p ${ASSETSPATH}/certifi
 	@mkdir -p ${ASSETSPATH}/core/json
 	@mkdir -p ${ASSETSPATH}/core/spdx
 	@mkdir -p ${ASSETSPATH}/core/version
@@ -77,7 +97,6 @@ assets: _path_assets
 	@mkdir -p ${ASSETSPATH}/virtualenv/create/via_global_ref
 	@mkdir -p ${ASSETSPATH}/virtualenv/discovery
 	@mkdir -p ${ASSETSPATH}/virtualenv/seed
-	@cp vendor/certifi/certifi/cacert.pem ${ASSETSPATH}/certifi/cacert.pem
 	@cp -R vendor/poetry-core/poetry/core/json/schemas ${ASSETSPATH}/core/json/schemas
 	@cp vendor/poetry-core/poetry/core/spdx/data/licenses.json ${ASSETSPATH}/core/spdx/licenses.json
 	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars
