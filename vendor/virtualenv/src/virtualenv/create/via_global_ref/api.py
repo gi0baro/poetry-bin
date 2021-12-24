@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import logging
 import os
 from abc import ABCMeta
+from importlib.resources import read_text
 
 from six import add_metaclass
 
@@ -10,7 +11,6 @@ from virtualenv.info import fs_supports_symlink
 from virtualenv.util.path import Path
 from virtualenv.util.six import ensure_text
 
-from .. import _PATH_ASSETS
 from ..creator import Creator, CreatorMeta
 
 
@@ -101,9 +101,9 @@ class ViaGlobalRefApi(Creator):
 
     def env_patch_text(self):
         """Patch the distutils package to not be derailed by its configuration files"""
-        with self.app_data.ensure_extracted(_PATH_ASSETS / "via_global_ref" / "_virtualenv.py") as resolved_path:
-            text = resolved_path.read_text()
-            return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
+        from . import __name__
+        text = read_text(__name__, "_virtualenv.py.template")
+        return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
 
     def _args(self):
         return super(ViaGlobalRefApi, self)._args() + [("global", self.enable_system_site_package)]

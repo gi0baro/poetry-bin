@@ -3,10 +3,10 @@ from __future__ import absolute_import, unicode_literals
 import abc
 import json
 import os
+from importlib.resources import read_text
 
 from six import add_metaclass
 
-from virtualenv import __path_assets__
 from virtualenv.create.describe import Python2Supports
 from virtualenv.create.via_global_ref.builtin.ref import PathRefToDest
 from virtualenv.info import IS_ZIPAPP
@@ -15,11 +15,6 @@ from virtualenv.util.six import ensure_text
 from virtualenv.util.zipapp import read as read_from_zipapp
 
 from ..via_global_self_do import ViaGlobalRefVirtualenvBuiltin
-
-if __path_assets__:
-    HERE = __path_assets__ / "create" / "via_global_ref"
-else:
-    HERE = Path(os.path.abspath(__file__)).parent
 
 
 @add_metaclass(abc.ABCMeta)
@@ -38,10 +33,7 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
         site_py = site_py_in / "site.py"
 
         custom_site = get_custom_site()
-        if IS_ZIPAPP:
-            custom_site_text = read_from_zipapp(custom_site)
-        else:
-            custom_site_text = custom_site.read_text()
+        custom_site_text = read_text(custom_site, "site.py.template")
         expected = json.dumps([os.path.relpath(ensure_text(str(i)), ensure_text(str(site_py))) for i in self.libs])
 
         custom_site_text = custom_site_text.replace("___EXPECTED_SITE_PACKAGES___", expected)
@@ -112,4 +104,5 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
 
 
 def get_custom_site():
-    return HERE / "site.py"
+    from . import __name__
+    return __name__

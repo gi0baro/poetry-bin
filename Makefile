@@ -56,8 +56,12 @@ tests:
 		rm -r .venv
 	@cd vendor/virtualenv && \
 		python -m venv .venv && \
+		mv setup.cfg setup.pack.cfg && \
+		mv setup.test.cfg setup.cfg && \
 		.venv/bin/pip install .[testing] && \
 		.venv/bin/pytest && \
+		mv setup.cfg setup.test.cfg && \
+		mv setup.pack.cfg setup.cfg && \
 		rm -r .venv
 	@cd vendor/poetry-core && \
 		python -m venv .venv && \
@@ -93,26 +97,13 @@ assets: _path_assets
 	@mkdir -p ${ASSETSPATH}/core/json
 	@mkdir -p ${ASSETSPATH}/core/spdx
 	@mkdir -p ${ASSETSPATH}/core/version
-	@mkdir -p ${ASSETSPATH}/virtualenv/activation
-	@mkdir -p ${ASSETSPATH}/virtualenv/create/via_global_ref
+	@mkdir -p ${ASSETSPATH}/virtualenv/create
 	@mkdir -p ${ASSETSPATH}/virtualenv/discovery
 	@mkdir -p ${ASSETSPATH}/virtualenv/seed
 	@cp -R vendor/poetry-core/poetry/core/json/schemas ${ASSETSPATH}/core/json/schemas
 	@cp vendor/poetry-core/poetry/core/spdx/data/licenses.json ${ASSETSPATH}/core/spdx/licenses.json
 	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars
-	@cp vendor/virtualenv/src/virtualenv/activation/bash/activate.sh ${ASSETSPATH}/virtualenv/activation/activate.sh
-	@cp vendor/virtualenv/src/virtualenv/activation/batch/activate.bat ${ASSETSPATH}/virtualenv/activation/activate.bat
-	@cp vendor/virtualenv/src/virtualenv/activation/batch/deactivate.bat ${ASSETSPATH}/virtualenv/activation/deactivate.bat
-	@cp vendor/virtualenv/src/virtualenv/activation/batch/pydoc.bat ${ASSETSPATH}/virtualenv/activation/pydoc.bat
-	@cp vendor/virtualenv/src/virtualenv/activation/cshell/activate.csh ${ASSETSPATH}/virtualenv/activation/activate.csh
-	@cp vendor/virtualenv/src/virtualenv/activation/fish/activate.fish ${ASSETSPATH}/virtualenv/activation/activate.fish
-	@cp vendor/virtualenv/src/virtualenv/activation/nushell/activate.nu ${ASSETSPATH}/virtualenv/activation/activate.nu
-	@cp vendor/virtualenv/src/virtualenv/activation/nushell/deactivate.nu ${ASSETSPATH}/virtualenv/activation/deactivate.nu
-	@cp vendor/virtualenv/src/virtualenv/activation/powershell/activate.ps1 ${ASSETSPATH}/virtualenv/activation/activate.ps1
-	@cp vendor/virtualenv/src/virtualenv/activation/python/activate_this.py ${ASSETSPATH}/virtualenv/activation/activate_this.py
 	@cp vendor/virtualenv/src/virtualenv/create/debug.py ${ASSETSPATH}/virtualenv/create/debug.py
-	@cp vendor/virtualenv/src/virtualenv/create/via_global_ref/_virtualenv.py ${ASSETSPATH}/virtualenv/create/via_global_ref/_virtualenv.py
-	@cp vendor/virtualenv/src/virtualenv/create/via_global_ref/builtin/python2/site.py ${ASSETSPATH}/virtualenv/create/via_global_ref/site.py
 	@cp vendor/virtualenv/src/virtualenv/discovery/py_info.py ${ASSETSPATH}/virtualenv/discovery/py_info.py
 	@cp -R vendor/virtualenv/src/virtualenv/seed/wheels/embed ${ASSETSPATH}/virtualenv/seed/wheels
 	@cp static/packaging_tags.py ${ASSETSPATH}/packaging_tags.py
