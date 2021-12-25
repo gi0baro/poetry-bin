@@ -11,6 +11,8 @@ if getattr(sys, "oxidized", False):
 else:
     __path_assets__ = None
 
+from . import __patches__
+
 from .run import cli_run, session_via_cli
 from .version import __version__
 

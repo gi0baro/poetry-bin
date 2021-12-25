@@ -6,9 +6,12 @@ ARCH_MAC_ARM := aarch64-apple-darwin
 ARCH_WIN := x86_64-pc-windows-msvc
 TARGET := install
 BUILD_VERSION := latest
+BIN_SUFFIX := ""
 
 _path_build:
 	$(eval BUILDPATH := build/${ARCH}/release/${TARGET})
+_path_bin:
+	$(eval BINPATH := ${BUILDPATH}${BIN_SUFFIX})
 _path_lib: _path_build
 	$(eval LIBPATH := ${BUILDPATH}/lib)
 _path_assets: _path_build
@@ -24,17 +27,17 @@ clean_vendor:
 	@rm -rf vendor
 
 patches:
-	@cd src/certifi && git diff --binary HEAD > ../../patches/certifi.patch
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
+	@cd src/requests && git diff --binary HEAD > ../../patches/requests.patch
 	@cd src/virtualenv && git diff --binary HEAD > ../../patches/virtualenv.patch
 
 apply_patches:
-	@cd src/certifi && git apply --reject --ignore-whitespace ../../patches/certifi.patch
 	@cd src/importlib_metadata && git apply --reject --ignore-whitespace ../../patches/importlib_metadata.patch
 	@cd src/poetry-core && git apply --reject --ignore-whitespace ../../patches/poetry-core.patch
 	@cd src/poetry && git apply --reject --ignore-whitespace ../../patches/poetry.patch
+	@cd src/requests && git apply --reject --ignore-whitespace ../../patches/requests.patch
 	@cd src/virtualenv && git apply --reject --ignore-whitespace ../../patches/virtualenv.patch
 
 vendor: clean_vendor
@@ -43,11 +46,36 @@ vendor: clean_vendor
 	@find vendor -type d -name .git | xargs rm -r
 
 tests:
-	@cd vendor/certifi && python -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest && rm -r .venv
-	@cd vendor/importlib_metadata && python -m venv .venv && .venv/bin/pip install .[testing] pyfakefs && .venv/bin/python -m unittest discover && rm -r .venv
-	@cd vendor/virtualenv && python -m venv .venv && .venv/bin/pip install .[testing] && .venv/bin/pytest && rm -r .venv
-	@cd vendor/poetry-core && python -m venv .venv && .venv/bin/pip install ../virtualenv . pep517 pytest pytest-mock && .venv/bin/pytest && rm -r .venv
-	@cd vendor/poetry && python -m venv .venv && .venv/bin/pip install ../importlib_metadata ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && .venv/bin/pytest && rm -r .venv
+	@cd vendor/importlib_metadata && \
+		python -m venv .venv && \
+		.venv/bin/pip install .[testing] pyfakefs && \
+		.venv/bin/python -m unittest discover && \
+		rm -r .venv
+	@cd vendor/requests && \
+		python -m venv .venv && \
+		.venv/bin/pip install -e .[socks] && \
+		.venv/bin/pip install -r requirements-dev.txt && \
+		.venv/bin/pytest tests && \
+		rm -r .venv
+	@cd vendor/virtualenv && \
+		python -m venv .venv && \
+		mv setup.cfg setup.pack.cfg && \
+		mv setup.test.cfg setup.cfg && \
+		.venv/bin/pip install .[testing] && \
+		.venv/bin/pytest && \
+		mv setup.cfg setup.test.cfg && \
+		mv setup.pack.cfg setup.cfg && \
+		rm -r .venv
+	@cd vendor/poetry-core && \
+		python -m venv .venv && \
+		.venv/bin/pip install ../requests ../virtualenv . pep517 pytest pytest-mock && \
+		.venv/bin/pytest && \
+		rm -r .venv
+	@cd vendor/poetry && \
+		python -m venv .venv && \
+		.venv/bin/pip install ../importlib_metadata ../requests ../virtualenv ../poetry-core . httpretty pytest pytest-mock==1.13.0 && \
+		.venv/bin/pytest && \
+		rm -r .venv
 
 build_linux: ARCH := ${ARCH_LINUX}
 build_linux: _build_posix assets
@@ -69,34 +97,31 @@ _build_win: _path_build _path_lib clean_build
 
 assets: _path_assets
 	@mkdir -p ${ASSETSPATH}
-	@mkdir -p ${ASSETSPATH}/certifi
-	@mkdir -p ${ASSETSPATH}/core/json
-	@mkdir -p ${ASSETSPATH}/core/spdx
 	@mkdir -p ${ASSETSPATH}/core/version
-	@mkdir -p ${ASSETSPATH}/virtualenv/activation
-	@mkdir -p ${ASSETSPATH}/virtualenv/create/via_global_ref
+	@mkdir -p ${ASSETSPATH}/virtualenv/create
 	@mkdir -p ${ASSETSPATH}/virtualenv/discovery
 	@mkdir -p ${ASSETSPATH}/virtualenv/seed
-	@cp vendor/certifi/certifi/cacert.pem ${ASSETSPATH}/certifi/cacert.pem
-	@cp -R vendor/poetry-core/poetry/core/json/schemas ${ASSETSPATH}/core/json/schemas
-	@cp vendor/poetry-core/poetry/core/spdx/data/licenses.json ${ASSETSPATH}/core/spdx/licenses.json
 	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars
-	@cp vendor/virtualenv/src/virtualenv/activation/bash/activate.sh ${ASSETSPATH}/virtualenv/activation/activate.sh
-	@cp vendor/virtualenv/src/virtualenv/activation/batch/activate.bat ${ASSETSPATH}/virtualenv/activation/activate.bat
-	@cp vendor/virtualenv/src/virtualenv/activation/batch/deactivate.bat ${ASSETSPATH}/virtualenv/activation/deactivate.bat
-	@cp vendor/virtualenv/src/virtualenv/activation/batch/pydoc.bat ${ASSETSPATH}/virtualenv/activation/pydoc.bat
-	@cp vendor/virtualenv/src/virtualenv/activation/cshell/activate.csh ${ASSETSPATH}/virtualenv/activation/activate.csh
-	@cp vendor/virtualenv/src/virtualenv/activation/fish/activate.fish ${ASSETSPATH}/virtualenv/activation/activate.fish
-	@cp vendor/virtualenv/src/virtualenv/activation/nushell/activate.nu ${ASSETSPATH}/virtualenv/activation/activate.nu
-	@cp vendor/virtualenv/src/virtualenv/activation/nushell/deactivate.nu ${ASSETSPATH}/virtualenv/activation/deactivate.nu
-	@cp vendor/virtualenv/src/virtualenv/activation/powershell/activate.ps1 ${ASSETSPATH}/virtualenv/activation/activate.ps1
-	@cp vendor/virtualenv/src/virtualenv/activation/python/activate_this.py ${ASSETSPATH}/virtualenv/activation/activate_this.py
 	@cp vendor/virtualenv/src/virtualenv/create/debug.py ${ASSETSPATH}/virtualenv/create/debug.py
-	@cp vendor/virtualenv/src/virtualenv/create/via_global_ref/_virtualenv.py ${ASSETSPATH}/virtualenv/create/via_global_ref/_virtualenv.py
-	@cp vendor/virtualenv/src/virtualenv/create/via_global_ref/builtin/python2/site.py ${ASSETSPATH}/virtualenv/create/via_global_ref/site.py
 	@cp vendor/virtualenv/src/virtualenv/discovery/py_info.py ${ASSETSPATH}/virtualenv/discovery/py_info.py
 	@cp -R vendor/virtualenv/src/virtualenv/seed/wheels/embed ${ASSETSPATH}/virtualenv/seed/wheels
-	@cp static/packaging_tags.py ${ASSETSPATH}/packaging_tags.py
+
+verify_build_linux: ARCH := ${ARCH_LINUX}
+verify_build_linux: BIN_SUFFIX := /bin
+verify_build_linux: _verify_build
+
+verify_build_mac: ARCH := ${ARCH_MAC_INTEL}
+verify_build_mac: BIN_SUFFIX := /bin
+verify_build_mac: _verify_build
+
+verify_build_win: ARCH := ${ARCH_WIN}
+verify_build_win: _verify_build
+
+_verify_build: _path_build _path_bin
+	${BINPATH}/poetry --version
+	${BINPATH}/poetry config virtualenvs.in-project true
+	@cd tests && ${BINPATH}/poetry install
+	@rm -rf tests/.venv
 
 sign: _path_build _path_lib
 	@codesign -s - ${BUILDPATH}/bin/poetry

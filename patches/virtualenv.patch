@@ -13,16 +13,25 @@ index f8aceb2..837bb1c 100644
  
  *wheel-store*
 diff --git a/setup.cfg b/setup.cfg
-index 06858ad..10f34b3 100644
+index 06858ad..38a819a 100644
 --- a/setup.cfg
 +++ b/setup.cfg
 @@ -1,5 +1,6 @@
  [metadata]
  name = virtualenv
-+version = 20.8.0
++version = 20.10.0
  description = Virtual Python Environment builder
  long_description = file: README.md
  long_description_content_type = text/markdown
+@@ -111,7 +112,7 @@ virtualenv.activation.cshell = *.csh
+ virtualenv.activation.fish = *.fish
+ virtualenv.activation.nushell = *.nu
+ virtualenv.activation.powershell = *.ps1
+-virtualenv.seed.wheels.embed = *.whl
++* = *.template
+ 
+ [sdist]
+ formats = gztar
 diff --git a/setup.py b/setup.py
 index cddd1d3..1b5dbe4 100644
 --- a/setup.py
@@ -39,11 +48,148 @@ index cddd1d3..1b5dbe4 100644
 -    setup_requires=["setuptools_scm >= 2"],
 -)
 +setup()
+diff --git a/setup.test.cfg b/setup.test.cfg
+new file mode 100644
+index 0000000..8650524
+--- /dev/null
++++ b/setup.test.cfg
+@@ -0,0 +1,131 @@
++[metadata]
++name = virtualenv
++version = 20.10.0
++description = Virtual Python Environment builder
++long_description = file: README.md
++long_description_content_type = text/markdown
++url = https://virtualenv.pypa.io/
++author = Bernat Gabor
++author_email = gaborjbernat@gmail.com
++maintainer = Bernat Gabor
++maintainer_email = gaborjbernat@gmail.com
++license = MIT
++license_file = LICENSE
++platforms = any
++classifiers =
++    Development Status :: 5 - Production/Stable
++    Intended Audience :: Developers
++    License :: OSI Approved :: MIT License
++    Operating System :: MacOS :: MacOS X
++    Operating System :: Microsoft :: Windows
++    Operating System :: POSIX
++    Programming Language :: Python :: 2
++    Programming Language :: Python :: 2.7
++    Programming Language :: Python :: 3
++    Programming Language :: Python :: 3.5
++    Programming Language :: Python :: 3.6
++    Programming Language :: Python :: 3.7
++    Programming Language :: Python :: 3.8
++    Programming Language :: Python :: 3.9
++    Programming Language :: Python :: 3.10
++    Programming Language :: Python :: Implementation :: CPython
++    Programming Language :: Python :: Implementation :: PyPy
++    Topic :: Software Development :: Libraries
++    Topic :: Software Development :: Testing
++    Topic :: Utilities
++keywords = virtual, environments, isolated
++project_urls =
++    Source=https://github.com/pypa/virtualenv
++    Tracker=https://github.com/pypa/virtualenv/issues
++
++[options]
++packages = find:
++install_requires =
++    backports.entry_points_selectable>=1.0.4
++    distlib>=0.3.1,<1
++    filelock>=3.2,<4
++    platformdirs>=2,<3
++    six>=1.9.0,<2   # keep it >=1.9.0 as it may cause problems on LTS platforms
++    importlib-metadata>=0.12;python_version<"3.8"
++    importlib-resources>=1.0;python_version<"3.7"
++    pathlib2>=2.3.3,<3;python_version < '3.4' and sys.platform != 'win32'
++python_requires = >=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*
++package_dir =
++    =src
++zip_safe = True
++
++[options.packages.find]
++where = src
++
++[options.entry_points]
++console_scripts =
++    virtualenv=virtualenv.__main__:run_with_catch
++virtualenv.activate =
++    bash = virtualenv.activation.bash:BashActivator
++    cshell = virtualenv.activation.cshell:CShellActivator
++    batch = virtualenv.activation.batch:BatchActivator
++    fish = virtualenv.activation.fish:FishActivator
++    powershell = virtualenv.activation.powershell:PowerShellActivator
++    python = virtualenv.activation.python:PythonActivator
++    nushell = virtualenv.activation.nushell:NushellActivator
++virtualenv.create =
++    venv = virtualenv.create.via_global_ref.venv:Venv
++    cpython3-posix = virtualenv.create.via_global_ref.builtin.cpython.cpython3:CPython3Posix
++    cpython3-win = virtualenv.create.via_global_ref.builtin.cpython.cpython3:CPython3Windows
++    cpython2-posix = virtualenv.create.via_global_ref.builtin.cpython.cpython2:CPython2Posix
++    cpython2-mac-framework = virtualenv.create.via_global_ref.builtin.cpython.mac_os:CPython2macOsFramework
++    cpython3-mac-framework = virtualenv.create.via_global_ref.builtin.cpython.mac_os:CPython3macOsFramework
++    cpython2-win = virtualenv.create.via_global_ref.builtin.cpython.cpython2:CPython2Windows
++    pypy2-posix = virtualenv.create.via_global_ref.builtin.pypy.pypy2:PyPy2Posix
++    pypy2-win = virtualenv.create.via_global_ref.builtin.pypy.pypy2:Pypy2Windows
++    pypy3-posix = virtualenv.create.via_global_ref.builtin.pypy.pypy3:PyPy3Posix
++    pypy3-win = virtualenv.create.via_global_ref.builtin.pypy.pypy3:Pypy3Windows
++virtualenv.discovery =
++    builtin = virtualenv.discovery.builtin:Builtin
++virtualenv.seed =
++    pip = virtualenv.seed.embed.pip_invoke:PipInvoke
++    app-data = virtualenv.seed.embed.via_app_data.via_app_data:FromAppData
++
++[options.extras_require]
++docs =
++    proselint>=0.10.2
++    sphinx>=3
++    sphinx-argparse>=0.2.5
++    sphinx-rtd-theme>=0.4.3
++    towncrier>=21.3
++testing =
++    coverage>=4
++    coverage_enable_subprocess>=1
++    flaky>=3
++    pytest>=4
++    pytest-env>=0.6.2
++    pytest-freezegun>=0.4.1
++    pytest-mock>=2
++    pytest-randomly>=1
++    pytest-timeout>=1
++    packaging>=20.0;python_version>"3.4"
++
++[options.package_data]
++virtualenv.activation.bash = *.sh
++virtualenv.activation.batch = *.bat
++virtualenv.activation.cshell = *.csh
++virtualenv.activation.fish = *.fish
++virtualenv.activation.nushell = *.nu
++virtualenv.activation.powershell = *.ps1
++virtualenv.seed.wheels.embed = *.whl
++* = *.template
++
++[sdist]
++formats = gztar
++
++[bdist_wheel]
++universal = true
++
++[tool:pytest]
++markers =
++    slow
++junit_family = xunit2
++addopts = --tb=auto -ra --showlocals --no-success-flaky-report
++env =
++    PYTHONWARNINGS=ignore:DEPRECATION::pip._internal.cli.base_command
++    PYTHONIOENCODING=utf-8
 diff --git a/src/virtualenv/__init__.py b/src/virtualenv/__init__.py
-index 5f74e3e..47b1f21 100644
+index 5f74e3e..300b12e 100644
 --- a/src/virtualenv/__init__.py
 +++ b/src/virtualenv/__init__.py
-@@ -1,5 +1,16 @@
+@@ -1,5 +1,18 @@
  from __future__ import absolute_import, unicode_literals
  
 +import sys
@@ -57,47 +203,72 @@ index 5f74e3e..47b1f21 100644
 +else:
 +    __path_assets__ = None
 +
++from . import __patches__
++
  from .run import cli_run, session_via_cli
  from .version import __version__
  
-diff --git a/src/virtualenv/activation/via_template.py b/src/virtualenv/activation/via_template.py
-index 14f0979..4b01a47 100644
---- a/src/virtualenv/activation/via_template.py
-+++ b/src/virtualenv/activation/via_template.py
-@@ -6,14 +6,16 @@ from abc import ABCMeta, abstractmethod
+diff --git a/src/virtualenv/__patches__.py b/src/virtualenv/__patches__.py
+new file mode 100644
+index 0000000..56d7087
+--- /dev/null
++++ b/src/virtualenv/__patches__.py
+@@ -0,0 +1,28 @@
++import importlib.resources
++
++from distlib import resources as _res_patch_target
++
++
++class Resource:
++    def __init__(self, pkg, name):
++        self.pkg = pkg
++        self.name = name
++
++    @property
++    def bytes(self):
++        return importlib.resources.read_binary(self.pkg, self.name)
++
++
++class ResourceWrapper:
++    def __init__(self, pkg):
++        self._pkg = pkg
++
++    def find(self, name):
++        return Resource(self._pkg, name)
++
++
++def finder(pkg):
++    return ResourceWrapper(pkg)
++
++
++setattr(_res_patch_target, "finder", finder)
+diff --git a/src/virtualenv/activation/python/__init__.py b/src/virtualenv/activation/python/__init__.py
+index 9e57912..4f3d719 100644
+--- a/src/virtualenv/activation/python/__init__.py
++++ b/src/virtualenv/activation/python/__init__.py
+@@ -12,7 +12,17 @@ from ..via_template import ViaTemplateActivator
  
- from six import add_metaclass
+ class PythonActivator(ViaTemplateActivator):
+     def templates(self):
+-        yield Path("activate_this.py")
++        yield Path("activate_this.py.template")
++
++    def _generate(self, replacements, templates, to_folder, creator):
++        generated = []
++        for template in templates:
++            text = self.instantiate_template(replacements, template, creator)
++            dest = to_folder / self.as_name(template).replace(".template", "")
++            # use write_bytes to avoid platform specific line normalization (\n -> \r\n)
++            dest.write_bytes(text.encode("utf-8"))
++            generated.append(dest)
++        return generated
  
-+from virtualenv import __path_assets__
- from virtualenv.util.six import ensure_text
- 
- from .activator import Activator
- 
--if sys.version_info >= (3, 7):
--    from importlib.resources import read_binary
--else:
--    from importlib_resources import read_binary
-+if not __path_assets__:
-+    if sys.version_info >= (3, 7):
-+        from importlib.resources import read_binary
-+    else:
-+        from importlib_resources import read_binary
- 
- 
- @add_metaclass(ABCMeta)
-@@ -54,7 +56,11 @@ class ViaTemplateActivator(Activator):
- 
-     def instantiate_template(self, replacements, template, creator):
-         # read content as binary to avoid platform specific line normalization (\n -> \r\n)
--        binary = read_binary(self.__module__, str(template))
-+        if __path_assets__:
-+            with (__path_assets__ / "activation" / str(template)).open("rb") as f:
-+                binary = f.read()
-+        else:
-+            binary = read_binary(self.__module__, str(template))
-         text = binary.decode("utf-8", errors="strict")
-         for key, value in replacements.items():
-             value = self._repr_unicode(creator, value)
+     def replacements(self, creator, dest_folder):
+         replacements = super(PythonActivator, self).replacements(creator, dest_folder)
+diff --git a/src/virtualenv/activation/python/activate_this.py b/src/virtualenv/activation/python/activate_this.py.template
+similarity index 100%
+rename from src/virtualenv/activation/python/activate_this.py
+rename to src/virtualenv/activation/python/activate_this.py.template
 diff --git a/src/virtualenv/create/__init__.py b/src/virtualenv/create/__init__.py
 index 01e6d4f..9e76424 100644
 --- a/src/virtualenv/create/__init__.py
@@ -139,51 +310,79 @@ index 6363f8b..9b00461 100644
  
  
  class CreatorMeta(object):
+diff --git a/src/virtualenv/create/via_global_ref/_virtualenv.py b/src/virtualenv/create/via_global_ref/_virtualenv.py.template
+similarity index 100%
+rename from src/virtualenv/create/via_global_ref/_virtualenv.py
+rename to src/virtualenv/create/via_global_ref/_virtualenv.py.template
 diff --git a/src/virtualenv/create/via_global_ref/api.py b/src/virtualenv/create/via_global_ref/api.py
-index 6f296f4..3865740 100644
+index 6f296f4..f90eb04 100644
 --- a/src/virtualenv/create/via_global_ref/api.py
 +++ b/src/virtualenv/create/via_global_ref/api.py
-@@ -10,6 +10,7 @@ from virtualenv.info import fs_supports_symlink
- from virtualenv.util.path import Path
- from virtualenv.util.six import ensure_text
+@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
+ import logging
+ import os
+ from abc import ABCMeta
++from importlib.resources import read_text
  
-+from .. import _PATH_ASSETS
- from ..creator import Creator, CreatorMeta
+ from six import add_metaclass
  
- 
-@@ -100,7 +101,7 @@ class ViaGlobalRefApi(Creator):
+@@ -100,9 +101,9 @@ class ViaGlobalRefApi(Creator):
  
      def env_patch_text(self):
          """Patch the distutils package to not be derailed by its configuration files"""
 -        with self.app_data.ensure_extracted(Path(__file__).parent / "_virtualenv.py") as resolved_path:
-+        with self.app_data.ensure_extracted(_PATH_ASSETS / "via_global_ref" / "_virtualenv.py") as resolved_path:
-             text = resolved_path.read_text()
-             return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
+-            text = resolved_path.read_text()
+-            return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
++        from . import __name__
++        text = read_text(__name__, "_virtualenv.py.template")
++        return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
  
+     def _args(self):
+         return super(ViaGlobalRefApi, self)._args() + [("global", self.enable_system_site_package)]
 diff --git a/src/virtualenv/create/via_global_ref/builtin/python2/python2.py b/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
-index cacd56e..b68bc74 100644
+index cacd56e..c29fbf4 100644
 --- a/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
 +++ b/src/virtualenv/create/via_global_ref/builtin/python2/python2.py
-@@ -6,6 +6,7 @@ import os
+@@ -3,6 +3,7 @@ from __future__ import absolute_import, unicode_literals
+ import abc
+ import json
+ import os
++from importlib.resources import read_text
  
  from six import add_metaclass
  
-+from virtualenv import __path_assets__
- from virtualenv.create.describe import Python2Supports
- from virtualenv.create.via_global_ref.builtin.ref import PathRefToDest
- from virtualenv.info import IS_ZIPAPP
-@@ -15,7 +16,10 @@ from virtualenv.util.zipapp import read as read_from_zipapp
+@@ -15,8 +16,6 @@ from virtualenv.util.zipapp import read as read_from_zipapp
  
  from ..via_global_self_do import ViaGlobalRefVirtualenvBuiltin
  
 -HERE = Path(os.path.abspath(__file__)).parent
-+if __path_assets__:
-+    HERE = __path_assets__ / "create" / "via_global_ref"
-+else:
-+    HERE = Path(os.path.abspath(__file__)).parent
- 
+-
  
  @add_metaclass(abc.ABCMeta)
+ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
+@@ -34,10 +33,7 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
+         site_py = site_py_in / "site.py"
+ 
+         custom_site = get_custom_site()
+-        if IS_ZIPAPP:
+-            custom_site_text = read_from_zipapp(custom_site)
+-        else:
+-            custom_site_text = custom_site.read_text()
++        custom_site_text = read_text(custom_site, "site.py.template")
+         expected = json.dumps([os.path.relpath(ensure_text(str(i)), ensure_text(str(site_py))) for i in self.libs])
+ 
+         custom_site_text = custom_site_text.replace("___EXPECTED_SITE_PACKAGES___", expected)
+@@ -108,4 +104,5 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
+ 
+ 
+ def get_custom_site():
+-    return HERE / "site.py"
++    from . import __name__
++    return __name__
+diff --git a/src/virtualenv/create/via_global_ref/builtin/python2/site.py b/src/virtualenv/create/via_global_ref/builtin/python2/site.py.template
+similarity index 100%
+rename from src/virtualenv/create/via_global_ref/builtin/python2/site.py
+rename to src/virtualenv/create/via_global_ref/builtin/python2/site.py.template
 diff --git a/src/virtualenv/discovery/__init__.py b/src/virtualenv/discovery/__init__.py
 index 01e6d4f..babf6ad 100644
 --- a/src/virtualenv/discovery/__init__.py
@@ -261,7 +460,7 @@ index 7d5e86d..f416921 100644
  
  _CAN_SYMLINK = _FS_CASE_SENSITIVE = _CFG_DIR = _DATA_DIR = None
 diff --git a/src/virtualenv/run/__init__.py b/src/virtualenv/run/__init__.py
-index e8e7ab1..7cbcd0a 100644
+index e8e7ab1..6bca684 100644
 --- a/src/virtualenv/run/__init__.py
 +++ b/src/virtualenv/run/__init__.py
 @@ -130,7 +130,7 @@ def add_version_flag(parser):
@@ -269,7 +468,7 @@ index e8e7ab1..7cbcd0a 100644
          "--version",
          action="version",
 -        version="%(prog)s {} from {}".format(__version__, virtualenv.__file__),
-+        version="%(prog)s {} from {}".format(__version__, virtualenv.__path__[0]),
++        version="%(prog)s {} from {}".format(__version__, virtualenv.__path_pack__),
          help="display the version of the virtualenv package and its location, then exit",
      )
  

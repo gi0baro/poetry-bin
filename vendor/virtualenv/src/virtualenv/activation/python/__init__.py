@@ -12,7 +12,17 @@ from ..via_template import ViaTemplateActivator
 
 class PythonActivator(ViaTemplateActivator):
     def templates(self):
-        yield Path("activate_this.py")
+        yield Path("activate_this.py.template")
+
+    def _generate(self, replacements, templates, to_folder, creator):
+        generated = []
+        for template in templates:
+            text = self.instantiate_template(replacements, template, creator)
+            dest = to_folder / self.as_name(template).replace(".template", "")
+            # use write_bytes to avoid platform specific line normalization (\n -> \r\n)
+            dest.write_bytes(text.encode("utf-8"))
+            generated.append(dest)
+        return generated
 
     def replacements(self, creator, dest_folder):
         replacements = super(PythonActivator, self).replacements(creator, dest_folder)
