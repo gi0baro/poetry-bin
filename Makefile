@@ -6,7 +6,6 @@ ARCH_MAC_ARM := aarch64-apple-darwin
 ARCH_WIN := x86_64-pc-windows-msvc
 TARGET := install
 BUILD_VERSION := latest
-BIN_SUFFIX := ""
 
 _path_build:
 	$(eval BUILDPATH := build/${ARCH}/release/${TARGET})
@@ -100,11 +99,15 @@ assets: _path_assets
 	@mkdir -p ${ASSETSPATH}/core/version
 	@mkdir -p ${ASSETSPATH}/virtualenv/create
 	@mkdir -p ${ASSETSPATH}/virtualenv/discovery
-	@mkdir -p ${ASSETSPATH}/virtualenv/seed
+	@mkdir -p ${ASSETSPATH}/virtualenv/seed/wheels
 	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars
 	@cp vendor/virtualenv/src/virtualenv/create/debug.py ${ASSETSPATH}/virtualenv/create/debug.py
 	@cp vendor/virtualenv/src/virtualenv/discovery/py_info.py ${ASSETSPATH}/virtualenv/discovery/py_info.py
-	@cp -R vendor/virtualenv/src/virtualenv/seed/wheels/embed ${ASSETSPATH}/virtualenv/seed/wheels
+	@cp vendor/virtualenv/src/virtualenv/seed/wheels/embed/*.whl ${ASSETSPATH}/virtualenv/seed/wheels
+
+sign: _path_build _path_lib
+	@codesign -s - ${BUILDPATH}/bin/poetry
+	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$
 
 verify_build_linux: ARCH := ${ARCH_LINUX}
 verify_build_linux: BIN_SUFFIX := /bin
@@ -120,12 +123,8 @@ verify_build_win: _verify_build
 _verify_build: _path_build _path_bin
 	${BINPATH}/poetry --version
 	${BINPATH}/poetry config virtualenvs.in-project true
-	@cd tests && ${BINPATH}/poetry install
+	@cd tests && ../${BINPATH}/poetry install
 	@rm -rf tests/.venv
-
-sign: _path_build _path_lib
-	@codesign -s - ${BUILDPATH}/bin/poetry
-	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$
 
 pack_linux: ARCH := ${ARCH_LINUX}
 pack_linux: pack
