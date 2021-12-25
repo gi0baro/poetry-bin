@@ -16,11 +16,29 @@ def make_exe():
         packaging_policy=policy,
         config=config,
     )
-    exe.add_python_resources(exe.pip_install(["./vendor/poetry"]))
+
+    for resource in exe.pip_install(["./vendor/poetry"]):
+        # skip patched packages
+        if resource.name.startswith("poetry.core"):
+            continue
+        if resource.name.startswith("requests"):
+            continue
+        if resource.name.startswith("virtualenv"):
+            continue
+        # skip wheels
+        if resource.name.endswith(".whl"):
+            continue
+        exe.add_python_resource(resource)
+
     exe.add_python_resources(exe.read_package_root("vendor/poetry-core", ["poetry"]))
-    exe.add_python_resources(exe.pip_install(["./vendor/virtualenv"]))
     exe.add_python_resources(exe.pip_install(["./vendor/importlib_metadata"]))
     exe.add_python_resources(exe.pip_install(["./vendor/requests"]))
+
+    for resource in exe.pip_install(["./vendor/virtualenv"]):
+        # skip wheels
+        if resource.name.endswith(".whl"):
+            continue
+        exe.add_python_resource(resource)
 
     return exe
 

@@ -58,12 +58,8 @@ tests:
 		rm -r .venv
 	@cd vendor/virtualenv && \
 		python -m venv .venv && \
-		mv setup.cfg setup.pack.cfg && \
-		mv setup.test.cfg setup.cfg && \
 		.venv/bin/pip install .[testing] && \
 		.venv/bin/pytest && \
-		mv setup.cfg setup.test.cfg && \
-		mv setup.pack.cfg setup.cfg && \
 		rm -r .venv
 	@cd vendor/poetry-core && \
 		python -m venv .venv && \
