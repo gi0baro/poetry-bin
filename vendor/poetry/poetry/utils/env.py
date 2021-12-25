@@ -7,10 +7,10 @@ import re
 import shutil
 import sys
 import sysconfig
-import textwrap
 
 from contextlib import contextmanager
 from copy import deepcopy
+from importlib import resources
 from typing import Any
 from typing import Dict
 from typing import List
@@ -18,7 +18,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import packaging.tags
 import tomlkit
 import virtualenv
 
@@ -45,11 +44,7 @@ from poetry.utils._compat import subprocess
 from poetry.utils.helpers import is_dir_writable
 from poetry.utils.helpers import paths_csv
 
-if getattr(sys, "oxidized", False):
-    parents = 1 if sys.platform.startswith("win") else 2
-    __path_assets__ = Path(__pkgpath__[0]).parents[parents] / "assets"
-else:
-    __path_assets__ = None
+from . import __name__ as _pkg
 
 
 GET_ENVIRONMENT_INFO = """\
@@ -1237,13 +1232,7 @@ class SystemEnv(Env):
         return json.loads(output)
 
     def get_supported_tags(self):  # type: () -> List[Tag]
-        if __path_assets__:
-            file_path = __path_assets__ / "packaging_tags.py"
-        else:
-            file_path = Path(packaging.tags.__file__)
-
-        with file_path.open(encoding="utf-8") as f:
-            script = decode(f.read())
+        script = resources.read_text(_pkg, "packaging_tags.py.template")
 
         output = self.run("python", "-", input_=script)
 
@@ -1298,13 +1287,7 @@ class VirtualEnv(Env):
         return [self._bin(self._pip_executable)]
 
     def get_supported_tags(self):  # type: () -> List[Tag]
-        if __path_assets__:
-            file_path = __path_assets__ / "packaging_tags.py"
-        else:
-            file_path = Path(packaging.tags.__file__)
-
-        with file_path.open(encoding="utf-8") as f:
-            script = decode(f.read())
+        script = resources.read_text(_pkg, "packaging_tags.py.template")
 
         output = self.run_python_script(script)
 

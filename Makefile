@@ -102,7 +102,6 @@ assets: _path_assets
 	@cp vendor/virtualenv/src/virtualenv/create/debug.py ${ASSETSPATH}/virtualenv/create/debug.py
 	@cp vendor/virtualenv/src/virtualenv/discovery/py_info.py ${ASSETSPATH}/virtualenv/discovery/py_info.py
 	@cp -R vendor/virtualenv/src/virtualenv/seed/wheels/embed ${ASSETSPATH}/virtualenv/seed/wheels
-	@cp static/packaging_tags.py ${ASSETSPATH}/packaging_tags.py
 
 sign: _path_build _path_lib
 	@codesign -s - ${BUILDPATH}/bin/poetry
