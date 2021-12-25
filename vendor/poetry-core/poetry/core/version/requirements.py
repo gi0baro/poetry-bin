@@ -5,8 +5,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-
 from lark import Lark
 from lark import UnexpectedCharacters
 from lark import UnexpectedToken
@@ -14,7 +12,7 @@ from lark import UnexpectedToken
 from poetry.core.semver import parse_constraint
 from poetry.core.semver.exceptions import ParseConstraintError
 
-from . import _GRAMMARS_PATH
+from .grammars import __path_assets__
 from .markers import _compact_markers
 
 
@@ -31,7 +29,7 @@ class InvalidRequirement(ValueError):
 
 
 _parser = Lark.open(
-    os.path.join(_GRAMMARS_PATH, "pep508.lark"), parser="lalr"
+    __path_assets__ / "pep508.lark", parser="lalr"
 )
 
 
