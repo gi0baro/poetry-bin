@@ -186,10 +186,10 @@ index 0000000..8650524
 +    PYTHONWARNINGS=ignore:DEPRECATION::pip._internal.cli.base_command
 +    PYTHONIOENCODING=utf-8
 diff --git a/src/virtualenv/__init__.py b/src/virtualenv/__init__.py
-index 5f74e3e..47b1f21 100644
+index 5f74e3e..300b12e 100644
 --- a/src/virtualenv/__init__.py
 +++ b/src/virtualenv/__init__.py
-@@ -1,5 +1,16 @@
+@@ -1,5 +1,18 @@
  from __future__ import absolute_import, unicode_literals
  
 +import sys
@@ -203,9 +203,45 @@ index 5f74e3e..47b1f21 100644
 +else:
 +    __path_assets__ = None
 +
++from . import __patches__
++
  from .run import cli_run, session_via_cli
  from .version import __version__
  
+diff --git a/src/virtualenv/__patches__.py b/src/virtualenv/__patches__.py
+new file mode 100644
+index 0000000..56d7087
+--- /dev/null
++++ b/src/virtualenv/__patches__.py
+@@ -0,0 +1,28 @@
++import importlib.resources
++
++from distlib import resources as _res_patch_target
++
++
++class Resource:
++    def __init__(self, pkg, name):
++        self.pkg = pkg
++        self.name = name
++
++    @property
++    def bytes(self):
++        return importlib.resources.read_binary(self.pkg, self.name)
++
++
++class ResourceWrapper:
++    def __init__(self, pkg):
++        self._pkg = pkg
++
++    def find(self, name):
++        return Resource(self._pkg, name)
++
++
++def finder(pkg):
++    return ResourceWrapper(pkg)
++
++
++setattr(_res_patch_target, "finder", finder)
 diff --git a/src/virtualenv/activation/python/__init__.py b/src/virtualenv/activation/python/__init__.py
 index 9e57912..4f3d719 100644
 --- a/src/virtualenv/activation/python/__init__.py
