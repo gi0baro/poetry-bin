@@ -19,11 +19,11 @@ def make_exe():
 
     for resource in exe.pip_install(["./vendor/poetry"]):
         # skip patched packages
-        if resource.name.startswith("poetry.core"):
+        if resource.name == "poetry.core" or resource.name.startswith("poetry.core."):
             continue
-        if resource.name.startswith("requests"):
+        if resource.name == "requests" or resource.name.startswith("requests."):
             continue
-        if resource.name.startswith("virtualenv"):
+        if resource.name == "virtualenv" or resource.name.startswith("virtualenv."):
             continue
         # skip wheels
         if resource.name.endswith(".whl"):
