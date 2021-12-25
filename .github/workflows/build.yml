@@ -16,9 +16,6 @@ jobs:
     runs-on: ubuntu-18.04
     container: cr.amira.io/gi0baro/pyoxidizer/gnu:0.18.0
 
-    env:
-      LANG: en_US.UTF-8
-
     steps:
     - uses: actions/checkout@v2
     - name: Get build version
@@ -28,7 +25,6 @@ jobs:
     - name: Build release
       run: |
         make build_linux
-        make verify_build_linux
         make pack_linux BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload release file
       uses: actions/upload-artifact@v1
