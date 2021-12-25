@@ -103,6 +103,21 @@ assets: _path_assets
 	@cp vendor/virtualenv/src/virtualenv/discovery/py_info.py ${ASSETSPATH}/virtualenv/discovery/py_info.py
 	@cp -R vendor/virtualenv/src/virtualenv/seed/wheels/embed ${ASSETSPATH}/virtualenv/seed/wheels
 
+verify_build_linux: ARCH := ${ARCH_LINUX}
+verify_build_linux: _verify_build
+
+verify_build_mac: ARCH := ${ARCH_MAC_INTEL}
+verify_build_mac: _verify_build
+
+verify_build_win: ARCH := ${ARCH_WIN}
+verify_build_win: _verify_build
+
+_verify_build: _path_build
+	${BUILDPATH}/poetry --version
+	${BUILDPATH}/poetry config virtualenvs.in-project true
+	@cd tests && ${BUILDPATH}/poetry install
+	@rm -rf tests/.venv
+
 sign: _path_build _path_lib
 	@codesign -s - ${BUILDPATH}/bin/poetry
 	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$

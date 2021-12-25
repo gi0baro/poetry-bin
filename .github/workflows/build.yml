@@ -25,7 +25,7 @@ jobs:
     - name: Build release
       run: |
         make build_linux
-        build/x86_64-unknown-linux-gnu/release/install/bin/poetry --version
+        make verify_build_linux
         make pack_linux BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload release file
       uses: actions/upload-artifact@v1
@@ -65,7 +65,7 @@ jobs:
     - name: Build x86_64 release
       run: |
         make build_mac ARCH=x86_64-apple-darwin
-        build/x86_64-apple-darwin/release/install/bin/poetry --version
+        make verify_build_mac ARCH=x86_64-apple-darwin
         make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
     # - name: Build aarch64 release
     #   run: |
@@ -122,7 +122,7 @@ jobs:
       shell: bash
       run: |
         make build_win
-        build/x86_64-pc-windows-msvc/release/install/poetry --version
+        make verify_build_win
         make pack_win BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload x86_64 release file
       uses: actions/upload-artifact@v1
