@@ -13,13 +13,13 @@ index f8aceb2..837bb1c 100644
  
  *wheel-store*
 diff --git a/setup.cfg b/setup.cfg
-index 06858ad..8650524 100644
+index ccd2f8d..44fcb71 100644
 --- a/setup.cfg
 +++ b/setup.cfg
 @@ -1,5 +1,6 @@
  [metadata]
  name = virtualenv
-+version = 20.10.0
++version = 20.13.1
  description = Virtual Python Environment builder
  long_description = file: README.md
  long_description_content_type = text/markdown
@@ -370,23 +370,33 @@ index 8180981..036b2c4 100644
          self.default = None
          possible = OrderedDict(
 diff --git a/src/virtualenv/run/plugin/base.py b/src/virtualenv/run/plugin/base.py
-index f1f4ee0..aa98b5a 100644
+index 048c76a..0d3a04a 100644
 --- a/src/virtualenv/run/plugin/base.py
 +++ b/src/virtualenv/run/plugin/base.py
-@@ -2,7 +2,7 @@ from __future__ import absolute_import, unicode_literals
- 
+@@ -3,14 +3,7 @@ from __future__ import absolute_import, unicode_literals
+ import sys
  from collections import OrderedDict
  
--from backports.entry_points_selectable import entry_points
+-if sys.version_info >= (3, 8):
+-    from importlib.metadata import entry_points
+-
+-    importlib_metadata_version = ()
+-else:
+-    from importlib_metadata import entry_points, version
+-
+-    importlib_metadata_version = tuple(int(i) for i in version("importlib_metadata").split(".")[:2])
 +from importlib.metadata import entry_points
  
  
  class PluginLoader(object):
-@@ -11,13 +11,13 @@ class PluginLoader(object):
+@@ -19,16 +12,13 @@ class PluginLoader(object):
  
      @classmethod
      def entry_points_for(cls, key):
--        return OrderedDict((e.name, e.load()) for e in cls.entry_points().select(group=key))
+-        if sys.version_info >= (3, 10) or importlib_metadata_version >= (3, 6):
+-            return OrderedDict((e.name, e.load()) for e in cls.entry_points().select(group=key))
+-        else:
+-            return OrderedDict((e.name, e.load()) for e in cls.entry_points().get(key, {}))
 +        return OrderedDict((e.name, e.load()) for e in cls.entry_points().get(key, {}))
  
 -    @staticmethod
@@ -501,7 +511,7 @@ index d182c6f..ee3e5bc 100644
          possible = self.options("virtualenv.seed")
          super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index fa222ed..5131ba0 100644
+index 4bafa9b..cda4d85 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -1,9 +1,14 @@
@@ -518,15 +528,15 @@ index fa222ed..5131ba0 100644
 +    BUNDLE_FOLDER = Path(__file__).absolute().parent
 +
  BUNDLE_SUPPORT = {
-     "3.10": {
-         "pip": "pip-21.3.1-py3-none-any.whl",
+     "3.11": {
+         "pip": "pip-22.0.3-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
-index 0000000..8c2231e
+index 0000000..45efa28
 --- /dev/null
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
-+__version__ = "20.10.0"
++__version__ = "20.13.1"
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index 59a0991..76d40c7 100644
 --- a/tests/unit/create/test_interpreters.py
@@ -540,7 +550,7 @@ index 59a0991..76d40c7 100644
 -    )
 +    assert repr(context.value).startswith('RuntimeError("No virtualenv implementation for')
 diff --git a/tests/unit/discovery/py_info/test_py_info.py b/tests/unit/discovery/py_info/test_py_info.py
-index 053a6f9..3c69c60 100644
+index c82e506..429294c 100644
 --- a/tests/unit/discovery/py_info/test_py_info.py
 +++ b/tests/unit/discovery/py_info/test_py_info.py
 @@ -37,20 +37,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):

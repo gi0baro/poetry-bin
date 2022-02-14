@@ -5,6 +5,104 @@ Release History
 
 .. towncrier release notes start
 
+v20.13.1 (2022-02-05)
+---------------------
+
+Bugfixes - 20.13.1
+~~~~~~~~~~~~~~~~~~
+- fix "execv() arg 2 must contain only strings" error on M1 MacOS (`#2282 <https://github.com/pypa/virtualenv/issues/2282>`_)
+- Ugrade embedded setuptools to ``60.5.0`` from ``60.2.0`` - by :user:`asottile`. (`#2289 <https://github.com/pypa/virtualenv/issues/2289>`_)
+- Upgrade embedded pip to ``22.0.3`` and setuptools to ``60.6.0`` - by :user:`gaborbernat` and :user:`asottile`. (`#2294 <https://github.com/pypa/virtualenv/issues/2294>`_)
+
+
+v20.13.0 (2022-01-02)
+---------------------
+
+Features - 20.13.0
+~~~~~~~~~~~~~~~~~~
+- Add downloaded wheel information in the relevant JSON embed file to
+  prevent additional downloads of the same wheel. - by :user:`mayeut`. (`#2268 <https://github.com/pypa/virtualenv/issues/2268>`_)
+
+Bugfixes - 20.13.0
+~~~~~~~~~~~~~~~~~~
+- Fix ``AttributeError: 'bool' object has no attribute 'error'`` when creating a
+  Python 2.x virtualenv on macOS - by ``moreati``. (`#2269 <https://github.com/pypa/virtualenv/issues/2269>`_)
+- Fix ``PermissionError: [Errno 1] Operation not permitted`` when creating a
+  Python 2.x virtualenv on macOS/arm64 - by ``moreati``. (`#2271 <https://github.com/pypa/virtualenv/issues/2271>`_)
+
+
+v20.12.1 (2022-01-01)
+---------------------
+
+Bugfixes - 20.12.1
+~~~~~~~~~~~~~~~~~~
+- Try using previous updates of ``pip``, ``setuptools`` & ``wheel``
+  when inside an update grace period rather than always falling back
+  to embedded wheels - by :user:`mayeut`. (`#2265 <https://github.com/pypa/virtualenv/issues/2265>`_)
+- New patch versions of ``pip``, ``setuptools`` & ``wheel`` are now
+  returned in the expected timeframe. - by :user:`mayeut`. (`#2266 <https://github.com/pypa/virtualenv/issues/2266>`_)
+- Manual upgrades of ``pip``, ``setuptools`` & ``wheel`` are
+  not discarded by a periodic update - by :user:`mayeut`. (`#2267 <https://github.com/pypa/virtualenv/issues/2267>`_)
+
+
+v20.12.0 (2021-12-31)
+---------------------
+
+Features - 20.12.0
+~~~~~~~~~~~~~~~~~~
+- Sign the python2 exe on Darwin arm64 - by :user:`tmspicer`. (`#2233 <https://github.com/pypa/virtualenv/issues/2233>`_)
+
+Bugfixes - 20.12.0
+~~~~~~~~~~~~~~~~~~
+- Fix ``--download`` option - by :user:`mayeut`. (`#2120 <https://github.com/pypa/virtualenv/issues/2120>`_)
+- Ugrade embedded setuptools to ``60.2.0`` from ``60.1.1`` - by :user:`gaborbernat`. (`#2263 <https://github.com/pypa/virtualenv/issues/2263>`_)
+
+
+v20.11.2 (2021-12-29)
+---------------------
+
+Bugfixes - 20.11.2
+~~~~~~~~~~~~~~~~~~
+- Fix installation of pinned versions of ``pip``, ``setuptools`` & ``wheel`` - by :user:`mayeut`. (`#2203 <https://github.com/pypa/virtualenv/issues/2203>`_)
+
+
+v20.11.1 (2021-12-29)
+---------------------
+
+Bugfixes - 20.11.1
+~~~~~~~~~~~~~~~~~~
+- Bump embed setuptools to ``60.1.1`` from ``60.1.0`` - by :user:`gaborbernat`. (`#2258 <https://github.com/pypa/virtualenv/issues/2258>`_)
+
+
+v20.11.0 (2021-12-28)
+---------------------
+
+Features - 20.11.0
+~~~~~~~~~~~~~~~~~~
+- Avoid deprecation warning from py-filelock argument - by :user:`ofek`. (`#2237 <https://github.com/pypa/virtualenv/issues/2237>`_)
+- Upgrade embedded setuptools to ``61.1.0`` from ``58.3.0`` - by :user:`gaborbernat`. (`#2240 <https://github.com/pypa/virtualenv/issues/2240>`_)
+- Drop the runtime dependency of ``backports.entry-points-selectable`` - by :user:`hroncok`. (`#2246 <https://github.com/pypa/virtualenv/issues/2246>`_)
+- Fish: PATH variables should not be quoted when being set - by :user:`hroncok`. (`#2248 <https://github.com/pypa/virtualenv/issues/2248>`_)
+
+
+v20.10.0 (2021-11-01)
+---------------------
+
+Features - 20.10.0
+~~~~~~~~~~~~~~~~~~
+- If a ``"venv"`` install scheme exists in ``sysconfig``, virtualenv now uses it to create new virtual environments.
+  This allows Python distributors, such as Fedora, to patch/replace the default install scheme without affecting
+  the paths in new virtual environments.
+  A similar technique `was proposed to Python, for the venv module <https://bugs.python.org/issue45413>`_ - by ``hroncok`` (`#2208 <https://github.com/pypa/virtualenv/issues/2208>`_)
+- The activated virtualenv prompt is now always wrapped in parentheses. This
+  affects venvs created with the ``--prompt`` attribute, and matches virtualenv's
+  behaviour on par with venv. (`#2224 <https://github.com/pypa/virtualenv/issues/2224>`_)
+
+Bugfixes - 20.10.0
+~~~~~~~~~~~~~~~~~~
+- Fix broken prompt set up by activate.bat - by :user:`SiggyBar`. (`#2225 <https://github.com/pypa/virtualenv/issues/2225>`_)
+
+
 v20.9.0 (2021-10-23)
 --------------------
 
@@ -130,7 +228,7 @@ v20.4.4 (2021-04-20)
 Bugfixes - 20.4.4
 ~~~~~~~~~~~~~~~~~
 - Built in discovery class is always preferred over plugin supplied classes. (`#2087 <https://github.com/pypa/virtualenv/issues/2087>`_)
-- Upgrade embeded setuptools to ``56.0.0`` by :user:`gaborbernat`. (`#2094 <https://github.com/pypa/virtualenv/issues/2094>`_)
+- Upgrade embedded setuptools to ``56.0.0`` by :user:`gaborbernat`. (`#2094 <https://github.com/pypa/virtualenv/issues/2094>`_)
 
 
 v20.4.3 (2021-03-16)
@@ -138,7 +236,7 @@ v20.4.3 (2021-03-16)
 
 Bugfixes - 20.4.3
 ~~~~~~~~~~~~~~~~~
-- Bump embeded setuptools from ``52.0.0`` to ``54.1.2`` - by :user:`gaborbernat` (`#2069 <https://github.com/pypa/virtualenv/issues/2069>`_)
+- Bump embedded setuptools from ``52.0.0`` to ``54.1.2`` - by :user:`gaborbernat` (`#2069 <https://github.com/pypa/virtualenv/issues/2069>`_)
 - Fix PyPy3 stdlib on Windows is incorrect - by :user:`gaborbernat`. (`#2071 <https://github.com/pypa/virtualenv/issues/2071>`_)
 
 
@@ -612,7 +710,7 @@ Bugfixes - 20.0.8
 - Having `distutils configuration <https://docs.python.org/3/install/index.html#distutils-configuration-files>`_
   files that set ``prefix`` and ``install_scripts`` cause installation of packages in the wrong location -
   by :user:`gaborbernat`. (`#1663 <https://github.com/pypa/virtualenv/issues/1663>`_)
-- Fix ``PYTHONPATH`` being overridden on Python 2 — by :user:`jd`. (`#1673 <https://github.com/pypa/virtualenv/issues/1673>`_)
+- Fix ``PYTHONPATH`` being overridden on Python 2 — by :user:`jd`. (`#1673 <https://github.com/pypa/virtualenv/issues/1673>`_)
 - Fix list configuration value parsing from config file or environment variable - by :user:`gaborbernat`. (`#1674 <https://github.com/pypa/virtualenv/issues/1674>`_)
 - Fix Batch activation script shell prompt to display environment name by default - by :user:`spetafree`. (`#1679 <https://github.com/pypa/virtualenv/issues/1679>`_)
 - Fix startup on Python 2 is slower for virtualenv - this was due to setuptools calculating it's working set distribution

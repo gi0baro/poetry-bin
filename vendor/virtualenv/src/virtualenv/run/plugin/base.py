@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
+import sys
 from collections import OrderedDict
 
 from importlib.metadata import entry_points
