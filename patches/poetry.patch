@@ -126,7 +126,7 @@ index 937f9b30..40e41514 100644
  
  try:
 diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index b1cff78c..22f78649 100644
+index 0b91aa22..1f533f44 100644
 --- a/poetry/utils/env.py
 +++ b/poetry/utils/env.py
 @@ -7,10 +7,10 @@ import re
@@ -327,7 +327,7 @@ index b1cff78c..22f78649 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1254,96 +1205,50 @@ class SystemEnv(Env):
+@@ -1266,96 +1217,50 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -455,7 +455,7 @@ index b1cff78c..22f78649 100644
          return self._path != self._base
  
  
-@@ -1382,30 +1287,7 @@ class VirtualEnv(Env):
+@@ -1394,30 +1299,7 @@ class VirtualEnv(Env):
          return [self._bin(self._pip_executable)]
  
      def get_supported_tags(self):  # type: () -> List[Tag]
@@ -487,7 +487,7 @@ index b1cff78c..22f78649 100644
  
          output = self.run_python_script(script)
  
-@@ -1562,11 +1444,98 @@ class NullEnv(SystemEnv):
+@@ -1574,11 +1456,98 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -587,7 +587,7 @@ index b1cff78c..22f78649 100644
      def get_pip_command(self):  # type: () -> List[str]
          return [self._bin("python"), "-m", "pip"]
  
-@@ -1612,6 +1581,10 @@ class MockEnv(NullEnv):
+@@ -1624,6 +1593,10 @@ class MockEnv(NullEnv):
          self._mock_marker_env = marker_env
          self._supported_tags = supported_tags
  
@@ -598,7 +598,7 @@ index b1cff78c..22f78649 100644
      @property
      def platform(self):  # type: () -> str
          return self._platform
-@@ -1650,3 +1623,70 @@ class MockEnv(NullEnv):
+@@ -1662,3 +1635,70 @@ class MockEnv(NullEnv):
  
      def is_venv(self):  # type: () -> bool
          return self._is_venv

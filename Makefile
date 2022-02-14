@@ -1,4 +1,4 @@
-.PHONY: _path_build _path_lib _path_assets _build_posix _build_win assets pack patches sign
+.PHONY: _path_build _path_lib _path_assets _build_posix _build_win assets pack patches sign tests
 
 ARCH_LINUX := x86_64-unknown-linux-gnu
 ARCH_MAC_INTEL := x86_64-apple-darwin
