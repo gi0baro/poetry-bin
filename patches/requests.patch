@@ -59,3 +59,12 @@ index d1a378d7..8788b087 100644
  
  if __name__ == '__main__':
      print(where())
+diff --git a/requirements-dev.txt b/requirements-dev.txt
+index effb0c81..e19c95ca 100644
+--- a/requirements-dev.txt
++++ b/requirements-dev.txt
+@@ -6,3 +6,4 @@ httpbin==0.7.0
+ Flask>=1.0,<2.0
+ trustme
+ wheel
++MarkupSafe==2.0.1
