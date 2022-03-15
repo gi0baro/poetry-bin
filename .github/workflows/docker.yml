@@ -14,7 +14,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build-and-push-gnu-image:
     runs-on: ubuntu-latest
 
     permissions:
@@ -24,7 +24,7 @@ jobs:
     strategy:
       matrix:
         python_version: [3.6, 3.7, 3.8, 3.9, '3.10']
-        image_flavor: ['', '-slim', '-alpine']
+        image_flavor: ['', '-slim']
 
     steps:
     - name: Checkout repository
@@ -41,6 +41,40 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         context: docker
+        file: docker/Gnu.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+
+  build-and-push-musl-image:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        python_version: [3.6, 3.7, 3.8, 3.9, '3.10']
+        image_flavor: ['-alpine']
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: docker
+        file: docker/Alpine.Dockerfile
         push: true
         tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}
         build-args: |
