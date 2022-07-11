@@ -1,10 +1,10 @@
 diff --git a/poetry/core/__init__.py b/poetry/core/__init__.py
-index e57db47..5eeeed7 100644
+index f7d95ec..99b5600 100644
 --- a/poetry/core/__init__.py
 +++ b/poetry/core/__init__.py
 @@ -9,7 +9,8 @@ except ImportError:
  
- __version__ = "1.0.7"
+ __version__ = "1.0.8"
  
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 +if not getattr(sys, "oxidized", False):
