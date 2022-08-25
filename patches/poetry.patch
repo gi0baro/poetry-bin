@@ -1548,7 +1548,7 @@ index 00000000..15804593
 +if __name__ == "__main__":
 +    print(json.dumps([(t.interpreter, t.abi, t.platform) for t in sys_tags()]))
 diff --git a/pyproject.toml b/pyproject.toml
-index dbab3e5c..3047d1e7 100644
+index 1017157d..0ff512a9 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -57,7 +57,7 @@ functools32 = { version = "^3.2.3", python = "~2.7" }
