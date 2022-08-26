@@ -1,5 +1,5 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index b3713cd..504f9fa 100644
+index b3713cd..2e81e12 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -38,9 +38,6 @@ generate-setup-file = false
@@ -12,6 +12,14 @@ index b3713cd..504f9fa 100644
  [tool.poetry.dev-dependencies]
  pre-commit = "^2.15.0"
  pyrsistent = "^0.18.0"
+@@ -116,6 +113,5 @@ drop = [
+ pyrsistent = "https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENSE.mit"
+ 
+ [build-system]
+-requires = []
++requires = ["poetry-core>=1.0.0"]
+ build-backend = "poetry.core.masonry.api"
+-backend-path = ["src"]
 diff --git a/src/poetry/core/__init__.py b/src/poetry/core/__init__.py
 index ae996ea..6b86d7f 100644
 --- a/src/poetry/core/__init__.py
