@@ -44873,7 +44873,7 @@ similarity index 100%
 rename from src/poetry/core/_vendor/attr/py.typed
 rename to src/poetry/core/spdx/data/__init__.py
 diff --git a/src/poetry/core/spdx/helpers.py b/src/poetry/core/spdx/helpers.py
-index 00d4bc6..5d0a01e 100644
+index 00d4bc6..1dde745 100644
 --- a/src/poetry/core/spdx/helpers.py
 +++ b/src/poetry/core/spdx/helpers.py
 @@ -4,6 +4,8 @@ import functools
@@ -44885,9 +44885,11 @@ index 00d4bc6..5d0a01e 100644
  from poetry.core.spdx.license import License
  
  
-@@ -20,10 +22,7 @@ def license_by_id(identifier: str) -> License:
+@@ -19,11 +21,9 @@ def license_by_id(identifier: str) -> License:
+ 
  @functools.lru_cache()
  def _load_licenses() -> dict[str, License]:
++    from . import __name__
      licenses = {}
 -    licenses_file = os.path.join(os.path.dirname(__file__), "data", "licenses.json")
 -
