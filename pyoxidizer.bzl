@@ -30,8 +30,14 @@ def make_exe():
             continue
         exe.add_python_resource(resource)
 
-    exe.add_python_resources(exe.read_package_root("vendor/poetry-core", ["poetry"]))
+    for resource in exe.pip_install(["./vendor/poetry-core"]):
+        if resource.name == "jsonschema" or resource.name.startswith("jsonschema."):
+            continue
+        exe.add_python_resource(resource)
+
+    # exe.add_python_resources(exe.read_package_root("vendor/poetry-core", ["poetry"]))
     exe.add_python_resources(exe.pip_install(["./vendor/importlib_metadata"]))
+    exe.add_python_resources(exe.pip_install(["./vendor/jsonschema"]))
     exe.add_python_resources(exe.pip_install(["./vendor/requests"]))
 
     for resource in exe.pip_install(["./vendor/virtualenv"]):

@@ -1,0 +1,54 @@
+diff --git a/jsonschema/__version__.py b/jsonschema/__version__.py
+new file mode 100644
+index 0000000..d32a48d
+--- /dev/null
++++ b/jsonschema/__version__.py
+@@ -0,0 +1 @@
++__version__ = "4.10.3"
+diff --git a/jsonschema/_utils.py b/jsonschema/_utils.py
+index 7e11325..2e90750 100644
+--- a/jsonschema/_utils.py
++++ b/jsonschema/_utils.py
+@@ -5,11 +5,7 @@ import json
+ import re
+ import sys
+ 
+-# The files() API was added in Python 3.9.
+-if sys.version_info >= (3, 9):  # pragma: no cover
+-    from importlib import resources
+-else:  # pragma: no cover
+-    import importlib_resources as resources  # type: ignore
++from importlib import resources
+ 
+ 
+ class URIDict(MutableMapping):
+@@ -57,9 +53,7 @@ def load_schema(name):
+     Load a schema from ./schemas/``name``.json and return it.
+     """
+ 
+-    path = resources.files(__package__).joinpath(f"schemas/{name}.json")
+-    data = path.read_text(encoding="utf-8")
+-    return json.loads(data)
++    return json.loads(resources.read_text(f"{__name__}.schemas", f"{name}.json"))
+ 
+ 
+ def format_as_index(container, indices):
+diff --git a/jsonschema/schemas/__init__.py b/jsonschema/schemas/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/pyproject.toml b/pyproject.toml
+index 5041a10..46a3e40 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,9 +1,9 @@
+ [build-system]
+-requires = ["hatchling", "hatch-vcs"]
++requires = ["hatchling"]
+ build-backend = "hatchling.build"
+ 
+ [tool.hatch.version]
+-source = "vcs"
++path = "jsonschema/__version__.py"
+ 
+ [project]
+ name = "jsonschema"
