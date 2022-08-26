@@ -8,9 +8,10 @@
 package metadata.  Built in part on Python's import system, this library
 intends to replace similar functionality in the `entry point
 API`_ and `metadata API`_ of ``pkg_resources``.  Along with
-:mod:`importlib.resources` in Python 3.7
-and newer (backported as :doc:`importlib_resources <importlib_resources:index>` for older versions of
-Python), this can eliminate the need to use the older and less efficient
+:mod:`importlib.resources` (with new features backported to
+:doc:`importlib_resources <importlib_resources:index>`),
+this package can eliminate the need to use the older
+and less efficient
 ``pkg_resources`` package.
 
 By "installed package" we generally mean a third-party package installed into
@@ -21,6 +22,13 @@ directory, and metadata defined by :pep:`566` or its older specifications.
 By default, package metadata can live on the file system or in zip archives on
 :data:`sys.path`.  Through an extension mechanism, the metadata can live almost
 anywhere.
+
+
+.. seealso::
+
+   https://importlib-metadata.readthedocs.io/
+      The documentation for ``importlib_metadata``, which supplies a
+      backport of ``importlib.metadata``.
 
 
 Overview
@@ -42,9 +50,9 @@ You can get the version string for ``wheel`` by running the following::
     >>> version('wheel')
     '0.32.3'
 
-You can also get the set of entry points keyed by group, such as
+You can also get a collection of entry points selectable by properties of the EntryPoint (typically 'group' or 'name'), such as
 ``console_scripts``, ``distutils.commands`` and others.  Each group contains a
-sequence of :ref:`EntryPoint <entry-points>` objects.
+collection of :ref:`EntryPoint <entry-points>` objects.
 
 You can get the :ref:`metadata for a distribution <metadata>`::
 
@@ -67,18 +75,48 @@ This package provides the following functionality via its public API.
 Entry points
 ------------
 
-The ``entry_points()`` function returns a dictionary of all entry points,
-keyed by group.  Entry points are represented by ``EntryPoint`` instances;
+The ``entry_points()`` function returns a collection of entry points.
+Entry points are represented by ``EntryPoint`` instances;
 each ``EntryPoint`` has a ``.name``, ``.group``, and ``.value`` attributes and
 a ``.load()`` method to resolve the value.  There are also ``.module``,
 ``.attr``, and ``.extras`` attributes for getting the components of the
-``.value`` attribute::
+``.value`` attribute.
+
+Query all entry points::
 
     >>> eps = entry_points()
-    >>> list(eps)
+
+The ``entry_points()`` function returns an ``EntryPoints`` object,
+a collection of all ``EntryPoint`` objects with ``names`` and ``groups``
+attributes for convenience::
+
+    >>> sorted(eps.groups)
     ['console_scripts', 'distutils.commands', 'distutils.setup_keywords', 'egg_info.writers', 'setuptools.installation']
-    >>> scripts = eps['console_scripts']
-    >>> wheel = [ep for ep in scripts if ep.name == 'wheel'][0]
+
+``EntryPoints`` has a ``select`` method to select entry points
+matching specific properties. Select entry points in the
+``console_scripts`` group::
+
+    >>> scripts = eps.select(group='console_scripts')
+
+Equivalently, since ``entry_points`` passes keyword arguments
+through to select::
+
+    >>> scripts = entry_points(group='console_scripts')
+
+Pick out a specific script named "wheel" (found in the wheel project)::
+
+    >>> 'wheel' in scripts.names
+    True
+    >>> wheel = scripts['wheel']
+
+Equivalently, query for that entry point during selection::
+
+    >>> (wheel,) = entry_points(group='console_scripts', name='wheel')
+    >>> (wheel,) = entry_points().select(group='console_scripts', name='wheel')
+
+Inspect the resolved entry point::
+
     >>> wheel
     EntryPoint(name='wheel', value='wheel.cli:main', group='console_scripts')
     >>> wheel.module
@@ -97,6 +135,17 @@ group.  Read `the setuptools docs
 <https://setuptools.readthedocs.io/en/latest/setuptools.html#dynamic-discovery-of-services-and-plugins>`_
 for more information on entry points, their definition, and usage.
 
+*Compatibility Note*
+
+The "selectable" entry points were introduced in ``importlib_metadata``
+3.6 and Python 3.10. Prior to those changes, ``entry_points`` accepted
+no parameters and always returned a dictionary of entry points, keyed
+by group. For compatibility, if no parameters are passed to entry_points,
+a ``SelectableGroups`` object is returned, implementing that dict
+interface. In the future, calling ``entry_points`` with no parameters
+will return an ``EntryPoints`` object. Users should rely on the selection
+interface to retrieve entry points by group.
+
 
 .. _metadata:
 
@@ -108,11 +157,25 @@ Every distribution includes some metadata, which you can extract using the
 
     >>> wheel_metadata = metadata('wheel')
 
-The keys of the returned data structure [#f1]_ name the metadata keywords, and
-their values are returned unparsed from the distribution metadata::
+The keys of the returned data structure, a ``PackageMetadata``,
+name the metadata keywords, and
+the values are returned unparsed from the distribution metadata::
 
     >>> wheel_metadata['Requires-Python']
     '>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*'
+
+``PackageMetadata`` also presents a ``json`` attribute that returns
+all the metadata in a JSON-compatible form per PEP 566::
+
+    >>> wheel_metadata.json['requires_python']
+    '>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*'
+
+.. note::
+
+    The actual type of the object returned by ``metadata()`` is an
+    implementation detail and should be accessed only through the interface
+    described by the
+    `PackageMetadata protocol <https://importlib-metadata.readthedocs.io/en/latest/api.html#importlib_metadata.PackageMetadata>`.
 
 
 .. _version:
@@ -135,7 +198,7 @@ Distribution files
 You can also get the full set of files contained within a distribution.  The
 ``files()`` function takes a distribution package name and returns all of the
 files installed by this distribution.  Each file object returned is a
-``PackagePath``, a :class:`pathlib.Path` derived object with additional ``dist``,
+``PackagePath``, a :class:`pathlib.PurePath` derived object with additional ``dist``,
 ``size``, and ``hash`` properties as indicated by the metadata.  For example::
 
     >>> util = [p for p in files('wheel') if 'util.py' in str(p)][0]
@@ -159,6 +222,12 @@ Once you have the file, you can also read its contents::
             return s.encode('utf-8')
         return s
 
+You can also use the ``locate`` method to get a the absolute path to the
+file::
+
+    >>> util.locate()  # doctest: +SKIP
+    PosixPath('/home/gustav/example/lib/site-packages/wheel/util.py')
+
 In the case where the metadata file listing files
 (RECORD or SOURCES.txt) is missing, ``files()`` will
 return ``None``. The caller may wish to wrap calls to
@@ -178,6 +247,18 @@ function::
     >>> requires('wheel')
     ["pytest (>=3.0.0) ; extra == 'test'", "pytest-cov ; extra == 'test'"]
 
+
+Package distributions
+---------------------
+
+A convenience method to resolve the distribution or
+distributions (in the case of a namespace package) for top-level
+Python packages or modules::
+
+    >>> packages_distributions()
+    {'importlib_metadata': ['importlib-metadata'], 'yaml': ['PyYAML'], 'jaraco': ['jaraco.classes', 'jaraco.functools'], ...}
+
+.. _distributions:
 
 Distributions
 =============
@@ -199,13 +280,22 @@ Thus, an alternative way to get the version number is through the
 There are all kinds of additional metadata available on the ``Distribution``
 instance::
 
-    >>> d.metadata['Requires-Python']
+    >>> dist.metadata['Requires-Python']
     '>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*'
-    >>> d.metadata['License']
+    >>> dist.metadata['License']
     'MIT'
 
 The full set of available metadata is not described here.  See :pep:`566`
 for additional details.
+
+
+Distribution Discovery
+======================
+
+By default, this package provides built-in support for discovery of metadata for file system and zip file packages. This metadata finder search defaults to ``sys.path``, but varies slightly in how it interprets those values from how other import machinery does. In particular:
+
+- ``importlib_metadata`` does not honor :class:`bytes` objects on ``sys.path``.
+- ``importlib_metadata`` will incidentally honor :py:class:`pathlib.Path` objects on ``sys.path`` even though such values will be ignored for imports.
 
 
 Extending the search algorithm
@@ -249,12 +339,3 @@ a custom finder, return instances of this derived ``Distribution`` in the
 .. _`entry point API`: https://setuptools.readthedocs.io/en/latest/pkg_resources.html#entry-points
 .. _`metadata API`: https://setuptools.readthedocs.io/en/latest/pkg_resources.html#metadata-api
 .. _`finders`: https://docs.python.org/3/reference/import.html#finders-and-loaders
-
-
-.. rubric:: Footnotes
-
-.. [#f1] Technically, the returned distribution metadata object is an
-         :class:`email.message.EmailMessage`
-         instance, but this is an implementation detail, and not part of the
-         stable API.  You should only use dictionary-like methods and syntax
-         to access the metadata contents.
