@@ -14,12 +14,12 @@ menu:
 ### Why is the dependency resolution process slow?
 
 While the dependency resolver at the heart of Poetry is highly optimized and
-should be fast enough for most cases, sometimes, with some specific set of dependencies,
+should be fast enough for most cases, with certain sets of dependencies
 it can take time to find a valid solution.
 
 This is due to the fact that not all libraries on PyPI have properly declared their metadata
 and, as such, they are not available via the PyPI JSON API. At this point, Poetry has no choice
-but downloading the packages and inspect them to get the necessary information. This is an expensive
+but to download the packages and inspect them to get the necessary information. This is an expensive
 operation, both in bandwidth and time, which is why it seems this is a long process.
 
 At the moment there is no way around it.
@@ -41,7 +41,7 @@ The only good alternative is to define an upper bound on your constraints,
 which you can increase in a new release after testing that your package is compatible
 with the new major version of your dependency.
 
-For example instead of using `>=3.4` you should use `~3.4` which allows all versions `<4.0`.
+For example instead of using `>=3.4` you should use `^3.4` which allows all versions `<4.0`.
 The `^` operator works very well with libraries following [semantic versioning](https://semver.org).
 
 ### Is tox supported?
@@ -57,19 +57,57 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 ```
 
-And use a `tox.ini` configuration file similar to this:
+`tox` can be configured in multiple ways. It depends on what should be the code under test and which dependencies
+should be installed.
 
-```INI
+#### Usecase #1
+```ini
 [tox]
 isolated_build = true
-envlist = py27, py36
+
+[testenv]
+deps =
+    pytest
+commands =
+    pytest tests/ --import-mode importlib
+```
+
+`tox` will create an `sdist` package of the project and uses `pip` to install it in a fresh environment.
+Thus, dependencies are resolved by `pip`.
+
+#### Usecase #2
+```ini
+[tox]
+isolated_build = true
 
 [testenv]
 whitelist_externals = poetry
+commands_pre =
+    poetry install --no-root --sync
 commands =
-    poetry install -v
-    poetry run pytest tests/
+    poetry run pytest tests/ --import-mode importlib
 ```
+
+`tox` will create an `sdist` package of the project and uses `pip` to install it in a fresh environment.
+Thus, dependencies are resolved by `pip` in the first place. But afterwards we run Poetry,
+ which will install the locked dependencies into the environment.
+
+#### Usecase #3
+```ini
+[tox]
+isolated_build = true
+
+[testenv]
+skip_install = true
+whitelist_externals = poetry
+commands_pre =
+    poetry install
+commands =
+    poetry run pytest tests/ --import-mode importlib
+```
+
+`tox` will not do any install. Poetry installs all the dependencies and the current package an editable mode.
+Thus, tests are running against the local files and not the builded and installed package.
 
 ### I don't want Poetry to manage my virtual environments. Can I disable it?
 
@@ -82,3 +120,35 @@ In this case, you can disable this feature by setting the `virtualenvs.create` s
 ```bash
 poetry config virtualenvs.create false
 ```
+
+### Why is Poetry telling me that the current project's Python requirement is not compatible with one or more packages' Python requirements?
+
+Unlike `pip`, Poetry doesn't resolve for just the Python in the current environment. Instead it makes sure that a dependency
+is resolvable within the given Python version range in `pyproject.toml`.
+
+Assume you have the following `pyproject.toml`:
+
+```toml
+[tool.poetry.dependencies]
+python = "^3.7"
+```
+
+This means your project aims to be compatible with any Python version >=3.7,<4.0. Whenever you try to add a dependency
+whose Python requirement doesn't match the whole range Poetry will tell you this, e.g.:
+
+```
+The current project's Python requirement (>=3.7.0,<4.0.0) is not compatible with some of the required packages Python requirement:
+    - scipy requires Python >=3.7,<3.11, so it will not be satisfied for Python >=3.11,<4.0.0
+```
+
+Usually you will want to match the Python requirement of your project with the upper bound of the failing dependency.
+Alternative you can tell Poetry to install this dependency [only for a specific range of Python versions]({{< relref "dependency-specification#multiple-constraints-dependencies" >}}),
+if you know that it's not needed in all versions.
+
+
+### Why does Poetry enforce PEP 440 versions?
+
+This is done so to be compliant with the broader Python ecosystem.
+
+For example, if Poetry builds a distribution for a project that uses a version that is not valid according to
+[PEP 440](https://peps.python.org/pep-0440), third party tools will be unable to parse the version correctly.

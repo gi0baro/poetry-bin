@@ -9,6 +9,10 @@ menu:
     weight: 100
 ---
 
+<!--
+The content of this file is manually kept in sync with ../CONTRIBUTING.md. There are formatting differences because this file uses Hugo templating.
+-->
+
 # Contributing to Poetry
 
 First off, thanks for taking the time to contribute!
@@ -37,6 +41,7 @@ Following these guidelines helps maintainers and the community understand your r
 Before creating bug reports, please check [this list](#before-submitting-a-bug-report) to be sure that you need to create one. When you are creating a bug report, please include as many details as possible. Fill out the [required template](https://github.com/python-poetry/poetry/blob/master/.github/ISSUE_TEMPLATE/---bug-report.md), the information it asks helps the maintainers resolve the issue faster.
 
 > **Note:** If you find a **Closed** issue that seems like it is the same thing that you're experiencing, open a new issue and include a link to the original issue in the body of your new one.
+
 #### Before submitting a bug report
 
 * **Check the [FAQs on the official website](https://python-poetry.org/docs/faq)** for a list of common questions and problems.
@@ -65,7 +70,7 @@ Provide more context by answering these questions:
 Include details about your configuration and environment:
 
 * **Which version of Poetry are you using?** You can get the exact version by running `poetry -V` in your terminal.
-* **Which Python version Poetry has been installed for?** Execute the `debug:info` to get the information.
+* **Which Python version Poetry has been installed for?** Execute the `poetry debug info` to get the information.
 * **What's the name and version of the OS you're using**?
 
 
@@ -118,11 +123,15 @@ the code base, join us on our [Discord Server](https://discordapp.com/invite/awx
 
 You will need Poetry to start contributing on the Poetry codebase. Refer to the [documentation](https://python-poetry.org/docs/#introduction) to start using Poetry.
 
+{{% note %}}
+Local development of Poetry requires Python 3.8 or newer.
+{{% /note %}}
+
 You will first need to clone the repository using `git` and place yourself in its directory:
 
 ```bash
-$ git clone git@github.com:python-poetry/poetry.git
-$ cd poetry
+git clone git@github.com:python-poetry/poetry.git
+cd poetry
 ```
 
 {{% note %}}
@@ -134,8 +143,15 @@ Now, you will need to install the required dependency for Poetry and be sure tha
 tests are passing on your machine:
 
 ```bash
-$ poetry install
-$ poetry run pytest tests/
+poetry install
+poetry run pytest tests/
+```
+
+Poetry uses [mypy](https://github.com/python/mypy) for typechecking, and the CI
+will fail if it finds any errors.  To run mypy locally:
+
+```bash
+poetry run mypy
 ```
 
 Poetry uses the [black](https://github.com/psf/black) coding style and you must ensure that your
@@ -148,13 +164,13 @@ To make sure that you don't accidentally commit code that does not follow the co
 install a pre-commit hook that will check that everything is in order:
 
 ```bash
-$ poetry run pre-commit install
+poetry run pre-commit install
 ```
 
 You can also run it anytime using:
 
 ```bash
-$ poetry run pre-commit run --all-files
+poetry run pre-commit run --all-files
 ```
 
 Your code must always be accompanied by corresponding tests, if tests are not present your code
@@ -197,7 +213,7 @@ If you are helping with the triage of reported issues, this section provides som
 
 #### Multiple versions
 
-Often times you would want to attempt to reproduce issues with multiple versions of `poetry` at the same time. For these use cases, the [pipx project](https://pipxproject.github.io/pipx/) is useful.
+Often times you would want to attempt to reproduce issues with multiple versions of `poetry` at the same time. For these use cases, the [pipx project](https://pypa.github.io/pipx/) is useful.
 
 You can set your environment up like so.
 

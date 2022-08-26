@@ -1,173 +1,116 @@
-diff --git a/poetry/console/__init__.py b/poetry/console/__init__.py
-index c0c25738..e69de29b 100644
---- a/poetry/console/__init__.py
-+++ b/poetry/console/__init__.py
-@@ -1,5 +0,0 @@
--from .application import Application
--
--
--def main():
--    return Application().run()
-diff --git a/poetry/console/commands/env/info.py b/poetry/console/commands/env/info.py
-index 301d88f9..b80ee500 100644
---- a/poetry/console/commands/env/info.py
-+++ b/poetry/console/commands/env/info.py
-@@ -54,7 +54,7 @@ class EnvInfoCommand(Command):
-                 [
-                     "<info>Platform</info>: <comment>{}</>".format(env.platform),
-                     "<info>OS</info>:       <comment>{}</>".format(env.os),
--                    "<info>Python</info>:   <comment>{}</>".format(env.base),
-+                    "<info>Python</info>:   <comment>{}</>".format(env.python),
-                 ]
-             )
-         )
-diff --git a/poetry/console/commands/init.py b/poetry/console/commands/init.py
-index af72318c..1d616682 100644
---- a/poetry/console/commands/init.py
-+++ b/poetry/console/commands/init.py
-@@ -66,7 +66,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
+diff --git a/pyproject.toml b/pyproject.toml
+index 7829c6e9..5d49544f 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -54,7 +54,7 @@ html5lib = "^1.0"
+ importlib-metadata = { version = "^4.4", python = "<3.10" }
+ jsonschema = "^4.10.0"
+ # keyring uses calver, so version is unclamped
+-keyring = ">=21.2.0"
++keyring = "~22.3.0"
+ # packaging uses calver, so version is unclamped
+ packaging = ">=20.4"
+ pexpect = "^4.7.0"
+diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
+index 274cfcfc..9cd59231 100644
+--- a/src/poetry/console/application.py
++++ b/src/poetry/console/application.py
+@@ -83,7 +83,7 @@ COMMANDS = [
+     "self install",
+     "self lock",
+     "self remove",
+-    "self update",
++    # "self update",
+     "self show",
+     "self show plugins",
+     # Source commands
+diff --git a/src/poetry/console/commands/init.py b/src/poetry/console/commands/init.py
+index e2ebf9cf..ef4c98f1 100644
+--- a/src/poetry/console/commands/init.py
++++ b/src/poetry/console/commands/init.py
+@@ -75,7 +75,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
          from poetry.core.vcs.git import GitConfig
+ 
          from poetry.layouts import layout
-         from poetry.utils._compat import Path
 -        from poetry.utils.env import SystemEnv
 +        from poetry.utils.env import SystemEnv, InterpreterLookup
  
          pyproject = PyProjectTOML(Path.cwd() / "pyproject.toml")
  
-@@ -141,7 +141,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
+@@ -147,7 +147,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
  
          python = self.option("python")
          if not python:
 -            current_env = SystemEnv(Path(sys.executable))
-+            executable, py_minor, py_patch = InterpreterLookup.find()
-+            current_env = SystemEnv(executable)
-             default_python = "^{}".format(
-                 ".".join(str(v) for v in current_env.version_info[:2])
++            executable, _, _ = InterpreterLookup.find()
++            current_env = SystemEnv(Path(executable))
+             default_python = "^" + ".".join(
+                 str(v) for v in current_env.version_info[:2]
              )
-diff --git a/poetry/console/commands/new.py b/poetry/console/commands/new.py
-index 481b0577..e77fad50 100644
---- a/poetry/console/commands/new.py
-+++ b/poetry/console/commands/new.py
-@@ -24,7 +24,7 @@ class NewCommand(Command):
+diff --git a/src/poetry/console/commands/new.py b/src/poetry/console/commands/new.py
+index cde571aa..0a25b2a0 100644
+--- a/src/poetry/console/commands/new.py
++++ b/src/poetry/console/commands/new.py
+@@ -32,7 +32,7 @@ class NewCommand(Command):
          from poetry.core.vcs.git import GitConfig
+ 
          from poetry.layouts import layout
-         from poetry.utils._compat import Path
 -        from poetry.utils.env import SystemEnv
 +        from poetry.utils.env import SystemEnv, InterpreterLookup
  
          if self.option("src"):
-             layout_ = layout("src")
-@@ -54,7 +54,8 @@ class NewCommand(Command):
+             layout_cls = layout("src")
+@@ -65,7 +65,8 @@ class NewCommand(Command):
              if author_email:
-                 author += " <{}>".format(author_email)
+                 author += f" <{author_email}>"
  
 -        current_env = SystemEnv(Path(sys.executable))
-+        executable, py_minor, py_patch = InterpreterLookup.find()
-+        current_env = SystemEnv(executable)
-         default_python = "^{}".format(
-             ".".join(str(v) for v in current_env.version_info[:2])
-         )
-diff --git a/poetry/console/commands/self/self.py b/poetry/console/commands/self/self.py
-index 3e5cafa9..ff1abefe 100644
---- a/poetry/console/commands/self/self.py
-+++ b/poetry/console/commands/self/self.py
-@@ -1,5 +1,4 @@
- from ..command import Command
--from .update import SelfUpdateCommand
++        executable, _, _ = InterpreterLookup.find()
++        current_env = SystemEnv(Path(executable))
+         default_python = "^" + ".".join(str(v) for v in current_env.version_info[:2])
  
- 
- class SelfCommand(Command):
-@@ -7,7 +6,7 @@ class SelfCommand(Command):
-     name = "self"
-     description = "Interact with Poetry directly."
- 
--    commands = [SelfUpdateCommand()]
-+    commands = []
- 
-     def handle(self):
-         return self.call("help", self._config.name)
-diff --git a/poetry/repositories/installed_repository.py b/poetry/repositories/installed_repository.py
-index 1320fdd6..03513103 100644
---- a/poetry/repositories/installed_repository.py
-+++ b/poetry/repositories/installed_repository.py
-@@ -9,10 +9,11 @@ from poetry.utils._compat import Path
- from poetry.utils._compat import metadata
- from poetry.utils.env import Env
- 
-+from . import __path__
- from .repository import Repository
+         layout_ = layout_cls(
+diff --git a/src/poetry/repositories/installed_repository.py b/src/poetry/repositories/installed_repository.py
+index 228df353..087d01de 100644
+--- a/src/poetry/repositories/installed_repository.py
++++ b/src/poetry/repositories/installed_repository.py
+@@ -20,9 +20,6 @@ if TYPE_CHECKING:
+     from poetry.utils.env import Env
  
  
 -_VENDORS = Path(__file__).parent.parent.joinpath("_vendor")
-+_VENDORS = Path(__path__[0]).parent.joinpath("_vendor")
- 
- 
- try:
-diff --git a/poetry/utils/_compat.py b/poetry/utils/_compat.py
-index 937f9b30..40e41514 100644
---- a/poetry/utils/_compat.py
-+++ b/poetry/utils/_compat.py
-@@ -1,5 +1,5 @@
- import sys
 -
-+import importlib_metadata as metadata
- 
- try:
-     from functools32 import lru_cache
-@@ -13,10 +13,7 @@ except ImportError:
- 
- try:
-     import zipfile as zipp
 -
--    from importlib import metadata
- except ImportError:
--    import importlib_metadata as metadata
-     import zipp
- 
  try:
-diff --git a/poetry/utils/env.py b/poetry/utils/env.py
-index 0b91aa22..1f533f44 100644
---- a/poetry/utils/env.py
-+++ b/poetry/utils/env.py
-@@ -7,10 +7,10 @@ import re
- import shutil
- import sys
- import sysconfig
--import textwrap
+     FileNotFoundError
+ except NameError:
+@@ -281,13 +278,6 @@ class InstalledRepository(Repository):
+                 if name in seen:
+                     continue
  
- from contextlib import contextmanager
- from copy import deepcopy
-+from importlib import resources
- from typing import Any
- from typing import Dict
- from typing import List
-@@ -18,7 +18,6 @@ from typing import Optional
- from typing import Tuple
- from typing import Union
+-                try:
+-                    path.relative_to(_VENDORS)
+-                except ValueError:
+-                    pass
+-                else:
+-                    continue
+-
+                 package = cls.create_package_from_distribution(distribution, env)
  
--import packaging.tags
- import tomlkit
- import virtualenv
- 
-@@ -28,6 +27,8 @@ from packaging.tags import interpreter_name
+                 if with_dependencies:
+diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
+index ab645bd7..feb39ff1 100644
+--- a/src/poetry/utils/env.py
++++ b/src/poetry/utils/env.py
+@@ -30,6 +30,7 @@ from packaging.tags import Tag
+ from packaging.tags import interpreter_name
  from packaging.tags import interpreter_version
  from packaging.tags import sys_tags
- 
-+from poetry import __path__ as __pkgpath__
 +from poetry.core.packages import Package
- from poetry.core.semver import parse_constraint
+ from poetry.core.semver.helpers import parse_constraint
  from poetry.core.semver.version import Version
  from poetry.core.toml.file import TOMLFile
-@@ -43,6 +44,8 @@ from poetry.utils._compat import subprocess
- from poetry.utils.helpers import is_dir_writable
- from poetry.utils.helpers import paths_csv
- 
-+from . import __name__ as _pkg
-+
- 
- GET_ENVIRONMENT_INFO = """\
- import json
-@@ -466,7 +469,10 @@ class EnvManager(object):
+@@ -660,7 +661,10 @@ class EnvManager:
          if self._env is not None and not reload:
              return self._env
  
@@ -177,11 +120,11 @@ index 0b91aa22..1f533f44 100644
 +            ".".join(str(c) for c in sys.version_info[:2])
 +        )
  
-         venv_path = self._poetry.config.get("virtualenvs.path")
-         if venv_path is None:
-@@ -679,8 +685,7 @@ class EnvManager(object):
-         if not name:
+         venv_path = self._poetry.config.virtualenvs_path
+ 
+@@ -861,8 +865,7 @@ class EnvManager:
              name = self._poetry.package.name
+         assert name is not None
  
 -        python_patch = ".".join([str(v) for v in sys.version_info[:3]])
 -        python_minor = ".".join([str(v) for v in sys.version_info[:2]])
@@ -189,7 +132,7 @@ index 0b91aa22..1f533f44 100644
          if executable:
              python_patch = decode(
                  subprocess.check_output(
-@@ -697,7 +702,10 @@ class EnvManager(object):
+@@ -875,7 +878,10 @@ class EnvManager:
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -201,30 +144,27 @@ index 0b91aa22..1f533f44 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -709,60 +717,7 @@ class EnvManager(object):
+@@ -887,53 +893,7 @@ class EnvManager:
                      self._poetry.package.python_versions, python_patch
                  )
  
--            io.write_line(
--                "<warning>The currently activated Python version {} "
--                "is not supported by the project ({}).\n"
--                "Trying to find and use a compatible version.</warning> ".format(
--                    python_patch, self._poetry.package.python_versions
--                )
+-            io.write_error_line(
+-                f"<warning>The currently activated Python version {python_patch} is not"
+-                f" supported by the project ({self._poetry.package.python_versions}).\n"
+-                "Trying to find and use a compatible version.</warning> "
 -            )
 -
--            for python_to_try in reversed(
--                sorted(
--                    self._poetry.package.AVAILABLE_PYTHONS,
--                    key=lambda v: (v.startswith("3"), -len(v), v),
--                )
+-            for python_to_try in sorted(
+-                self._poetry.package.AVAILABLE_PYTHONS,
+-                key=lambda v: (v.startswith("3"), -len(v), v),
+-                reverse=True,
 -            ):
 -                if len(python_to_try) == 1:
--                    if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
+-                    if not parse_constraint(f"^{python_to_try}.0").allows_any(
 -                        supported_python
 -                    ):
 -                        continue
--                elif not supported_python.allows_all(
+-                elif not supported_python.allows_any(
 -                    parse_constraint(python_to_try + ".*")
 -                ):
 -                    continue
@@ -232,17 +172,13 @@ index 0b91aa22..1f533f44 100644
 -                python = "python" + python_to_try
 -
 -                if io.is_debug():
--                    io.write_line("<debug>Trying {}</debug>".format(python))
+-                    io.write_line(f"<debug>Trying {python}</debug>")
 -
 -                try:
 -                    python_patch = decode(
 -                        subprocess.check_output(
 -                            list_to_shell_command(
--                                [
--                                    python,
--                                    "-c",
--                                    "\"import sys; print('.'.join([str(s) for s in sys.version_info[:3]]))\"",
--                                ]
+-                                [python, "-c", GET_PYTHON_VERSION_ONELINER]
 -                            ),
 -                            stderr=subprocess.STDOUT,
 -                            shell=True,
@@ -255,7 +191,7 @@ index 0b91aa22..1f533f44 100644
 -                    continue
 -
 -                if supported_python.allows(Version.parse(python_patch)):
--                    io.write_line("Using <c1>{}</c1> ({})".format(python, python_patch))
+-                    io.write_line(f"Using <c1>{python}</c1> ({python_patch})")
 -                    executable = python
 -                    python_minor = ".".join(python_patch.split(".")[:2])
 -                    break
@@ -263,24 +199,9 @@ index 0b91aa22..1f533f44 100644
  
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -792,6 +747,14 @@ class EnvManager(object):
+@@ -990,21 +950,13 @@ class EnvManager:
+                 prompt=venv_prompt,
              )
- 
-             self.build_venv(venv, executable=executable)
-+
-+            if not root_venv:
-+                envs = tomlkit.document()
-+                envs_file = TOMLFile(venv_path / self.ENVS_FILE)
-+                if envs_file.exists():
-+                    envs = envs_file.read()
-+                envs[name] = {"minor": python_minor, "patch": python_patch}
-+                envs_file.write(envs)
-         else:
-             if force:
-                 if not env.is_sane():
-@@ -808,22 +771,6 @@ class EnvManager(object):
-             elif io.is_very_verbose():
-                 io.write_line("Virtualenv <c1>{}</> already exists.".format(name))
  
 -        # venv detection:
 -        # stdlib venv may symlink sys.executable, so we can't use realpath.
@@ -296,126 +217,137 @@ index 0b91aa22..1f533f44 100644
 -        p_venv = os.path.normcase(str(venv))
 -        if any(p.startswith(p_venv) for p in paths):
 -            # Running properly in the virtualenv, don't need to do anything
--            return SystemEnv(Path(sys.prefix), Path(self.get_base_prefix()))
--
+-            return self.get_system_env()
++            if not root_venv:
++                envs = tomlkit.document()
++                envs_file = TOMLFile(venv_path / self.ENVS_FILE)
++                if envs_file.exists():
++                    envs = envs_file.read()
++                envs[name] = {"minor": python_minor, "patch": python_patch}
++                envs_file.write(envs)
+ 
          return VirtualEnv(venv)
  
-     @classmethod
-@@ -837,7 +784,7 @@ class EnvManager(object):
-                 "--no-download",
-                 "--no-periodic-update",
-                 "--python",
--                executable or sys.executable,
-+                executable or "python",
-                 str(path),
-             ]
-         )
-@@ -879,9 +826,13 @@ class EnvManager(object):
+@@ -1050,7 +1002,7 @@ class EnvManager:
+             "--no-download",
+             "--no-periodic-update",
+             "--python",
+-            executable or sys.executable,
++            executable or "python",
+         ]
+ 
+         if prompt is not None:
+@@ -1114,9 +1066,13 @@ class EnvManager:
          want to retrieve Poetry's custom virtual environment
          (e.g. plugin installation or self update).
          """
 -        prefix, base_prefix = Path(sys.prefix), Path(cls.get_base_prefix())
--        env = SystemEnv(prefix)
+-        env: Env = SystemEnv(prefix)
 -        if not naive:
 +        pydef_executable, _, _ = InterpreterLookup.find()
 +        prefix, base_prefix = (
 +            Path(pydef_executable) if pydef_executable else None,
 +            Path(cls.get_base_prefix())
 +        )
-+        env = SystemEnv(prefix) if prefix else NullEnv()
++        env: Env = SystemEnv(prefix) if prefix else NullEnv()
 +        if not naive and prefix:
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1266,96 +1217,50 @@ class SystemEnv(Env):
+@@ -1542,97 +1498,53 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
 -    @property
--    def python(self):  # type: () -> str
+-    def python(self) -> str:
 -        return sys.executable
-+    def __init__(self, path, base=None, auto_path=True):
++    def __init__(self, path: Path, base: Path | None = None, auto_path: bool = True) -> None:
 +        self._is_windows = sys.platform == "win32"
 +        if auto_path and path:
-+            path = Path(self._run([str(path), "-"], input_=GET_BASE_PREFIX).strip())
++            path = Path(
++                self._run(
++                    [str(path), "-W", "ignore", "-"],
++                    input_=GET_BASE_PREFIX
++                ).strip()
++            )
 +        super().__init__(path, base=base)
  
      @property
--    def sys_path(self):  # type: () -> List[str]
+     def sys_path(self) -> list[str]:
 -        return sys.path
--
--    def get_version_info(self):  # type: () -> Tuple[int]
--        return sys.version_info
--
--    def get_python_implementation(self):  # type: () -> str
++        output = self.run_python_script(GET_SYS_PATH)
++        return json.loads(output)
+ 
+     def get_version_info(self) -> tuple[Any, ...]:
+-        return tuple(sys.version_info)
++        output = self.run_python_script(GET_PYTHON_VERSION)
++        return tuple([int(s) for s in output.strip().split(".")])
+ 
+     def get_python_implementation(self) -> str:
 -        return platform.python_implementation()
--
--    def get_pip_command(self):  # type: () -> List[str]
++        return self.marker_env["platform_python_implementation"]
+ 
+-    def get_pip_command(self, embedded: bool = False) -> list[str]:
 -        # If we're not in a venv, assume the interpreter we're running on
 -        # has a pip and use that
--        return [sys.executable, "-m", "pip"]
--
--    def get_paths(self):  # type: () -> Dict[str, str]
+-        return [sys.executable, self.pip_embedded if embedded else self.pip]
++    def get_marker_env(self) -> dict[str, Any]:
++        output = self.run_python_script(GET_ENVIRONMENT_INFO)
++        return json.loads(output)
+ 
+     def get_paths(self) -> dict[str, str]:
 -        # We can't use sysconfig.get_paths() because
 -        # on some distributions it does not return the proper paths
 -        # (those used by pip for instance). We go through distutils
 -        # to get the proper ones.
 -        import site
 -
--        from distutils.command.install import SCHEME_KEYS  # noqa
+-        from distutils.command.install import SCHEME_KEYS
 -        from distutils.core import Distribution
 -
 -        d = Distribution()
 -        d.parse_config_files()
--        obj = d.get_command_obj("install", create=True)
+-        with warnings.catch_warnings():
+-            warnings.filterwarnings("ignore", "setup.py install is deprecated")
+-            obj = d.get_command_obj("install", create=True)
+-        assert obj is not None
 -        obj.finalize_options()
-+    def sys_path(self):
-+        output = self.run("python", "-", input_=GET_SYS_PATH)
-+        return json.loads(output)
- 
+-
 -        paths = sysconfig.get_paths().copy()
 -        for key in SCHEME_KEYS:
 -            if key == "headers":
 -                # headers is not a path returned by sysconfig.get_paths()
 -                continue
-+    def get_version_info(self):
-+        output = self.run("python", "-", input_=GET_PYTHON_VERSION)
-+        return tuple([int(s) for s in output.strip().split(".")])
- 
--            paths[key] = getattr(obj, "install_{}".format(key))
-+    def get_python_implementation(self):
-+        return self.marker_env["platform_python_implementation"]
- 
--        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
--            paths["usersite"] = getattr(obj, "install_usersite")
--            paths["userbase"] = getattr(obj, "install_userbase")
-+    def get_marker_env(self):
-+        output = self.run("python", "-", input_=GET_ENVIRONMENT_INFO)
-+        return json.loads(output)
- 
+-
+-            paths[key] = getattr(obj, f"install_{key}")
+-
+-        if site.check_enableusersite():
+-            usersite = getattr(obj, "install_usersite", None)
+-            userbase = getattr(obj, "install_userbase", None)
+-            if usersite is not None and userbase is not None:
+-                paths["usersite"] = usersite
+-                paths["userbase"] = userbase
+-
 -        return paths
-+    def get_paths(self):
-+        output = self.run("python", "-", input_=GET_PATHS)
++        output = self.run_python_script(GET_PATHS)
 +        return json.loads(output)
  
-     def get_supported_tags(self):  # type: () -> List[Tag]
+     def get_supported_tags(self) -> list[Tag]:
 -        return list(sys_tags())
 -
--    def get_marker_env(self):  # type: () -> Dict[str, Any]
+-    def get_marker_env(self) -> dict[str, Any]:
 -        if hasattr(sys, "implementation"):
 -            info = sys.implementation.version
--            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
+-            iver = f"{info.major}.{info.minor}.{info.micro}"
 -            kind = info.releaselevel
 -            if kind != "final":
 -                iver += kind[0] + str(info.serial)
-+        script = resources.read_text(_pkg, "packaging_tags.py.template")
- 
+-
 -            implementation_name = sys.implementation.name
 -        else:
 -            iver = "0"
 -            implementation_name = ""
-+        output = self.run("python", "-", input_=script)
- 
+-
 -        return {
 -            "implementation_name": implementation_name,
 -            "implementation_version": iver,
@@ -426,21 +358,22 @@ index 0b91aa22..1f533f44 100644
 -            "platform_version": platform.version(),
 -            "python_full_version": platform.python_version(),
 -            "platform_python_implementation": platform.python_implementation(),
--            "python_version": ".".join(
--                v for v in platform.python_version().split(".")[:2]
--            ),
+-            "python_version": ".".join(platform.python_version().split(".")[:2]),
 -            "sys_platform": sys.platform,
 -            "version_info": sys.version_info,
--            # Extra information
 -            "interpreter_name": interpreter_name(),
 -            "interpreter_version": interpreter_version(),
 -        }
++        output = self.run_python_script(GET_SYS_TAGS)
 +        return [Tag(*t) for t in json.loads(output)]
  
--    def get_pip_version(self):  # type: () -> Version
+-    def get_pip_version(self) -> Version:
 -        from pip import __version__
-+    def get_pip_command(self):
-+        return [self.python, "-m", "pip"]
++    def get_pip_command(self, embedded: bool = False) -> list[str]:
++        return [
++            self._bin(self._executable),
++            self.pip_embedded if embedded else self.pip,
++        ]
  
 -        return Version.parse(__version__)
 +    def get_pip_version(self):
@@ -450,80 +383,55 @@ index 0b91aa22..1f533f44 100644
 +            return Version.parse("0.0")
 +        return Version.parse(m.group(1))
  
--    def is_venv(self):  # type: () -> bool
-+    def is_venv(self):
+     def is_venv(self) -> bool:
          return self._path != self._base
- 
- 
-@@ -1394,30 +1299,7 @@ class VirtualEnv(Env):
-         return [self._bin(self._pip_executable)]
- 
-     def get_supported_tags(self):  # type: () -> List[Tag]
--        file_path = Path(packaging.tags.__file__)
--        if file_path.suffix == ".pyc":
--            # Python 2
--            file_path = file_path.with_suffix(".py")
--
--        with file_path.open(encoding="utf-8") as f:
--            script = decode(f.read())
--
--        script = script.replace(
--            "from ._typing import TYPE_CHECKING, cast",
--            "TYPE_CHECKING = False\ncast = lambda type_, value: value",
--        )
--        script = script.replace(
--            "from ._typing import MYPY_CHECK_RUNNING, cast",
--            "MYPY_CHECK_RUNNING = False\ncast = lambda type_, value: value",
--        )
--
--        script += textwrap.dedent(
--            """
--            import json
--
--            print(json.dumps([(t.interpreter, t.abi, t.platform) for t in sys_tags()]))
--            """
--        )
-+        script = resources.read_text(_pkg, "packaging_tags.py.template")
- 
-         output = self.run_python_script(script)
- 
-@@ -1574,11 +1456,98 @@ class NullEnv(SystemEnv):
+@@ -1853,16 +1765,100 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
--        super(NullEnv, self).__init__(path, base=base)
+-        super().__init__(path, base=base)
 +        super().__init__(path, base=base, auto_path=False)
  
          self._execute = execute
-         self.executed = []
+         self.executed: list[list[str]] = []
  
 +    @property
-+    def python(self):  # type: () -> str
++    def python(self) -> str:
 +        return sys.executable
 +
 +    @property
-+    def sys_path(self):  # type: () -> List[str]
++    def sys_path(self) -> list[str]:
 +        return sys.path
 +
-+    def get_version_info(self):  # type: () -> Tuple[int]
-+        return sys.version_info
++    def get_version_info(self) -> tuple[Any, ...]:
++        return tuple(sys.version_info)
 +
-+    def get_python_implementation(self):  # type: () -> str
++    def get_python_implementation(self) -> str:
 +        return platform.python_implementation()
 +
-+    def get_paths(self):  # type: () -> Dict[str, str]
+     def get_pip_command(self, embedded: bool = False) -> list[str]:
+-        return [
+-            self._bin(self._executable),
+-            self.pip_embedded if embedded else self.pip,
+-        ]
++        return [sys.executable, self.pip_embedded if embedded else self.pip]
++
++    def get_paths(self) -> dict[str, str]:
 +        # We can't use sysconfig.get_paths() because
 +        # on some distributions it does not return the proper paths
 +        # (those used by pip for instance). We go through distutils
 +        # to get the proper ones.
 +        import site
 +
-+        from distutils.command.install import SCHEME_KEYS  # noqa
++        from distutils.command.install import SCHEME_KEYS
 +        from distutils.core import Distribution
 +
 +        d = Distribution()
 +        d.parse_config_files()
-+        obj = d.get_command_obj("install", create=True)
++        with warnings.catch_warnings():
++            warnings.filterwarnings("ignore", "setup.py install is deprecated")
++            obj = d.get_command_obj("install", create=True)
++        assert obj is not None
 +        obj.finalize_options()
 +
 +        paths = sysconfig.get_paths().copy()
@@ -532,21 +440,24 @@ index 0b91aa22..1f533f44 100644
 +                # headers is not a path returned by sysconfig.get_paths()
 +                continue
 +
-+            paths[key] = getattr(obj, "install_{}".format(key))
++            paths[key] = getattr(obj, f"install_{key}")
 +
-+        if site.check_enableusersite() and hasattr(obj, "install_usersite"):
-+            paths["usersite"] = getattr(obj, "install_usersite")
-+            paths["userbase"] = getattr(obj, "install_userbase")
++        if site.check_enableusersite():
++            usersite = getattr(obj, "install_usersite", None)
++            userbase = getattr(obj, "install_userbase", None)
++            if usersite is not None and userbase is not None:
++                paths["usersite"] = usersite
++                paths["userbase"] = userbase
 +
 +        return paths
 +
-+    def get_supported_tags(self):  # type: () -> List[Tag]
++    def get_supported_tags(self) -> list[Tag]:
 +        return list(sys_tags())
 +
-+    def get_marker_env(self):  # type: () -> Dict[str, Any]
++    def get_marker_env(self) -> dict[str, Any]:
 +        if hasattr(sys, "implementation"):
 +            info = sys.implementation.version
-+            iver = "{0.major}.{0.minor}.{0.micro}".format(info)
++            iver = f"{info.major}.{info.minor}.{info.micro}"
 +            kind = info.releaselevel
 +            if kind != "final":
 +                iver += kind[0] + str(info.serial)
@@ -566,41 +477,23 @@ index 0b91aa22..1f533f44 100644
 +            "platform_version": platform.version(),
 +            "python_full_version": platform.python_version(),
 +            "platform_python_implementation": platform.python_implementation(),
-+            "python_version": ".".join(
-+                v for v in platform.python_version().split(".")[:2]
-+            ),
++            "python_version": ".".join(platform.python_version().split(".")[:2]),
 +            "sys_platform": sys.platform,
 +            "version_info": sys.version_info,
-+            # Extra information
 +            "interpreter_name": interpreter_name(),
 +            "interpreter_version": interpreter_version(),
 +        }
 +
-+    def get_pip_version(self):  # type: () -> Version
++    def get_pip_version(self) -> Version:
 +        from pip import __version__
 +
 +        return Version.parse(__version__)
-+
-+    def is_venv(self):  # type: () -> bool
-+        return self._path != self._base
-+
-     def get_pip_command(self):  # type: () -> List[str]
-         return [self._bin("python"), "-m", "pip"]
  
-@@ -1624,6 +1593,10 @@ class MockEnv(NullEnv):
-         self._mock_marker_env = marker_env
-         self._supported_tags = supported_tags
+     def _run(self, cmd: list[str], **kwargs: Any) -> int | str:
+         self.executed.append(cmd)
+@@ -2009,3 +2005,70 @@ class MockEnv(NullEnv):
  
-+    @property
-+    def python(self):  # type: () -> str
-+        return self._base
-+
-     @property
-     def platform(self):  # type: () -> str
-         return self._platform
-@@ -1662,3 +1635,70 @@ class MockEnv(NullEnv):
- 
-     def is_venv(self):  # type: () -> bool
+     def is_venv(self) -> bool:
          return self._is_venv
 +
 +
@@ -669,1474 +562,3 @@ index 0b91aa22..1f533f44 100644
 +                break
 +
 +        return executable, minor, patch
-diff --git a/poetry/utils/packaging_tags.py.template b/poetry/utils/packaging_tags.py.template
-new file mode 100644
-index 00000000..15804593
---- /dev/null
-+++ b/poetry/utils/packaging_tags.py.template
-@@ -0,0 +1,872 @@
-+# This file is dual licensed under the terms of the Apache License, Version
-+# 2.0, and the BSD License. See the LICENSE file in the root of this repository
-+# for complete details.
-+
-+from __future__ import absolute_import
-+
-+import distutils.util
-+
-+try:
-+    from importlib.machinery import EXTENSION_SUFFIXES
-+except ImportError:  # pragma: no cover
-+    import imp
-+
-+    EXTENSION_SUFFIXES = [x[0] for x in imp.get_suffixes()]
-+    del imp
-+import collections
-+import json
-+import logging
-+import os
-+import platform
-+import re
-+import struct
-+import sys
-+import sysconfig
-+import warnings
-+
-+TYPE_CHECKING = False
-+cast = lambda type_, value: value
-+
-+if TYPE_CHECKING:  # pragma: no cover
-+    from typing import (
-+        IO,
-+        Dict,
-+        FrozenSet,
-+        Iterable,
-+        Iterator,
-+        List,
-+        Optional,
-+        Sequence,
-+        Tuple,
-+        Union,
-+    )
-+
-+    PythonVersion = Sequence[int]
-+    MacVersion = Tuple[int, int]
-+    GlibcVersion = Tuple[int, int]
-+
-+
-+logger = logging.getLogger(__name__)
-+
-+INTERPRETER_SHORT_NAMES = {
-+    "python": "py",  # Generic.
-+    "cpython": "cp",
-+    "pypy": "pp",
-+    "ironpython": "ip",
-+    "jython": "jy",
-+}  # type: Dict[str, str]
-+
-+
-+_32_BIT_INTERPRETER = sys.maxsize <= 2 ** 32
-+
-+
-+_LEGACY_MANYLINUX_MAP = {
-+    # CentOS 7 w/ glibc 2.17 (PEP 599)
-+    (2, 17): "manylinux2014",
-+    # CentOS 6 w/ glibc 2.12 (PEP 571)
-+    (2, 12): "manylinux2010",
-+    # CentOS 5 w/ glibc 2.5 (PEP 513)
-+    (2, 5): "manylinux1",
-+}
-+
-+# If glibc ever changes its major version, we need to know what the last
-+# minor version was, so we can build the complete list of all versions.
-+# For now, guess what the highest minor version might be, assume it will
-+# be 50 for testing. Once this actually happens, update the dictionary
-+# with the actual value.
-+_LAST_GLIBC_MINOR = collections.defaultdict(lambda: 50)  # type: Dict[int, int]
-+glibcVersion = collections.namedtuple("Version", ["major", "minor"])
-+
-+
-+class Tag(object):
-+    """
-+    A representation of the tag triple for a wheel.
-+
-+    Instances are considered immutable and thus are hashable. Equality checking
-+    is also supported.
-+    """
-+
-+    __slots__ = ["_interpreter", "_abi", "_platform", "_hash"]
-+
-+    def __init__(self, interpreter, abi, platform):
-+        # type: (str, str, str) -> None
-+        self._interpreter = interpreter.lower()
-+        self._abi = abi.lower()
-+        self._platform = platform.lower()
-+        # The __hash__ of every single element in a Set[Tag] will be evaluated each time
-+        # that a set calls its `.disjoint()` method, which may be called hundreds of
-+        # times when scanning a page of links for packages with tags matching that
-+        # Set[Tag]. Pre-computing the value here produces significant speedups for
-+        # downstream consumers.
-+        self._hash = hash((self._interpreter, self._abi, self._platform))
-+
-+    @property
-+    def interpreter(self):
-+        # type: () -> str
-+        return self._interpreter
-+
-+    @property
-+    def abi(self):
-+        # type: () -> str
-+        return self._abi
-+
-+    @property
-+    def platform(self):
-+        # type: () -> str
-+        return self._platform
-+
-+    def __eq__(self, other):
-+        # type: (object) -> bool
-+        if not isinstance(other, Tag):
-+            return NotImplemented
-+
-+        return (
-+            (self.platform == other.platform)
-+            and (self.abi == other.abi)
-+            and (self.interpreter == other.interpreter)
-+        )
-+
-+    def __hash__(self):
-+        # type: () -> int
-+        return self._hash
-+
-+    def __str__(self):
-+        # type: () -> str
-+        return "{}-{}-{}".format(self._interpreter, self._abi, self._platform)
-+
-+    def __repr__(self):
-+        # type: () -> str
-+        return "<{self} @ {self_id}>".format(self=self, self_id=id(self))
-+
-+
-+def parse_tag(tag):
-+    # type: (str) -> FrozenSet[Tag]
-+    """
-+    Parses the provided tag (e.g. `py3-none-any`) into a frozenset of Tag instances.
-+
-+    Returning a set is required due to the possibility that the tag is a
-+    compressed tag set.
-+    """
-+    tags = set()
-+    interpreters, abis, platforms = tag.split("-")
-+    for interpreter in interpreters.split("."):
-+        for abi in abis.split("."):
-+            for platform_ in platforms.split("."):
-+                tags.add(Tag(interpreter, abi, platform_))
-+    return frozenset(tags)
-+
-+
-+def _warn_keyword_parameter(func_name, kwargs):
-+    # type: (str, Dict[str, bool]) -> bool
-+    """
-+    Backwards-compatibility with Python 2.7 to allow treating 'warn' as keyword-only.
-+    """
-+    if not kwargs:
-+        return False
-+    elif len(kwargs) > 1 or "warn" not in kwargs:
-+        kwargs.pop("warn", None)
-+        arg = next(iter(kwargs.keys()))
-+        raise TypeError(
-+            "{}() got an unexpected keyword argument {!r}".format(func_name, arg)
-+        )
-+    return kwargs["warn"]
-+
-+
-+def _get_config_var(name, warn=False):
-+    # type: (str, bool) -> Union[int, str, None]
-+    value = sysconfig.get_config_var(name)
-+    if value is None and warn:
-+        logger.debug(
-+            "Config variable '%s' is unset, Python ABI tag may be incorrect", name
-+        )
-+    return value
-+
-+
-+def _normalize_string(string):
-+    # type: (str) -> str
-+    return string.replace(".", "_").replace("-", "_")
-+
-+
-+def _abi3_applies(python_version):
-+    # type: (PythonVersion) -> bool
-+    """
-+    Determine if the Python version supports abi3.
-+
-+    PEP 384 was first implemented in Python 3.2.
-+    """
-+    return len(python_version) > 1 and tuple(python_version) >= (3, 2)
-+
-+
-+def _cpython_abis(py_version, warn=False):
-+    # type: (PythonVersion, bool) -> List[str]
-+    py_version = tuple(py_version)  # To allow for version comparison.
-+    abis = []
-+    version = _version_nodot(py_version[:2])
-+    debug = pymalloc = ucs4 = ""
-+    with_debug = _get_config_var("Py_DEBUG", warn)
-+    has_refcount = hasattr(sys, "gettotalrefcount")
-+    # Windows doesn't set Py_DEBUG, so checking for support of debug-compiled
-+    # extension modules is the best option.
-+    # https://github.com/pypa/pip/issues/3383#issuecomment-173267692
-+    has_ext = "_d.pyd" in EXTENSION_SUFFIXES
-+    if with_debug or (with_debug is None and (has_refcount or has_ext)):
-+        debug = "d"
-+    if py_version < (3, 8):
-+        with_pymalloc = _get_config_var("WITH_PYMALLOC", warn)
-+        if with_pymalloc or with_pymalloc is None:
-+            pymalloc = "m"
-+        if py_version < (3, 3):
-+            unicode_size = _get_config_var("Py_UNICODE_SIZE", warn)
-+            if unicode_size == 4 or (
-+                unicode_size is None and sys.maxunicode == 0x10FFFF
-+            ):
-+                ucs4 = "u"
-+    elif debug:
-+        # Debug builds can also load "normal" extension modules.
-+        # We can also assume no UCS-4 or pymalloc requirement.
-+        abis.append("cp{version}".format(version=version))
-+    abis.insert(
-+        0,
-+        "cp{version}{debug}{pymalloc}{ucs4}".format(
-+            version=version, debug=debug, pymalloc=pymalloc, ucs4=ucs4
-+        ),
-+    )
-+    return abis
-+
-+
-+def cpython_tags(
-+    python_version=None,  # type: Optional[PythonVersion]
-+    abis=None,  # type: Optional[Iterable[str]]
-+    platforms=None,  # type: Optional[Iterable[str]]
-+    **kwargs  # type: bool
-+):
-+    # type: (...) -> Iterator[Tag]
-+    """
-+    Yields the tags for a CPython interpreter.
-+
-+    The tags consist of:
-+    - cp<python_version>-<abi>-<platform>
-+    - cp<python_version>-abi3-<platform>
-+    - cp<python_version>-none-<platform>
-+    - cp<less than python_version>-abi3-<platform>  # Older Python versions down to 3.2.
-+
-+    If python_version only specifies a major version then user-provided ABIs and
-+    the 'none' ABItag will be used.
-+
-+    If 'abi3' or 'none' are specified in 'abis' then they will be yielded at
-+    their normal position and not at the beginning.
-+    """
-+    warn = _warn_keyword_parameter("cpython_tags", kwargs)
-+    if not python_version:
-+        python_version = sys.version_info[:2]
-+
-+    interpreter = "cp{}".format(_version_nodot(python_version[:2]))
-+
-+    if abis is None:
-+        if len(python_version) > 1:
-+            abis = _cpython_abis(python_version, warn)
-+        else:
-+            abis = []
-+    abis = list(abis)
-+    # 'abi3' and 'none' are explicitly handled later.
-+    for explicit_abi in ("abi3", "none"):
-+        try:
-+            abis.remove(explicit_abi)
-+        except ValueError:
-+            pass
-+
-+    platforms = list(platforms or _platform_tags())
-+    for abi in abis:
-+        for platform_ in platforms:
-+            yield Tag(interpreter, abi, platform_)
-+    if _abi3_applies(python_version):
-+        for tag in (Tag(interpreter, "abi3", platform_) for platform_ in platforms):
-+            yield tag
-+    for tag in (Tag(interpreter, "none", platform_) for platform_ in platforms):
-+        yield tag
-+
-+    if _abi3_applies(python_version):
-+        for minor_version in range(python_version[1] - 1, 1, -1):
-+            for platform_ in platforms:
-+                interpreter = "cp{version}".format(
-+                    version=_version_nodot((python_version[0], minor_version))
-+                )
-+                yield Tag(interpreter, "abi3", platform_)
-+
-+
-+def _generic_abi():
-+    # type: () -> Iterator[str]
-+    abi = sysconfig.get_config_var("SOABI")
-+    if abi:
-+        yield _normalize_string(abi)
-+
-+
-+def generic_tags(
-+    interpreter=None,  # type: Optional[str]
-+    abis=None,  # type: Optional[Iterable[str]]
-+    platforms=None,  # type: Optional[Iterable[str]]
-+    **kwargs  # type: bool
-+):
-+    # type: (...) -> Iterator[Tag]
-+    """
-+    Yields the tags for a generic interpreter.
-+
-+    The tags consist of:
-+    - <interpreter>-<abi>-<platform>
-+
-+    The "none" ABI will be added if it was not explicitly provided.
-+    """
-+    warn = _warn_keyword_parameter("generic_tags", kwargs)
-+    if not interpreter:
-+        interp_name = interpreter_name()
-+        interp_version = interpreter_version(warn=warn)
-+        interpreter = "".join([interp_name, interp_version])
-+    if abis is None:
-+        abis = _generic_abi()
-+    platforms = list(platforms or _platform_tags())
-+    abis = list(abis)
-+    if "none" not in abis:
-+        abis.append("none")
-+    for abi in abis:
-+        for platform_ in platforms:
-+            yield Tag(interpreter, abi, platform_)
-+
-+
-+def _py_interpreter_range(py_version):
-+    # type: (PythonVersion) -> Iterator[str]
-+    """
-+    Yields Python versions in descending order.
-+
-+    After the latest version, the major-only version will be yielded, and then
-+    all previous versions of that major version.
-+    """
-+    if len(py_version) > 1:
-+        yield "py{version}".format(version=_version_nodot(py_version[:2]))
-+    yield "py{major}".format(major=py_version[0])
-+    if len(py_version) > 1:
-+        for minor in range(py_version[1] - 1, -1, -1):
-+            yield "py{version}".format(version=_version_nodot((py_version[0], minor)))
-+
-+
-+def compatible_tags(
-+    python_version=None,  # type: Optional[PythonVersion]
-+    interpreter=None,  # type: Optional[str]
-+    platforms=None,  # type: Optional[Iterable[str]]
-+):
-+    # type: (...) -> Iterator[Tag]
-+    """
-+    Yields the sequence of tags that are compatible with a specific version of Python.
-+
-+    The tags consist of:
-+    - py*-none-<platform>
-+    - <interpreter>-none-any  # ... if `interpreter` is provided.
-+    - py*-none-any
-+    """
-+    if not python_version:
-+        python_version = sys.version_info[:2]
-+    platforms = list(platforms or _platform_tags())
-+    for version in _py_interpreter_range(python_version):
-+        for platform_ in platforms:
-+            yield Tag(version, "none", platform_)
-+    if interpreter:
-+        yield Tag(interpreter, "none", "any")
-+    for version in _py_interpreter_range(python_version):
-+        yield Tag(version, "none", "any")
-+
-+
-+def _mac_arch(arch, is_32bit=_32_BIT_INTERPRETER):
-+    # type: (str, bool) -> str
-+    if not is_32bit:
-+        return arch
-+
-+    if arch.startswith("ppc"):
-+        return "ppc"
-+
-+    return "i386"
-+
-+
-+def _mac_binary_formats(version, cpu_arch):
-+    # type: (MacVersion, str) -> List[str]
-+    formats = [cpu_arch]
-+    if cpu_arch == "x86_64":
-+        if version < (10, 4):
-+            return []
-+        formats.extend(["intel", "fat64", "fat32"])
-+
-+    elif cpu_arch == "i386":
-+        if version < (10, 4):
-+            return []
-+        formats.extend(["intel", "fat32", "fat"])
-+
-+    elif cpu_arch == "ppc64":
-+        # TODO: Need to care about 32-bit PPC for ppc64 through 10.2?
-+        if version > (10, 5) or version < (10, 4):
-+            return []
-+        formats.append("fat64")
-+
-+    elif cpu_arch == "ppc":
-+        if version > (10, 6):
-+            return []
-+        formats.extend(["fat32", "fat"])
-+
-+    if cpu_arch in {"arm64", "x86_64"}:
-+        formats.append("universal2")
-+
-+    if cpu_arch in {"x86_64", "i386", "ppc64", "ppc", "intel"}:
-+        formats.append("universal")
-+
-+    return formats
-+
-+
-+def mac_platforms(version=None, arch=None):
-+    # type: (Optional[MacVersion], Optional[str]) -> Iterator[str]
-+    """
-+    Yields the platform tags for a macOS system.
-+
-+    The `version` parameter is a two-item tuple specifying the macOS version to
-+    generate platform tags for. The `arch` parameter is the CPU architecture to
-+    generate platform tags for. Both parameters default to the appropriate value
-+    for the current system.
-+    """
-+    version_str, _, cpu_arch = platform.mac_ver()  # type: ignore
-+    if version is None:
-+        version = cast("MacVersion", tuple(map(int, version_str.split(".")[:2])))
-+    else:
-+        version = version
-+    if arch is None:
-+        arch = _mac_arch(cpu_arch)
-+    else:
-+        arch = arch
-+
-+    if (10, 0) <= version and version < (11, 0):
-+        # Prior to Mac OS 11, each yearly release of Mac OS bumped the
-+        # "minor" version number.  The major version was always 10.
-+        for minor_version in range(version[1], -1, -1):
-+            compat_version = 10, minor_version
-+            binary_formats = _mac_binary_formats(compat_version, arch)
-+            for binary_format in binary_formats:
-+                yield "macosx_{major}_{minor}_{binary_format}".format(
-+                    major=10, minor=minor_version, binary_format=binary_format
-+                )
-+
-+    if version >= (11, 0):
-+        # Starting with Mac OS 11, each yearly release bumps the major version
-+        # number.   The minor versions are now the midyear updates.
-+        for major_version in range(version[0], 10, -1):
-+            compat_version = major_version, 0
-+            binary_formats = _mac_binary_formats(compat_version, arch)
-+            for binary_format in binary_formats:
-+                yield "macosx_{major}_{minor}_{binary_format}".format(
-+                    major=major_version, minor=0, binary_format=binary_format
-+                )
-+
-+    if version >= (11, 0):
-+        # Mac OS 11 on x86_64 is compatible with binaries from previous releases.
-+        # Arm64 support was introduced in 11.0, so no Arm binaries from previous
-+        # releases exist.
-+        #
-+        # However, the "universal2" binary format can have a
-+        # macOS version earlier than 11.0 when the x86_64 part of the binary supports
-+        # that version of macOS.
-+        if arch == "x86_64":
-+            for minor_version in range(16, 3, -1):
-+                compat_version = 10, minor_version
-+                binary_formats = _mac_binary_formats(compat_version, arch)
-+                for binary_format in binary_formats:
-+                    yield "macosx_{major}_{minor}_{binary_format}".format(
-+                        major=compat_version[0],
-+                        minor=compat_version[1],
-+                        binary_format=binary_format,
-+                    )
-+        else:
-+            for minor_version in range(16, 3, -1):
-+                compat_version = 10, minor_version
-+                binary_format = "universal2"
-+                yield "macosx_{major}_{minor}_{binary_format}".format(
-+                    major=compat_version[0],
-+                    minor=compat_version[1],
-+                    binary_format=binary_format,
-+                )
-+
-+
-+# From PEP 513, PEP 600
-+def _is_manylinux_compatible(name, arch, glibc_version):
-+    # type: (str, str, GlibcVersion) -> bool
-+    sys_glibc = _get_glibc_version()
-+    if sys_glibc < glibc_version:
-+        return False
-+    # Check for presence of _manylinux module.
-+    try:
-+        import _manylinux  # noqa
-+    except ImportError:
-+        pass
-+    else:
-+        if hasattr(_manylinux, "manylinux_compatible"):
-+            result = _manylinux.manylinux_compatible(
-+                glibc_version[0], glibc_version[1], arch
-+            )
-+            if result is not None:
-+                return bool(result)
-+        else:
-+            if glibc_version == (2, 5):
-+                if hasattr(_manylinux, "manylinux1_compatible"):
-+                    return bool(_manylinux.manylinux1_compatible)
-+            if glibc_version == (2, 12):
-+                if hasattr(_manylinux, "manylinux2010_compatible"):
-+                    return bool(_manylinux.manylinux2010_compatible)
-+            if glibc_version == (2, 17):
-+                if hasattr(_manylinux, "manylinux2014_compatible"):
-+                    return bool(_manylinux.manylinux2014_compatible)
-+    return True
-+
-+
-+def _glibc_version_string():
-+    # type: () -> Optional[str]
-+    # Returns glibc version string, or None if not using glibc.
-+    return _glibc_version_string_confstr() or _glibc_version_string_ctypes()
-+
-+
-+def _glibc_version_string_confstr():
-+    # type: () -> Optional[str]
-+    """
-+    Primary implementation of glibc_version_string using os.confstr.
-+    """
-+    # os.confstr is quite a bit faster than ctypes.DLL. It's also less likely
-+    # to be broken or missing. This strategy is used in the standard library
-+    # platform module.
-+    # https://github.com/python/cpython/blob/fcf1d003bf4f0100c9d0921ff3d70e1127ca1b71/Lib/platform.py#L175-L183
-+    try:
-+        # os.confstr("CS_GNU_LIBC_VERSION") returns a string like "glibc 2.17".
-+        version_string = os.confstr(  # type: ignore[attr-defined] # noqa: F821
-+            "CS_GNU_LIBC_VERSION"
-+        )
-+        assert version_string is not None
-+        _, version = version_string.split()  # type: Tuple[str, str]
-+    except (AssertionError, AttributeError, OSError, ValueError):
-+        # os.confstr() or CS_GNU_LIBC_VERSION not available (or a bad value)...
-+        return None
-+    return version
-+
-+
-+def _glibc_version_string_ctypes():
-+    # type: () -> Optional[str]
-+    """
-+    Fallback implementation of glibc_version_string using ctypes.
-+    """
-+    try:
-+        import ctypes
-+    except ImportError:
-+        return None
-+
-+    # ctypes.CDLL(None) internally calls dlopen(NULL), and as the dlopen
-+    # manpage says, "If filename is NULL, then the returned handle is for the
-+    # main program". This way we can let the linker do the work to figure out
-+    # which libc our process is actually using.
-+    #
-+    # We must also handle the special case where the executable is not a
-+    # dynamically linked executable. This can occur when using musl libc,
-+    # for example. In this situation, dlopen() will error, leading to an
-+    # OSError. Interestingly, at least in the case of musl, there is no
-+    # errno set on the OSError. The single string argument used to construct
-+    # OSError comes from libc itself and is therefore not portable to
-+    # hard code here. In any case, failure to call dlopen() means we
-+    # can proceed, so we bail on our attempt.
-+    try:
-+        # Note: typeshed is wrong here so we are ignoring this line.
-+        process_namespace = ctypes.CDLL(None)  # type: ignore
-+    except OSError:
-+        return None
-+
-+    try:
-+        gnu_get_libc_version = process_namespace.gnu_get_libc_version
-+    except AttributeError:
-+        # Symbol doesn't exist -> therefore, we are not linked to
-+        # glibc.
-+        return None
-+
-+    # Call gnu_get_libc_version, which returns a string like "2.5"
-+    gnu_get_libc_version.restype = ctypes.c_char_p
-+    version_str = gnu_get_libc_version()  # type: str
-+    # py2 / py3 compatibility:
-+    if not isinstance(version_str, str):
-+        version_str = version_str.decode("ascii")
-+
-+    return version_str
-+
-+
-+def _parse_glibc_version(version_str):
-+    # type: (str) -> Tuple[int, int]
-+    # Parse glibc version.
-+    #
-+    # We use a regexp instead of str.split because we want to discard any
-+    # random junk that might come after the minor version -- this might happen
-+    # in patched/forked versions of glibc (e.g. Linaro's version of glibc
-+    # uses version strings like "2.20-2014.11"). See gh-3588.
-+    m = re.match(r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)", version_str)
-+    if not m:
-+        warnings.warn(
-+            "Expected glibc version with 2 components major.minor,"
-+            " got: %s" % version_str,
-+            RuntimeWarning,
-+        )
-+        return -1, -1
-+    return (int(m.group("major")), int(m.group("minor")))
-+
-+
-+_glibc_version = []  #  type: List[Tuple[int, int]]
-+
-+
-+def _get_glibc_version():
-+    # type: () -> Tuple[int, int]
-+    if _glibc_version:
-+        return _glibc_version[0]
-+    version_str = _glibc_version_string()
-+    if version_str is None:
-+        _glibc_version.append((-1, -1))
-+    else:
-+        _glibc_version.append(_parse_glibc_version(version_str))
-+    return _glibc_version[0]
-+
-+
-+# Python does not provide platform information at sufficient granularity to
-+# identify the architecture of the running executable in some cases, so we
-+# determine it dynamically by reading the information from the running
-+# process. This only applies on Linux, which uses the ELF format.
-+class _ELFFileHeader(object):
-+    # https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
-+    class _InvalidELFFileHeader(ValueError):
-+        """
-+        An invalid ELF file header was found.
-+        """
-+
-+    ELF_MAGIC_NUMBER = 0x7F454C46
-+    ELFCLASS32 = 1
-+    ELFCLASS64 = 2
-+    ELFDATA2LSB = 1
-+    ELFDATA2MSB = 2
-+    EM_386 = 3
-+    EM_S390 = 22
-+    EM_ARM = 40
-+    EM_X86_64 = 62
-+    EF_ARM_ABIMASK = 0xFF000000
-+    EF_ARM_ABI_VER5 = 0x05000000
-+    EF_ARM_ABI_FLOAT_HARD = 0x00000400
-+
-+    def __init__(self, file):
-+        # type: (IO[bytes]) -> None
-+        def unpack(fmt):
-+            # type: (str) -> int
-+            try:
-+                (result,) = struct.unpack(
-+                    fmt, file.read(struct.calcsize(fmt))
-+                )  # type: (int, )
-+            except struct.error:
-+                raise _ELFFileHeader._InvalidELFFileHeader()
-+            return result
-+
-+        self.e_ident_magic = unpack(">I")
-+        if self.e_ident_magic != self.ELF_MAGIC_NUMBER:
-+            raise _ELFFileHeader._InvalidELFFileHeader()
-+        self.e_ident_class = unpack("B")
-+        if self.e_ident_class not in {self.ELFCLASS32, self.ELFCLASS64}:
-+            raise _ELFFileHeader._InvalidELFFileHeader()
-+        self.e_ident_data = unpack("B")
-+        if self.e_ident_data not in {self.ELFDATA2LSB, self.ELFDATA2MSB}:
-+            raise _ELFFileHeader._InvalidELFFileHeader()
-+        self.e_ident_version = unpack("B")
-+        self.e_ident_osabi = unpack("B")
-+        self.e_ident_abiversion = unpack("B")
-+        self.e_ident_pad = file.read(7)
-+        format_h = "<H" if self.e_ident_data == self.ELFDATA2LSB else ">H"
-+        format_i = "<I" if self.e_ident_data == self.ELFDATA2LSB else ">I"
-+        format_q = "<Q" if self.e_ident_data == self.ELFDATA2LSB else ">Q"
-+        format_p = format_i if self.e_ident_class == self.ELFCLASS32 else format_q
-+        self.e_type = unpack(format_h)
-+        self.e_machine = unpack(format_h)
-+        self.e_version = unpack(format_i)
-+        self.e_entry = unpack(format_p)
-+        self.e_phoff = unpack(format_p)
-+        self.e_shoff = unpack(format_p)
-+        self.e_flags = unpack(format_i)
-+        self.e_ehsize = unpack(format_h)
-+        self.e_phentsize = unpack(format_h)
-+        self.e_phnum = unpack(format_h)
-+        self.e_shentsize = unpack(format_h)
-+        self.e_shnum = unpack(format_h)
-+        self.e_shstrndx = unpack(format_h)
-+
-+
-+def _get_elf_header():
-+    # type: () -> Optional[_ELFFileHeader]
-+    try:
-+        with open(sys.executable, "rb") as f:
-+            elf_header = _ELFFileHeader(f)
-+    except (IOError, OSError, TypeError, _ELFFileHeader._InvalidELFFileHeader):
-+        return None
-+    return elf_header
-+
-+
-+def _is_linux_armhf():
-+    # type: () -> bool
-+    # hard-float ABI can be detected from the ELF header of the running
-+    # process
-+    # https://static.docs.arm.com/ihi0044/g/aaelf32.pdf
-+    elf_header = _get_elf_header()
-+    if elf_header is None:
-+        return False
-+    result = elf_header.e_ident_class == elf_header.ELFCLASS32
-+    result &= elf_header.e_ident_data == elf_header.ELFDATA2LSB
-+    result &= elf_header.e_machine == elf_header.EM_ARM
-+    result &= (
-+        elf_header.e_flags & elf_header.EF_ARM_ABIMASK
-+    ) == elf_header.EF_ARM_ABI_VER5
-+    result &= (
-+        elf_header.e_flags & elf_header.EF_ARM_ABI_FLOAT_HARD
-+    ) == elf_header.EF_ARM_ABI_FLOAT_HARD
-+    return result
-+
-+
-+def _is_linux_i686():
-+    # type: () -> bool
-+    elf_header = _get_elf_header()
-+    if elf_header is None:
-+        return False
-+    result = elf_header.e_ident_class == elf_header.ELFCLASS32
-+    result &= elf_header.e_ident_data == elf_header.ELFDATA2LSB
-+    result &= elf_header.e_machine == elf_header.EM_386
-+    return result
-+
-+
-+def _have_compatible_manylinux_abi(arch):
-+    # type: (str) -> bool
-+    if arch == "armv7l":
-+        return _is_linux_armhf()
-+    if arch == "i686":
-+        return _is_linux_i686()
-+    return arch in {"x86_64", "aarch64", "ppc64", "ppc64le", "s390x"}
-+
-+
-+def _manylinux_tags(linux, arch):
-+    # type: (str, str) -> Iterator[str]
-+    # Oldest glibc to be supported regardless of architecture is (2, 17).
-+    too_old_glibc2 = glibcVersion(2, 16)
-+    if arch in {"x86_64", "i686"}:
-+        # On x86/i686 also oldest glibc to be supported is (2, 5).
-+        too_old_glibc2 = glibcVersion(2, 4)
-+    current_glibc = glibcVersion(*_get_glibc_version())
-+    glibc_max_list = [current_glibc]
-+    # We can assume compatibility across glibc major versions.
-+    # https://sourceware.org/bugzilla/show_bug.cgi?id=24636
-+    #
-+    # Build a list of maximum glibc versions so that we can
-+    # output the canonical list of all glibc from current_glibc
-+    # down to too_old_glibc2, including all intermediary versions.
-+    for glibc_major in range(current_glibc.major - 1, 1, -1):
-+        glibc_max_list.append(glibcVersion(glibc_major, _LAST_GLIBC_MINOR[glibc_major]))
-+    for glibc_max in glibc_max_list:
-+        if glibc_max.major == too_old_glibc2.major:
-+            min_minor = too_old_glibc2.minor
-+        else:
-+            # For other glibc major versions oldest supported is (x, 0).
-+            min_minor = -1
-+        for glibc_minor in range(glibc_max.minor, min_minor, -1):
-+            glibc_version = (glibc_max.major, glibc_minor)
-+            tag = "manylinux_{}_{}".format(*glibc_version)
-+            if _is_manylinux_compatible(tag, arch, glibc_version):
-+                yield linux.replace("linux", tag)
-+            # Handle the legacy manylinux1, manylinux2010, manylinux2014 tags.
-+            if glibc_version in _LEGACY_MANYLINUX_MAP:
-+                legacy_tag = _LEGACY_MANYLINUX_MAP[glibc_version]
-+                if _is_manylinux_compatible(legacy_tag, arch, glibc_version):
-+                    yield linux.replace("linux", legacy_tag)
-+
-+
-+def _linux_platforms(is_32bit=_32_BIT_INTERPRETER):
-+    # type: (bool) -> Iterator[str]
-+    linux = _normalize_string(distutils.util.get_platform())
-+    if is_32bit:
-+        if linux == "linux_x86_64":
-+            linux = "linux_i686"
-+        elif linux == "linux_aarch64":
-+            linux = "linux_armv7l"
-+    _, arch = linux.split("_", 1)
-+    if _have_compatible_manylinux_abi(arch):
-+        for tag in _manylinux_tags(linux, arch):
-+            yield tag
-+    yield linux
-+
-+
-+def _generic_platforms():
-+    # type: () -> Iterator[str]
-+    yield _normalize_string(distutils.util.get_platform())
-+
-+
-+def _platform_tags():
-+    # type: () -> Iterator[str]
-+    """
-+    Provides the platform tags for this installation.
-+    """
-+    if platform.system() == "Darwin":
-+        return mac_platforms()
-+    elif platform.system() == "Linux":
-+        return _linux_platforms()
-+    else:
-+        return _generic_platforms()
-+
-+
-+def interpreter_name():
-+    # type: () -> str
-+    """
-+    Returns the name of the running interpreter.
-+    """
-+    try:
-+        name = sys.implementation.name  # type: ignore
-+    except AttributeError:  # pragma: no cover
-+        # Python 2.7 compatibility.
-+        name = platform.python_implementation().lower()
-+    return INTERPRETER_SHORT_NAMES.get(name) or name
-+
-+
-+def interpreter_version(**kwargs):
-+    # type: (bool) -> str
-+    """
-+    Returns the version of the running interpreter.
-+    """
-+    warn = _warn_keyword_parameter("interpreter_version", kwargs)
-+    version = _get_config_var("py_version_nodot", warn=warn)
-+    if version:
-+        version = str(version)
-+    else:
-+        version = _version_nodot(sys.version_info[:2])
-+    return version
-+
-+
-+def _version_nodot(version):
-+    # type: (PythonVersion) -> str
-+    return "".join(map(str, version))
-+
-+
-+def sys_tags(**kwargs):
-+    # type: (bool) -> Iterator[Tag]
-+    """
-+    Returns the sequence of tag triples for the running interpreter.
-+
-+    The order of the sequence corresponds to priority order for the
-+    interpreter, from most to least important.
-+    """
-+    warn = _warn_keyword_parameter("sys_tags", kwargs)
-+
-+    interp_name = interpreter_name()
-+    if interp_name == "cp":
-+        for tag in cpython_tags(warn=warn):
-+            yield tag
-+    else:
-+        for tag in generic_tags():
-+            yield tag
-+
-+    for tag in compatible_tags():
-+        yield tag
-+
-+
-+if __name__ == "__main__":
-+    print(json.dumps([(t.interpreter, t.abi, t.platform) for t in sys_tags()]))
-diff --git a/pyproject.toml b/pyproject.toml
-index 1017157d..0ff512a9 100644
---- a/pyproject.toml
-+++ b/pyproject.toml
-@@ -57,7 +57,7 @@ functools32 = { version = "^3.2.3", python = "~2.7" }
- keyring = [
-     { version = "^18.0.1", python = "~2.7" },
-     { version = "^20.0.1", python = "~3.5" },
--    { version = ">=21.2.0", python = "^3.6" }
-+    { version = "~22.3.0", python = "^3.6" }
- ]
- # Use subprocess32 for Python 2.7
- subprocess32 = { version = "^3.5", python = "~2.7" }
-diff --git a/tests/config/test_config.py b/tests/config/test_config.py
-index 4bd0cd04..d79e8631 100644
---- a/tests/config/test_config.py
-+++ b/tests/config/test_config.py
-@@ -1,5 +1,7 @@
- import os
- 
-+from pathlib import Path
-+
- import pytest
- 
- 
-@@ -11,7 +13,7 @@ def test_config_get_default_value(config, name, value):
- 
- 
- def test_config_get_processes_depended_on_values(config):
--    assert os.path.join("/foo", "virtualenvs") == config.get("virtualenvs.path")
-+    assert str(Path.cwd() / ".pypoetrycache" / "virtualenvs") == config.get("virtualenvs.path")
- 
- 
- @pytest.mark.parametrize(
-diff --git a/tests/conftest.py b/tests/conftest.py
-index e2b73936..22741344 100644
---- a/tests/conftest.py
-+++ b/tests/conftest.py
-@@ -4,6 +4,7 @@ import shutil
- import sys
- import tempfile
- 
-+from pathlib import Path
- from typing import Any
- from typing import Dict
- 
-@@ -56,7 +57,7 @@ class Config(BaseConfig):
- @pytest.fixture
- def config_source():
-     source = DictConfigSource()
--    source.add_property("cache-dir", "/foo")
-+    source.add_property("cache-dir", str(Path.cwd() / ".pypoetrycache"))
- 
-     return source
- 
-diff --git a/tests/console/commands/self/__init__.py b/tests/console/commands/self/__init__.py
-deleted file mode 100644
-index e69de29b..00000000
-diff --git a/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.sha256sum b/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.sha256sum
-deleted file mode 100644
-index 3229630a..00000000
---- a/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.sha256sum
-+++ /dev/null
-@@ -1 +0,0 @@
--be3d3b916cb47038899d6ff37e875fd08ba3fed22bcdbf5a92f3f48fd2f15da8
-diff --git a/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.tar.gz b/tests/console/commands/self/fixtures/poetry-1.0.5-darwin.tar.gz
-deleted file mode 100644
-index 09bb17bdeb92ccdc331cba93b1337ec9129f355f..0000000000000000000000000000000000000000
-GIT binary patch
-literal 0
-HcmV?d00001
-
-literal 1041
-zcmV+s1n&DEiwFP)U%p-h1MOJdi`zyJ_p|<r#d(pzRU})o!Ehxdy+R?}8TXo(QWiy8
-zrJKlFb$5N#l>YCX*_Cv%F2aS{p-ERS`!V0Y+0l+v3#R4q<>Z=A2+w-Go|ti!m@!<$
-zcErsvoJ7l2vW}DW66RsFSR|_nNv`QstNWmIDhZh=_AXVLv#KQwMqn$7!QNM}tZn}7
-z5Y)$OgoFuR#WvsT=lNeo(Hir=SS5>iu?D^<j*@6X!fQA))cHTpe<8)5P+A=HK{84S
-z-`7HFlD<=-JZMJk+8bdzR6G+oqb1i&rls;MV?gO6lZuP#Nn>xTVah~R@b`foTEnl+
-zX2VgZ*~j!fQ!Vk0$UZVTLflI6fn|DYWf~^QYN5Cmk~0<5LX@qlEzBF9gXX0QXeRb`
-zsylkBe><UTu`g-COV)Bcz{U@-_B<~uQ>Dn(l+woY2t03ZcR&4je@AWr+zty%%2@%M
-zyyBWt-!P+qVr4P!R%mEW$P1#6HQSIadV^f}lp;$@a2L_*@#H+y9Z!Q?k34|Ksxry|
-z(jH%faZ7(@rb!UeXPeF*dLLMLZb*xak5SA9JdI}nOfwtM`_TbYfBBpfT(>-UELxYX
-zFV=CO+R1=wj=~M3OqBl2rsY*FMa`r>8dgjay6>a5UZ9dep;RVYHr_GeCb~xcDV6?=
-zeDf_C$;OHH79Zo!bMN}dj95825+}O*!ebEt55PL2`i(8c7W1KU%*Tk|2>pmsQ<R@n
-zi9%xvZGuNs_KqtmKJl|T8C|{=)3g`#91kA^GTZdBXXCaxH1%$zQMEmGR^;hWcI2LA
-z8wj2-wAkS>CpbN^hJcLQLUyo(gH<_*@YGHZrg>8oC$=n7<JPSFQ$c+)vf=IO*8gz?
-zn*Oi7kFL@Ip6UO>WEl<nzvXJ_`oGU{beeuoD6g5R<3H@;@TFLZ-&5#+=<fdh0p1J(
-zdMxNvf}G1L-7~*kOO}>M@S)L!JC)Me%%g8_@4mm^^`t%sUin7VoJ^r<s&XNx!1(&-
-z-R}18VMM^Zh8h~k)yF^ong)fC`&9eWU>X>$N=yH7Mqryf5)Rk*Q3Y*R#;Zd7vRV8J
-zK0zn&f_#_f#2RNg$yp74uquQ8k!S%u3xwyPxS8=vLC4^Sb29L9=6#OjUBE_H|1BK!
-z@~?n%^&c))gZfXRFn0BSf%KkL(fc}qQk+IX7$nm#<?x=3&M}-rpsW9V%HeDM^2HAh
-zoU8w684v0|UdHbJKbN|T(EGQ($MMGm-rVrp<_6vdl-g4<wIBNCClLOxfqz5YZxH0L
-z9~yWovOl=?am$D6^db&AB@O|HfJ49`;1F;KI0PI54grUNL%<>65O4@M1RMhY3W2`?
-LE~wAj04M+eXZ{jT
-
-diff --git a/tests/console/commands/self/test_update.py b/tests/console/commands/self/test_update.py
-deleted file mode 100644
-index 5b86d446..00000000
---- a/tests/console/commands/self/test_update.py
-+++ /dev/null
-@@ -1,159 +0,0 @@
--import os
--
--import pytest
--
--from poetry.__version__ import __version__
--from poetry.core.packages.package import Package
--from poetry.core.semver.version import Version
--from poetry.factory import Factory
--from poetry.repositories.installed_repository import InstalledRepository
--from poetry.repositories.pool import Pool
--from poetry.repositories.repository import Repository
--from poetry.utils._compat import WINDOWS
--from poetry.utils._compat import Path
--from poetry.utils.env import EnvManager
--
--
--FIXTURES = Path(__file__).parent.joinpath("fixtures")
--
--
--@pytest.fixture()
--def tester(command_tester_factory):
--    return command_tester_factory("self update")
--
--
--def test_self_update_should_install_all_necessary_elements(
--    tester, http, mocker, environ, tmp_dir
--):
--    os.environ["POETRY_HOME"] = tmp_dir
--
--    command = tester._command
--
--    version = Version.parse(__version__).next_minor.text
--    repository = Repository()
--    repository.add_package(Package("poetry", version))
--
--    pool = Pool()
--    pool.add_repository(repository)
--
--    command._pool = pool
--    mocker.patch.object(command, "_check_recommended_installation", return_value=None)
--    mocker.patch.object(
--        command, "_get_release_name", return_value="poetry-{}-darwin".format(version)
--    )
--    mocker.patch("subprocess.check_output", return_value=b"Python 3.8.2")
--
--    http.register_uri(
--        "GET",
--        command.BASE_URL + "/{}/poetry-{}-darwin.sha256sum".format(version, version),
--        body=FIXTURES.joinpath("poetry-1.0.5-darwin.sha256sum").read_bytes(),
--    )
--    http.register_uri(
--        "GET",
--        command.BASE_URL + "/{}/poetry-{}-darwin.tar.gz".format(version, version),
--        body=FIXTURES.joinpath("poetry-1.0.5-darwin.tar.gz").read_bytes(),
--    )
--
--    tester.execute()
--
--    bin_ = Path(tmp_dir).joinpath("bin")
--    lib = Path(tmp_dir).joinpath("lib")
--    assert bin_.exists()
--
--    script = bin_.joinpath("poetry")
--    assert script.exists()
--
--    expected_script = """\
--# -*- coding: utf-8 -*-
--import glob
--import sys
--import os
--
--lib = os.path.normpath(os.path.join(os.path.realpath(__file__), "../..", "lib"))
--vendors = os.path.join(lib, "poetry", "_vendor")
--current_vendors = os.path.join(
--    vendors, "py{}".format(".".join(str(v) for v in sys.version_info[:2]))
--)
--sys.path.insert(0, lib)
--sys.path.insert(0, current_vendors)
--
--if __name__ == "__main__":
--    from poetry.console import main
--    main()
--"""
--    if not WINDOWS:
--        expected_script = "#!/usr/bin/env python\n" + expected_script
--
--    assert expected_script == script.read_text()
--
--    if WINDOWS:
--        bat = bin_.joinpath("poetry.bat")
--        expected_bat = '@echo off\r\npython "{}" %*\r\n'.format(
--            str(script).replace(os.environ.get("USERPROFILE", ""), "%USERPROFILE%")
--        )
--        assert bat.exists()
--        with bat.open(newline="") as f:
--            assert expected_bat == f.read()
--
--    assert lib.exists()
--    assert lib.joinpath("poetry").exists()
--
--
--def test_self_update_can_update_from_recommended_installation(
--    tester, http, mocker, environ, tmp_venv
--):
--    mocker.patch.object(EnvManager, "get_system_env", return_value=tmp_venv)
--    target_script = tmp_venv.path.parent.joinpath("venv/bin/poetry")
--    if WINDOWS:
--        target_script = tmp_venv.path.parent.joinpath("venv/Scripts/poetry.exe")
--
--    target_script.parent.mkdir(parents=True, exist_ok=True)
--    target_script.touch()
--
--    command = tester._command
--    command._data_dir = tmp_venv.path.parent
--
--    new_version = Version.parse(__version__).next_minor.text
--
--    old_poetry = Package("poetry", __version__)
--    old_poetry.add_dependency(Factory.create_dependency("cleo", "^0.8.2"))
--
--    new_poetry = Package("poetry", new_version)
--    new_poetry.add_dependency(Factory.create_dependency("cleo", "^1.0.0"))
--
--    installed_repository = Repository()
--    installed_repository.add_package(old_poetry)
--    installed_repository.add_package(Package("cleo", "0.8.2"))
--
--    repository = Repository()
--    repository.add_package(new_poetry)
--    repository.add_package(Package("cleo", "1.0.0"))
--
--    pool = Pool()
--    pool.add_repository(repository)
--
--    command._pool = pool
--
--    mocker.patch.object(InstalledRepository, "load", return_value=installed_repository)
--
--    tester.execute()
--
--    expected_output = """\
--Updating Poetry to {}
--
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 0 installs, 2 updates, 0 removals
--
--  - Updating cleo (0.8.2 -> 1.0.0)
--  - Updating poetry ({} -> {})
--
--Updating the poetry script
--
--Poetry (1.2.0) is installed now. Great!
--""".format(
--        new_version, __version__, new_version
--    )
--
--    assert tester.io.fetch_output() == expected_output
-diff --git a/tests/console/commands/test_config.py b/tests/console/commands/test_config.py
-index fa0bea4a..df86d165 100644
---- a/tests/console/commands/test_config.py
-+++ b/tests/console/commands/test_config.py
-@@ -1,6 +1,8 @@
- import json
- import os
- 
-+from pathlib import Path
-+
- import pytest
- 
- from poetry.config.config_source import ConfigSource
-@@ -28,14 +30,16 @@ def test_show_config_with_local_config_file_empty(tester, mocker):
- def test_list_displays_default_value_if_not_set(tester, config):
-     tester.execute("--list")
- 
--    expected = """cache-dir = "/foo"
-+    expected = """cache-dir = "{cache_dir}"
- experimental.new-installer = true
- installer.parallel = true
- virtualenvs.create = true
- virtualenvs.in-project = null
--virtualenvs.path = {path}  # /foo{sep}virtualenvs
-+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
- """.format(
--        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
-+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
-+        sep=os.path.sep,
-+        cache_dir=str(Path.cwd() / ".pypoetrycache")
-     )
- 
-     assert expected == tester.io.fetch_output()
-@@ -46,14 +50,16 @@ def test_list_displays_set_get_setting(tester, config):
- 
-     tester.execute("--list")
- 
--    expected = """cache-dir = "/foo"
-+    expected = """cache-dir = "{cache_dir}"
- experimental.new-installer = true
- installer.parallel = true
- virtualenvs.create = false
- virtualenvs.in-project = null
--virtualenvs.path = {path}  # /foo{sep}virtualenvs
-+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
- """.format(
--        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
-+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
-+        sep=os.path.sep,
-+        cache_dir=str(Path.cwd() / ".pypoetrycache")
-     )
- 
-     assert 0 == config.set_config_source.call_count
-@@ -86,14 +92,16 @@ def test_list_displays_set_get_local_setting(tester, config):
- 
-     tester.execute("--list")
- 
--    expected = """cache-dir = "/foo"
-+    expected = """cache-dir = "{cache_dir}"
- experimental.new-installer = true
- installer.parallel = true
- virtualenvs.create = false
- virtualenvs.in-project = null
--virtualenvs.path = {path}  # /foo{sep}virtualenvs
-+virtualenvs.path = {path}  # {cache_dir}{sep}virtualenvs
- """.format(
--        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")), sep=os.path.sep
-+        path=json.dumps(os.path.join("{cache-dir}", "virtualenvs")),
-+        sep=os.path.sep,
-+        cache_dir=str(Path.cwd() / ".pypoetrycache")
-     )
- 
-     assert 1 == config.set_config_source.call_count
-diff --git a/tests/helpers.py b/tests/helpers.py
-index f380bb8d..1de03111 100644
---- a/tests/helpers.py
-+++ b/tests/helpers.py
-@@ -1,7 +1,7 @@
- import os
- import shutil
- 
--from poetry.console import Application
-+from poetry.console.application import Application
- from poetry.core.masonry.utils.helpers import escape_name
- from poetry.core.masonry.utils.helpers import escape_version
- from poetry.core.packages import Dependency
-diff --git a/tests/installation/test_chef.py b/tests/installation/test_chef.py
-index 9fcbbea1..7d0d98b1 100644
---- a/tests/installation/test_chef.py
-+++ b/tests/installation/test_chef.py
-@@ -19,14 +19,16 @@ def test_get_cached_archive_for_link(config, mocker):
-         ),
-     )
- 
-+    cwd = Path.cwd() / ".pypoetrycache"
-+
-     mocker.patch.object(
-         chef,
-         "get_cached_archives_for_link",
-         return_value=[
--            Link("file:///foo/demo-0.1.0-py2.py3-none-any"),
--            Link("file:///foo/demo-0.1.0.tar.gz"),
--            Link("file:///foo/demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl"),
--            Link("file:///foo/demo-0.1.0-cp37-cp37-macosx_10_15_x86_64.whl"),
-+            Link(f"file:///{cwd}demo-0.1.0-py2.py3-none-any"),
-+            Link(f"file:///{cwd}demo-0.1.0.tar.gz"),
-+            Link(f"file:///{cwd}demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl"),
-+            Link(f"file:///{cwd}demo-0.1.0-cp37-cp37-macosx_10_15_x86_64.whl"),
-         ],
-     )
- 
-@@ -34,7 +36,7 @@ def test_get_cached_archive_for_link(config, mocker):
-         Link("https://files.python-poetry.org/demo-0.1.0.tar.gz")
-     )
- 
--    assert Link("file:///foo/demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl") == archive
-+    assert Link(f"file:///{cwd}demo-0.1.0-cp38-cp38-macosx_10_15_x86_64.whl") == archive
- 
- 
- def test_get_cached_archives_for_link(config, mocker):
-@@ -68,11 +70,13 @@ def test_get_cache_directory_for_link(config):
-         ),
-     )
- 
-+    cwd = Path.cwd() / ".pypoetrycache"
-+
-     directory = chef.get_cache_directory_for_link(
-         Link("https://files.python-poetry.org/poetry-1.1.0.tar.gz")
-     )
-     expected = Path(
--        "/foo/artifacts/ba/63/13/283a3b3b7f95f05e9e6f84182d276f7bb0951d5b0cc24422b33f7a4648"
-+        f"{cwd}/artifacts/ba/63/13/283a3b3b7f95f05e9e6f84182d276f7bb0951d5b0cc24422b33f7a4648"
-     )
- 
-     assert expected == directory
-diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 369cf7c9..eea60119 100644
---- a/tests/utils/test_env.py
-+++ b/tests/utils/test_env.py
-@@ -150,7 +150,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
-     )
-     mocker.patch(
-         "poetry.utils._compat.subprocess.Popen.communicate",
--        side_effect=[("/prefix", None), ("/prefix", None)],
-+        side_effect=[("/prefix", None), ("/prefix", None), ("/prefix", None)],
-     )
-     m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
- 
-@@ -399,21 +399,21 @@ def test_deactivate_non_activated_but_existing(
- 
-     (
-         Path(tmp_dir)
--        / "{}-py{}".format(venv_name, ".".join(str(c) for c in sys.version_info[:2]))
-+        / "{}-py{}".format(venv_name, "3.9")
-     ).mkdir()
- 
-     config.merge({"virtualenvs": {"path": str(tmp_dir)}})
- 
-     mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
--        side_effect=check_output_wrapper(),
-+        side_effect=check_output_wrapper(Version.parse("3.9.5")),
-     )
- 
-     manager.deactivate(NullIO())
-     env = manager.get()
- 
-     assert env.path == Path(tmp_dir) / "{}-py{}".format(
--        venv_name, ".".join(str(c) for c in sys.version_info[:2])
-+        venv_name, "3.9"
-     )
-     assert Path("/prefix")
- 
-@@ -423,8 +423,8 @@ def test_deactivate_activated(tmp_dir, manager, poetry, config, mocker):
-         del os.environ["VIRTUAL_ENV"]
- 
-     venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
--    version = Version.parse(".".join(str(c) for c in sys.version_info[:3]))
--    other_version = Version.parse("3.4") if version.major == 2 else version.next_minor
-+    version = Version.parse("3.9.5")
-+    other_version = Version.parse("3.4.0")
-     (
-         Path(tmp_dir) / "{}-py{}.{}".format(venv_name, version.major, version.minor)
-     ).mkdir()
-@@ -445,7 +445,7 @@ def test_deactivate_activated(tmp_dir, manager, poetry, config, mocker):
- 
-     mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
--        side_effect=check_output_wrapper(),
-+        side_effect=check_output_wrapper(Version.parse("3.9.5")),
-     )
- 
-     manager.deactivate(NullIO())
-@@ -647,7 +647,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
-     mocker.patch("sys.version_info", (2, 7, 16))
-     mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
--        side_effect=check_output_wrapper(Version.parse("3.7.5")),
-+        side_effect=["3.7.5", "3.7.5", "2.7.16", "3.7.5"],
-     )
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -656,7 +656,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
-     manager.create_venv(NullIO())
- 
-     m.assert_called_with(
--        Path("/foo/virtualenvs/{}-py3.7".format(venv_name)), executable="python3"
-+        Path("{}/virtualenvs/{}-py3.7".format(config.get("cache-dir"), venv_name)), executable="python3"
-     )
- 
- 
-@@ -671,7 +671,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
- 
-     mocker.patch("sys.version_info", (2, 7, 16))
-     mocker.patch(
--        "poetry.utils._compat.subprocess.check_output", side_effect=["3.5.3", "3.9.0"]
-+        "poetry.utils._compat.subprocess.check_output", side_effect=[
-+            "3.5.3",
-+            "3.9.0",
-+            "3.5.3",
-+            "3.5.3",
-+            "2.7.16",
-+            "3.5.3",
-+            "3.9.0"
-+        ]
-     )
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -680,7 +688,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
-     manager.create_venv(NullIO())
- 
-     m.assert_called_with(
--        Path("/foo/virtualenvs/{}-py3.9".format(venv_name)), executable="python3.9"
-+        Path("{}/virtualenvs/{}-py3.9".format(config.get("cache-dir"), venv_name)), executable="python3.9"
-     )
- 
- 
-@@ -693,7 +701,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
-     poetry.package.python_versions = "^4.8"
- 
-     mocker.patch(
--        "poetry.utils._compat.subprocess.check_output", side_effect=["", "", "", ""]
-+        "poetry.utils._compat.subprocess.check_output", side_effect=["" for _ in range(4 + 2 * 13)]
-     )
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -720,7 +728,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
- 
-     poetry.package.python_versions = "^4.8"
- 
--    mocker.patch("poetry.utils._compat.subprocess.check_output", side_effect=["3.8.0"])
-+    mocker.patch("poetry.utils._compat.subprocess.check_output", side_effect=["3.8.0" for _ in range(1 + 12)])
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-     )
-@@ -750,10 +758,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
-     )
-     venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
- 
--    mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
--    check_output = mocker.patch(
-+    mocker.patch(
-         "poetry.utils._compat.subprocess.check_output",
--        side_effect=check_output_wrapper(Version.parse("3.6.9")),
-+        side_effect=["2.7.16" for _ in range(3)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
-     )
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -761,14 +768,13 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
- 
-     manager.create_venv(NullIO())
- 
--    assert not check_output.called
-     m.assert_called_with(
-         Path(
--            "/foo/virtualenvs/{}-py{}.{}".format(
--                venv_name, version.major, version.minor
-+            "{}/virtualenvs/{}-py{}.{}".format(
-+                config.get("cache-dir"), venv_name, version.major, version.minor
-             )
-         ),
--        executable=None,
-+        executable="python3",
-     )
- 
- 
-@@ -801,8 +807,8 @@ def test_create_venv_uses_patch_version_to_detect_compatibility_with_executable(
-     assert check_output.called
-     m.assert_called_with(
-         Path(
--            "/foo/virtualenvs/{}-py{}.{}".format(
--                venv_name, version.major, version.minor - 1
-+            "{}/virtualenvs/{}-py{}.{}".format(
-+                config.get("cache-dir"), venv_name, version.major, version.minor - 1
-             )
-         ),
-         executable="python{}.{}".format(version.major, version.minor - 1),
-@@ -830,7 +836,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
-     )
-     mocker.patch(
-         "poetry.utils._compat.subprocess.Popen.communicate",
--        side_effect=[("/prefix", None), ("/prefix", None)],
-+        side_effect=[("/prefix", None), ("/prefix", None), ("/prefix", None)],
-     )
-     m = mocker.patch("poetry.utils.env.EnvManager.build_venv")
- 
-@@ -843,7 +849,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
- 
- 
- def test_system_env_has_correct_paths():
--    env = SystemEnv(Path(sys.prefix))
-+    env = SystemEnv(Path(sys.prefix), auto_path=False)
- 
-     paths = env.paths
- 
-@@ -853,17 +859,6 @@ def test_system_env_has_correct_paths():
-     assert env.site_packages.path == Path(paths["purelib"])
- 
- 
--@pytest.mark.parametrize(
--    ("enabled",), [(True,), (False,)],
--)
--def test_system_env_usersite(mocker, enabled):
--    mocker.patch("site.check_enableusersite", return_value=enabled)
--    env = SystemEnv(Path(sys.prefix))
--    assert (enabled and env.usersite is not None) or (
--        not enabled and env.usersite is None
--    )
--
--
- def test_venv_has_correct_paths(tmp_venv):
-     paths = tmp_venv.paths
- 
