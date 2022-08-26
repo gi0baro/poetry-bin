@@ -1,7 +1,6 @@
 """
 Helper script to rebuild virtualenv_support. Downloads the wheel files using pip
 """
-from __future__ import absolute_import, unicode_literals
 
 import os
 import shutil
@@ -70,31 +69,32 @@ def run():
 
         outcome = (1 if STRICT else 0) if (added or removed) else 0
         for key, versions in added.items():
-            text = "* upgrade embedded {} to {}".format(key, fmt_version(versions))
+            text = f"* upgrade embedded {key} to {fmt_version(versions)}"
             if key in removed:
-                text += " from {}".format(removed[key])
+                text += f" from {removed[key]}"
                 del removed[key]
             print(text)
         for key, versions in removed.items():
-            print("* removed embedded {} of {}".format(key, fmt_version(versions)))
+            print(f"* removed embedded {key} of {fmt_version(versions)}")
 
-        support_table = OrderedDict((".".join(str(j) for j in i), list()) for i in SUPPORT)
+        support_table = OrderedDict((".".join(str(j) for j in i), []) for i in SUPPORT)
         for package in sorted(new_batch.keys()):
             for folder, version in sorted(folders.items()):
                 if (folder / package).exists():
                     support_table[version].append(package)
         support_table = {k: OrderedDict((i.split("-")[0], i) for i in v) for k, v in support_table.items()}
-
+        bundle = ",".join(
+            f"{v!r}: {{ {','.join(f'{p!r}: {f!r}' for p, f in l.items())} }}" for v, l in support_table.items()
+        )
         msg = dedent(
-            """
-        from __future__ import absolute_import, unicode_literals
+            f"""
+        from pathlib import Path
 
         from virtualenv.seed.wheels.util import Wheel
-        from virtualenv.util.path import Path
 
         BUNDLE_FOLDER = Path(__file__).absolute().parent
-        BUNDLE_SUPPORT = {{ {0} }}
-        MAX = {1}
+        BUNDLE_SUPPORT = {{ {bundle} }}
+        MAX = {repr(next(iter(support_table.keys())))}
 
 
         def get_embed_wheel(distribution, for_py_version):
@@ -102,20 +102,14 @@ def run():
             return Wheel.from_path(path)
 
 
-        __all__ = (
+        __all__ = [
             "get_embed_wheel",
             "BUNDLE_SUPPORT",
             "MAX",
             "BUNDLE_FOLDER",
-        )
+        ]
 
-        """.format(
-                ",".join(
-                    "{!r}: {{ {} }}".format(v, ",".join("{!r}: {!r}".format(p, f) for p, f in l.items()))
-                    for v, l in support_table.items()
-                ),
-                repr(next(iter(support_table.keys()))),
-            ),
+        """,
         )
         dest_target = DEST / "__init__.py"
         dest_target.write_text(msg)
@@ -126,7 +120,7 @@ def run():
 
 
 def fmt_version(versions):
-    return ", ".join("``{}``".format(v) for v in versions)
+    return ", ".join(f"``{v}``" for v in versions)
 
 
 def collect_package_versions(new_packages):

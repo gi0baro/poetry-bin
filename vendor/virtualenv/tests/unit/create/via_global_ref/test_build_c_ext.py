@@ -1,15 +1,13 @@
-from __future__ import absolute_import, unicode_literals
-
 import os
 import shutil
 import subprocess
+from pathlib import Path
+from subprocess import Popen
 
 import pytest
 
 from virtualenv.discovery.py_info import PythonInfo
 from virtualenv.run import cli_run
-from virtualenv.util.path import Path
-from virtualenv.util.subprocess import Popen
 
 CURRENT = PythonInfo.current_system()
 CREATOR_CLASSES = CURRENT.creators().key_to_class
@@ -27,7 +25,7 @@ def builtin_shows_marker_missing():
 
 
 @pytest.mark.xfail(
-    condition=bool(os.environ.get(str("CI_RUN"))),
+    condition=bool(os.environ.get("CI_RUN")),
     strict=False,
     reason="did not manage to setup CI to run with VC 14.1 C++ compiler, but passes locally",
 )
@@ -35,7 +33,7 @@ def builtin_shows_marker_missing():
     not Path(CURRENT.system_include).exists() and not builtin_shows_marker_missing(),
     reason="Building C-Extensions requires header files with host python",
 )
-@pytest.mark.parametrize("creator", list(i for i in CREATOR_CLASSES.keys() if i != "builtin"))
+@pytest.mark.parametrize("creator", [i for i in CREATOR_CLASSES.keys() if i != "builtin"])
 def test_can_build_c_extensions(creator, tmp_path, coverage_env):
     env, greet = tmp_path / "env", str(tmp_path / "greet")
     shutil.copytree(str(Path(__file__).parent.resolve() / "greet"), greet)

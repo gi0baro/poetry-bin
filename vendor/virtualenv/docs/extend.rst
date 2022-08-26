@@ -7,13 +7,6 @@ Extend functionality
 - package it as a python library,
 - install it alongside the virtual environment.
 
-.. warning::
-
-   The public API of some of these components is still to be finalized, consider the current interface a beta one
-   until we get some feedback on how well we planned ahead. We expect to do this by end of Q3 2020. Consider the class
-   interface explained below as initial draft proposal. We reserve the right to change the API until then, however such
-   changes will be communicated in a timely fashion, and you'll have time to migrate. Thank you for your understanding.
-
 Python discovery
 ----------------
 
@@ -44,7 +37,7 @@ Creators are what actually perform the creation of a virtual environment. The bu
 all achieve this by referencing a global install; but would be just as valid for a creator to install a brand new
 entire python under the target path; or one could add additional creators that can create virtual environments for other
 python implementations, such as IronPython. They must be registered under and entry point with key
-``virtualenv.discovery`` , and the class must implement :class:`virtualenv.create.creator.Creator`:
+``virtualenv.create`` , and the class must implement :class:`virtualenv.create.creator.Creator`:
 
 .. code-block:: ini
 

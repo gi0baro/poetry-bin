@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import json
 import os
 import subprocess
@@ -7,12 +5,13 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from io import StringIO
+from itertools import zip_longest
+from pathlib import Path
 from textwrap import dedent
+from urllib.error import URLError
 
 import pytest
-from six import StringIO
-from six.moves import zip_longest
-from six.moves.urllib.error import URLError
 
 from virtualenv import cli_run
 from virtualenv.app_data import AppDataDiskFolder
@@ -29,12 +28,11 @@ from virtualenv.seed.wheels.periodic_update import (
     release_date_for_wheel_path,
     trigger_update,
 )
-from virtualenv.util.path import Path
 from virtualenv.util.subprocess import CREATE_NO_WINDOW
 
 
 @pytest.fixture(autouse=True)
-def clear_pypi_info_cache():
+def _clear_pypi_info_cache():
     from virtualenv.seed.wheels.periodic_update import _PYPI_CACHE
 
     _PYPI_CACHE.clear()
@@ -44,7 +42,7 @@ def test_manual_upgrade(session_app_data, caplog, mocker, for_py_version):
     wheel = get_embed_wheel("pip", for_py_version)
     new_version = NewVersion(wheel.path, datetime.now(), datetime.now() - timedelta(days=20), "manual")
 
-    def _do_update(distribution, for_py_version, embed_filename, app_data, search_dirs, periodic):  # noqa
+    def _do_update(distribution, for_py_version, embed_filename, app_data, search_dirs, periodic):  # noqa: U100
         if distribution == "pip":
             return [new_version]
         return []
@@ -61,12 +59,13 @@ def test_manual_upgrade(session_app_data, caplog, mocker, for_py_version):
     for i in do_update_mock.call_args_list:
         packages[i[1]["distribution"]].append(i[1]["for_py_version"])
     packages = {key: sorted(value) for key, value in packages.items()}
-    versions = list(sorted(BUNDLE_SUPPORT.keys()))
+    versions = sorted(BUNDLE_SUPPORT.keys())
     expected = {"setuptools": versions, "wheel": versions, "pip": versions}
     assert packages == expected
 
 
-def test_pick_periodic_update(tmp_path, session_app_data, mocker, for_py_version):
+@pytest.mark.usefixtures("session_app_data")
+def test_pick_periodic_update(tmp_path, mocker, for_py_version):
     embed, current = get_embed_wheel("setuptools", "3.5"), get_embed_wheel("setuptools", for_py_version)
     mocker.patch("virtualenv.seed.wheels.bundle.load_embed_wheel", return_value=embed)
     completed = datetime.now() - timedelta(days=29)
@@ -81,8 +80,8 @@ def test_pick_periodic_update(tmp_path, session_app_data, mocker, for_py_version
     result = cli_run([str(tmp_path), "--activators", "", "--no-periodic-update", "--no-wheel", "--no-pip"])
 
     assert read_dict.call_count == 1
-    installed = list(i.name for i in result.creator.purelib.iterdir() if i.suffix == ".dist-info")
-    assert "setuptools-{}.dist-info".format(current.version) in installed
+    installed = [i.name for i in result.creator.purelib.iterdir() if i.suffix == ".dist-info"]
+    assert f"setuptools-{current.version}.dist-info" in installed
 
 
 def test_periodic_update_stops_at_current(mocker, session_app_data, for_py_version):
@@ -251,11 +250,11 @@ def test_periodic_update_trigger(u_log, mocker, for_py_version, session_app_data
 
 
 def test_trigger_update_no_debug(for_py_version, session_app_data, tmp_path, mocker, monkeypatch):
-    monkeypatch.delenv(str("_VIRTUALENV_PERIODIC_UPDATE_INLINE"), raising=False)
+    monkeypatch.delenv("_VIRTUALENV_PERIODIC_UPDATE_INLINE", raising=False)
     current = get_embed_wheel("setuptools", for_py_version)
     process = mocker.MagicMock()
     process.communicate.return_value = None, None
-    Popen = mocker.patch("virtualenv.seed.wheels.periodic_update.Popen", return_value=process)
+    Popen = mocker.patch("virtualenv.seed.wheels.periodic_update.Popen", return_value=process)  # noqa: N806
 
     trigger_update(
         "setuptools", for_py_version, current, [tmp_path / "a", tmp_path / "b"], session_app_data, os.environ, True
@@ -292,12 +291,12 @@ def test_trigger_update_no_debug(for_py_version, session_app_data, tmp_path, moc
 
 
 def test_trigger_update_debug(for_py_version, session_app_data, tmp_path, mocker, monkeypatch):
-    monkeypatch.setenv(str("_VIRTUALENV_PERIODIC_UPDATE_INLINE"), str("1"))
+    monkeypatch.setenv("_VIRTUALENV_PERIODIC_UPDATE_INLINE", "1")
     current = get_embed_wheel("pip", for_py_version)
 
     process = mocker.MagicMock()
     process.communicate.return_value = None, None
-    Popen = mocker.patch("virtualenv.seed.wheels.periodic_update.Popen", return_value=process)
+    Popen = mocker.patch("virtualenv.seed.wheels.periodic_update.Popen", return_value=process)  # noqa: N806
 
     trigger_update(
         "pip", for_py_version, current, [tmp_path / "a", tmp_path / "b"], session_app_data, os.environ, False
@@ -346,7 +345,9 @@ def test_do_update_first(tmp_path, mocker, freezer):
     ]
     download_wheels = (Wheel(Path(i[0])) for i in pip_version_remote)
 
-    def _download_wheel(distribution, version_spec, for_py_version, search_dirs, app_data, to_folder, env):
+    def _download_wheel(
+        distribution, version_spec, for_py_version, search_dirs, app_data, to_folder, env  # noqa: U100
+    ):
         assert distribution == "pip"
         assert for_py_version == "3.9"
         assert [str(i) for i in search_dirs] == [str(extra)]
@@ -407,7 +408,9 @@ def test_do_update_skip_already_done(tmp_path, mocker, freezer):
     extra = tmp_path / "extra"
     extra.mkdir()
 
-    def _download_wheel(distribution, version_spec, for_py_version, search_dirs, app_data, to_folder, env):  # noqa
+    def _download_wheel(
+        distribution, version_spec, for_py_version, search_dirs, app_data, to_folder, env  # noqa: U100
+    ):
         return wheel.path
 
     download_wheel = mocker.patch("virtualenv.seed.wheels.acquire.download_wheel", side_effect=_download_wheel)
@@ -497,7 +500,9 @@ def mock_download(mocker, pip_version_remote):
             yield Wheel(Path(path))
 
     do = download()
-    return mocker.patch("virtualenv.seed.wheels.acquire.download_wheel", side_effect=lambda *a, **k: next(do))
+    return mocker.patch(
+        "virtualenv.seed.wheels.acquire.download_wheel", side_effect=lambda *a, **k: next(do)  # noqa: U100
+    )
 
 
 def test_download_stop_with_embed(tmp_path, mocker, freezer):
@@ -590,7 +595,7 @@ def test_download_periodic_stop_at_first_usable(tmp_path, mocker, freezer):
     rel_date_gen = iter(rel_date_remote)
     release_date = mocker.patch(
         "virtualenv.seed.wheels.periodic_update.release_date_for_wheel_path",
-        side_effect=lambda *a, **k: next(rel_date_gen),
+        side_effect=lambda *a, **k: next(rel_date_gen),  # noqa: U100
     )
 
     last_update = _UP_NOW - timedelta(days=14)
@@ -622,7 +627,7 @@ def test_download_periodic_stop_at_first_usable_with_previous_minor(tmp_path, mo
     rel_date_gen = iter(rel_date_remote)
     release_date = mocker.patch(
         "virtualenv.seed.wheels.periodic_update.release_date_for_wheel_path",
-        side_effect=lambda *a, **k: next(rel_date_gen),
+        side_effect=lambda *a, **k: next(rel_date_gen),  # noqa: U100
     )
 
     last_update = _UP_NOW - timedelta(days=14)

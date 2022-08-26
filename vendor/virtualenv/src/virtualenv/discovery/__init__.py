@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from pathlib import Path
 
 from virtualenv import __path_assets__

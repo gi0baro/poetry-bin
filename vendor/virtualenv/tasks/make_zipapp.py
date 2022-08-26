@@ -3,7 +3,6 @@ import argparse
 import io
 import json
 import os
-import pipes
 import shutil
 import subprocess
 import sys
@@ -12,6 +11,7 @@ import zipfile
 from collections import defaultdict, deque
 from email import message_from_string
 from pathlib import Path, PurePosixPath
+from shlex import quote
 from stat import S_IWUSR
 from tempfile import TemporaryDirectory
 
@@ -20,7 +20,7 @@ from packaging.requirements import Requirement
 
 HERE = Path(__file__).parent.absolute()
 
-VERSIONS = ["3.{}".format(i) for i in range(10, 4, -1)] + ["2.7"]
+VERSIONS = [f"3.{i}" for i in range(10, 5, -1)]
 
 
 def main():
@@ -46,7 +46,7 @@ def create_zipapp(dest, packages):
         zip_app.writestr("__main__.py", (HERE / "__main__zipapp.py").read_bytes())
     bio.seek(0)
     zipapp.create_archive(bio, dest)
-    print("zipapp created at {}".format(dest))
+    print(f"zipapp created at {dest}")
 
 
 def write_packages_to_zipapp(base, dist, modules, packages, zip_app):
@@ -82,7 +82,7 @@ def write_packages_to_zipapp(base, dist, modules, packages, zip_app):
                         del content
 
 
-class WheelDownloader(object):
+class WheelDownloader:
     def __init__(self, into):
         if into.exists():
             shutil.rmtree(into)
@@ -104,7 +104,7 @@ class WheelDownloader(object):
             whl = self._get_wheel(dep, platform[2:] if platform and platform.startswith("==") else None, version)
             if whl is None:
                 if dep_str not in wheel_store:
-                    raise RuntimeError("failed to get {}, have {}".format(dep_str, wheel_store))
+                    raise RuntimeError(f"failed to get {dep_str}, have {wheel_store}")
                 whl = wheel_store[dep_str]
             else:
                 wheel_store[dep_str] = whl
@@ -139,7 +139,7 @@ class WheelDownloader(object):
     @staticmethod
     def get_dependencies(whl, version):
         with zipfile.ZipFile(str(whl), "r") as zip_file:
-            name = "/".join(["{}.dist-info".format("-".join(whl.name.split("-")[0:2])), "METADATA"])
+            name = "/".join([f"{'-'.join(whl.name.split('-')[0:2])}.dist-info", "METADATA"])
             with zip_file.open(name) as file_handler:
                 metadata = message_from_string(file_handler.read().decode("utf-8"))
         deps = metadata.get_all("Requires-Dist")
@@ -147,15 +147,14 @@ class WheelDownloader(object):
             return
         for dep in deps:
             req = Requirement(dep)
-            markers = getattr(req.marker, "_markers", tuple()) or ()
+            markers = getattr(req.marker, "_markers", ()) or ()
             if any(m for m in markers if isinstance(m, tuple) and len(m) == 3 and m[0].value == "extra"):
                 continue
             py_versions = WheelDownloader._marker_at(markers, "python_version")
             if py_versions:
                 marker = Marker('python_version < "1"')
                 marker._markers = [
-                    markers[ver]
-                    for ver in sorted(list(i for i in set(py_versions) | {i - 1 for i in py_versions} if i >= 0))
+                    markers[ver] for ver in sorted(i for i in set(py_versions) | {i - 1 for i in py_versions} if i >= 0)
                 ]
                 matches_python = marker.evaluate({"python_version": version})
                 if not matches_python:
@@ -167,7 +166,7 @@ class WheelDownloader(object):
             platform_positions = WheelDownloader._marker_at(markers, "sys_platform")
             deleted = 0
             for pos in platform_positions:  # can only be ore meaningfully
-                platform = "{}{}".format(markers[pos][1].value, markers[pos][2].value)
+                platform = f"{markers[pos][1].value}{markers[pos][2].value}"
                 deleted += WheelDownloader._del_marker_at(markers, pos - deleted)
                 platforms.append(platform)
             if not platforms:
@@ -207,7 +206,7 @@ class WheelDownloader(object):
                     return self._build_sdist(self.into, folder)
                 finally:
                     # permission error on Windows <3.7 https://bugs.python.org/issue26660
-                    def onerror(func, path, exc_info):
+                    def onerror(func, path, exc_info):  # noqa: U100
                         os.chmod(path, S_IWUSR)
                         func(path)
 
@@ -227,7 +226,7 @@ def run_suppress_output(cmd, stop_print_on_fail=False):
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
     out, err = process.communicate()
     if stop_print_on_fail and process.returncode != 0:
-        print("exit with {} of {}".format(process.returncode, " ".join(pipes.quote(i) for i in cmd)), file=sys.stdout)
+        print(f"exit with {process.returncode} of {' '.join(quote(i) for i in cmd)}", file=sys.stdout)
         if out:
             print(out, file=sys.stdout)
         if err:
@@ -250,19 +249,19 @@ def get_wheels_for_support_versions(folder):
                 wheel_versions.wheel = wheel
     for name, p_w_v in packages.items():
         for platform, w_v in p_w_v.items():
-            print("{} - {}".format(name, platform))
+            print(f"{name} - {platform}")
             for wheel, wheel_versions in w_v.items():
-                print("{} of {} (use {})".format(" ".join(wheel_versions.versions), wheel, wheel_versions.wheel))
+                print(f"{' '.join(wheel_versions.versions)} of {wheel} (use {wheel_versions.wheel})")
     return packages
 
 
-class WheelForVersion(object):
+class WheelForVersion:
     def __init__(self, wheel=None, versions=None):
         self.wheel = wheel
         self.versions = versions if versions else []
 
     def __repr__(self):
-        return "{}({!r}, {!r})".format(self.__class__.__name__, self.wheel, self.versions)
+        return f"{self.__class__.__name__}({self.wheel!r}, {self.versions!r})"
 
 
 if __name__ == "__main__":

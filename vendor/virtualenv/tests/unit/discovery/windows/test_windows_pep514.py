@@ -1,18 +1,15 @@
-from __future__ import absolute_import, unicode_literals
-
 import sys
 import textwrap
 from collections import defaultdict
 from contextlib import contextmanager
+from pathlib import Path
 
 import pytest
-import six
-
-from virtualenv.util.path import Path
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="no Windows registry")
-def test_pep514(_mock_registry):
+@pytest.mark.usefixtures("_mock_registry")
+def test_pep514():
     from virtualenv.discovery.windows.pep514 import discover_pythons
 
     interpreters = list(discover_pythons())
@@ -31,7 +28,8 @@ def test_pep514(_mock_registry):
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="no Windows registry")
-def test_pep514_run(_mock_registry, capsys, caplog):
+@pytest.mark.usefixtures("_mock_registry")
+def test_pep514_run(capsys, caplog):
     from virtualenv.discovery.windows import pep514
 
     pep514._run()
@@ -54,14 +52,14 @@ def test_pep514_run(_mock_registry, capsys, caplog):
     assert not err
     prefix = "PEP-514 violation in Windows Registry at "
     expected_logs = [
-        "{}HKEY_CURRENT_USER/PythonCore/3.1/SysArchitecture error: invalid format magic".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.2/SysArchitecture error: arch is not string: 100".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.3 error: no ExecutablePath or default for it".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.3 error: could not load exe with value None".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.8/InstallPath error: missing".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.9/SysVersion error: invalid format magic".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.X/SysVersion error: version is not string: 2778".format(prefix),
-        "{}HKEY_CURRENT_USER/PythonCore/3.X error: invalid format 3.X".format(prefix),
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.1/SysArchitecture error: invalid format magic",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.2/SysArchitecture error: arch is not string: 100",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.3 error: no ExecutablePath or default for it",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.3 error: could not load exe with value None",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.8/InstallPath error: missing",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.9/SysVersion error: invalid format magic",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.X/SysVersion error: version is not string: 2778",
+        f"{prefix}HKEY_CURRENT_USER/PythonCore/3.X error: invalid format 3.X",
     ]
     assert caplog.messages == expected_logs
 
@@ -72,7 +70,7 @@ def _mock_registry(mocker):
 
     loc, glob = {}, {}
     mock_value_str = (Path(__file__).parent / "winreg-mock-values.py").read_text()
-    six.exec_(mock_value_str, glob, loc)
+    exec(mock_value_str, glob, loc)
     enum_collect = loc["enum_collect"]
     value_collect = loc["value_collect"]
     key_open = loc["key_open"]
@@ -96,14 +94,14 @@ def _mock_registry(mocker):
 
     mocker.patch.object(winreg, "QueryValueEx", side_effect=_v)
 
-    class Key(object):
+    class Key:
         def __init__(self, value):
             self.value = value
 
         def __enter__(self):
             return self
 
-        def __exit__(self, exc_type, exc_val, exc_tb):
+        def __exit__(self, exc_type, exc_val, exc_tb):  # noqa: U100
             return None
 
     @contextmanager
@@ -127,12 +125,9 @@ def _mock_registry(mocker):
 
 @pytest.fixture()
 def _collect_winreg_access(mocker):
-    if six.PY3:
-        # noinspection PyUnresolvedReferences
-        from winreg import EnumKey, OpenKeyEx, QueryValueEx
-    else:
-        # noinspection PyUnresolvedReferences
-        from _winreg import EnumKey, OpenKeyEx, QueryValueEx
+    # noinspection PyUnresolvedReferences
+    from winreg import EnumKey, OpenKeyEx, QueryValueEx
+
     from virtualenv.discovery.windows.pep514 import winreg
 
     hive_open = {}
@@ -190,7 +185,7 @@ def _collect_winreg_access(mocker):
     yield
 
     print("")
-    print("hive_open = {}".format(hive_open))
-    print("key_open = {}".format(dict(key_open.items())))
-    print("value_collect = {}".format(dict(value_collect.items())))
-    print("enum_collect = {}".format(dict(enum_collect.items())))
+    print(f"hive_open = {hive_open}")
+    print(f"key_open = {dict(key_open.items())}")
+    print(f"value_collect = {dict(value_collect.items())}")
+    print(f"enum_collect = {dict(enum_collect.items())}")

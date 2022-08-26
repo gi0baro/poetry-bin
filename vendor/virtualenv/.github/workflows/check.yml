@@ -10,13 +10,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-      - uses: pre-commit/action@v2.0.3
-
   test:
     name: test ${{ matrix.py }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -24,23 +17,25 @@ jobs:
       fail-fast: false
       matrix:
         py:
+          - "3.11.0-beta.5"
           - "3.10"
           - "3.9"
           - "3.8"
           - "3.7"
           - "3.6"
-          - "3.5"
+          - pypy-3.9-v7.3.9
+          - pypy-3.8-v7.3.9
+          - pypy-3.7-v7.3.9
           - pypy-3.6-v7.3.3
-          - pypy-3.7-v7.3.7
-          - pypy-3.8-v7.3.7
-          - "2.7"
-          - pypy-2.7
         os:
           - ubuntu-20.04
-          - macos-10.15
+          - macos-12
           - windows-2022
+        exclude:
+          - { os: macos-12, py: "pypy-3.6-v7.3.3" } # PyPy 3.6 does not support macOS 11/12
         include:
-          - { os: macos-10.15, py: brew@py3 }
+          - { os: macos-12, py: "brew@3.9" }
+          - { os: macos-12, py: "brew@3.8" }
     steps:
       - name: Install OS dependencies
         run: |
@@ -48,54 +43,52 @@ jobs:
             echo "try $i" && \
             ${{ runner.os == 'Linux' && 'sudo apt-get update -y && sudo apt-get install snapd fish csh -y' || true }} && \
             ${{ runner.os == 'Linux' && 'sudo apt-get install curl wget -y' || true }} && \
-            ${{ runner.os == 'Linux' && 'nushell_url=$(curl -s https://api.github.com/repos/nushell/nushell/releases/latest | grep "browser_" | cut -d\" -f4 | grep .tar.gz)' || true }} && \
+            ${{ runner.os == 'Linux' && 'nushell_url=$(curl -s https://api.github.com/repos/nushell/nushell/releases/latest | grep "browser_" | grep "x86_64" | grep "linux" | grep "gnu" | cut -d\" -f4 )' || true }} && \
             ${{ runner.os == 'Linux' && 'wget -O nushell.tar.gz $nushell_url' || true }} && \
-            ${{ runner.os == 'Linux' && 'tar -zxf nushell.tar.gz --one-top-level=nushell --strip-components=2' || true }} && \
-            ${{ runner.os == 'Linux' && 'sudo cp nushell/nu /usr/bin' || true }} && \
+            ${{ runner.os == 'Linux' && 'tar -zxf nushell.tar.gz' || true }} && \
+            ${{ runner.os == 'Linux' && 'sudo cp nu /usr/bin' || true }} && \
             ${{ runner.os == 'Windows' && 'choco install nushell' || true }} && \
-            ${{ runner.os == 'macOS' && 'brew update && brew install fish tcsh nushell' || true }} && \
+            ${{ runner.os == 'macOS' && 'brew install fish tcsh nushell' || true }} && \
             exit 0 || true;
           done
           exit 1
         shell: bash
       - name: Setup python for tox
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - name: Install tox
-        run: python -m pip install tox
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Use local virtualenv for tox
-        run: python -m pip install .
       - name: Install Python 2 for cross test
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "2.7"
+      - name: Setup brew python for test ${{ matrix.py }}
+        if: startsWith(matrix.py,'brew@')
+        run: |
+          set -e
+          PY=$(echo '${{ matrix.py }}' | cut -c 6-)
+          brew upgrade python@$PY || brew install python@$PY
+          echo "/usr/local/opt/python@$PY/libexec/bin" >>"${GITHUB_PATH}"
+        shell: bash
       - name: Setup python for test ${{ matrix.py }}
-        if: "!( startsWith(matrix.py,'brew@py') || endsWith(matrix.py, '-dev') )"
-        uses: actions/setup-python@v2
+        if: "!( startsWith(matrix.py,'brew@') || endsWith(matrix.py, '-dev') )"
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.py }}
-      - name: Setup brew python for test ${{ matrix.py }}
-        if: startsWith(matrix.py,'brew@py')
-        run: |
-          import subprocess; import codecs; import os
-          subprocess.check_call(["bash", "-c", "brew upgrade python@3 || brew install python@3"])
-          with codecs.open(os.environ["GITHUB_PATH"], "a", "utf-8") as file_handler:
-               file_handler.write("/usr/local/opt/python@3")
-        shell: python
       - name: Pick environment to run
         run: |
-          import platform; import os; import sys; import codecs
-          cpy = platform.python_implementation() == "CPython"
-          base =("{}{}{}" if cpy else "{}{}").format("py" if cpy else "pypy", *sys.version_info[0:2])
-          env = "TOXENV={}\n".format(base)
-          print("Picked:\n{}for{}".format(env, sys.version))
-          with codecs.open(os.environ["GITHUB_ENV"], "a", "utf-8") as file_handler:
-               file_handler.write(env)
+          import os; import platform; import sys; from pathlib import Path
+          env = f'TOXENV=py{"" if platform.python_implementation() == "CPython" else "py"}3{sys.version_info.minor}'
+          print(f"Picked: {env} for {sys.version} based of {sys.executable}")
+          with Path(os.environ["GITHUB_ENV"]).open("ta") as file_handler:
+              file_handler.write(env)
         shell: python
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install tox
+        run: python -m pip install tox
+      - name: Use local virtualenv for tox
+        run: python -m pip install .
       - name: Setup test suite
         run: tox -vv --notest
       - name: Run test suite
@@ -105,23 +98,25 @@ jobs:
           CI_RUN: "yes"
           DIFF_AGAINST: HEAD
       - name: Rename coverage report file
-        run: import os; import sys; os.rename(".tox/.coverage.{}".format(os.environ['TOXENV']), ".tox/.coverage.{}-{}".format(os.environ['TOXENV'], sys.platform))
+        run: |
+          import os; import sys
+          os.rename(f".tox/.coverage.{os.environ['TOXENV']}", f".tox/.coverage.{os.environ['TOXENV']}-{sys.platform}")
         shell: python
       - name: Upload coverage data
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: coverage-data
           path: ".tox/.coverage.*"
 
   coverage:
     name: Combine coverage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: test
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - name: Install tox
@@ -133,14 +128,14 @@ jobs:
       - name: Build package
         run: pyproject-build --wheel .
       - name: Download coverage data
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: coverage-data
           path: .tox
       - name: Combine and report coverage
         run: tox -e coverage
       - name: Upload HTML report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: html-report
           path: .tox/htmlcov
@@ -152,7 +147,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-20.04
+          - ubuntu-22.04
           - windows-2022
         tox_env:
           - dev
@@ -164,11 +159,11 @@ jobs:
           - { os: windows-2022, tox_env: readme }
           - { os: windows-2022, tox_env: docs }
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Setup Python "3.10"
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - name: Install tox
@@ -180,22 +175,22 @@ jobs:
 
   publish:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-    needs: [check, coverage, lint]
-    runs-on: ubuntu-20.04
+    needs: [check, coverage]
+    runs-on: ubuntu-22.04
     steps:
       - name: Setup python to build package
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - name: Install https://pypi.org/project/build
         run: python -m pip install build
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: Build sdist and wheel
         run: python -m build -s -w . -o dist
       - name: Publish to PyPi
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@v1.5.1
         with:
           skip_existing: true
           user: __token__

@@ -1,27 +1,21 @@
-from __future__ import absolute_import, unicode_literals
-
 import abc
 import json
 import os
 from importlib.resources import read_text
-
-from six import add_metaclass
+from pathlib import Path
 
 from virtualenv.create.describe import Python2Supports
 from virtualenv.create.via_global_ref.builtin.ref import PathRefToDest
 from virtualenv.info import IS_ZIPAPP
-from virtualenv.util.path import Path
-from virtualenv.util.six import ensure_text
 from virtualenv.util.zipapp import read as read_from_zipapp
 
 from ..via_global_self_do import ViaGlobalRefVirtualenvBuiltin
 
 
-@add_metaclass(abc.ABCMeta)
-class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
+class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports, metaclass=abc.ABCMeta):
     def create(self):
         """Perform operations needed to make the created environment work on Python 2"""
-        super(Python2, self).create()
+        super().create()
         # install a patched site-package, the default Python 2 site.py is not smart enough to understand pyvenv.cfg,
         # so we inject a small shim that can do this, the location of this depends where it's on host
         sys_std_plat = Path(self.interpreter.system_stdlib_platform)
@@ -34,14 +28,14 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
 
         custom_site = get_custom_site()
         custom_site_text = read_text(custom_site, "site.py.template")
-        expected = json.dumps([os.path.relpath(ensure_text(str(i)), ensure_text(str(site_py))) for i in self.libs])
+        expected = json.dumps([os.path.relpath(str(i), str(site_py)) for i in self.libs])
 
         custom_site_text = custom_site_text.replace("___EXPECTED_SITE_PACKAGES___", expected)
 
-        reload_code = os.linesep.join("    {}".format(i) for i in self.reload_code.splitlines()).lstrip()
+        reload_code = os.linesep.join(f"    {i}" for i in self.reload_code.splitlines()).lstrip()
         custom_site_text = custom_site_text.replace("# ___RELOAD_CODE___", reload_code)
 
-        skip_rewrite = os.linesep.join("            {}".format(i) for i in self.skip_rewrite.splitlines()).lstrip()
+        skip_rewrite = os.linesep.join(f"            {i}" for i in self.skip_rewrite.splitlines()).lstrip()
         custom_site_text = custom_site_text.replace("# ___SKIP_REWRITE____", skip_rewrite)
 
         site_py.write_text(custom_site_text)
@@ -56,8 +50,7 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
 
     @classmethod
     def sources(cls, interpreter):
-        for src in super(Python2, cls).sources(interpreter):
-            yield src
+        yield from super().sources(interpreter)
         # install files needed to run site.py, either from stdlib or stdlib_platform, at least pyc, but both if exists
         # if neither exists return the module file to trigger failure
         mappings, needs_py_module = (
@@ -65,8 +58,8 @@ class Python2(ViaGlobalRefVirtualenvBuiltin, Python2Supports):
             cls.needs_stdlib_py_module(),
         )
         for req in cls.modules():
-            module_file, to_module, module_exists = cls.from_stdlib(mappings, "{}.py".format(req))
-            compiled_file, to_compiled, compiled_exists = cls.from_stdlib(mappings, "{}.pyc".format(req))
+            module_file, to_module, module_exists = cls.from_stdlib(mappings, f"{req}.py")
+            compiled_file, to_compiled, compiled_exists = cls.from_stdlib(mappings, f"{req}.pyc")
             if needs_py_module or module_exists or not compiled_exists:
                 yield PathRefToDest(module_file, dest=to_module)
             if compiled_exists:

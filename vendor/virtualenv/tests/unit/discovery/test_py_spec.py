@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import itertools
 import sys
 from copy import copy
@@ -16,8 +14,8 @@ def test_bad_py_spec():
     assert spec.str_spec == text
     assert spec.path == text
     content = vars(spec)
-    del content[str("str_spec")]
-    del content[str("path")]
+    del content["str_spec"]
+    del content["path"]
     assert all(v is None for v in content.values())
 
 
@@ -47,7 +45,7 @@ def test_spec_satisfies_arch():
 
 
 @pytest.mark.parametrize(
-    "req, spec",
+    ("req", "spec"),
     list(itertools.combinations(["py", "CPython", "python"], 2)) + [("jython", "jython")] + [("CPython", "cpython")],
 )
 def test_spec_satisfies_implementation_ok(req, spec):
@@ -77,10 +75,10 @@ def _version_satisfies_pairs():
     return sorted(target)
 
 
-@pytest.mark.parametrize("req, spec", _version_satisfies_pairs())
+@pytest.mark.parametrize(("req", "spec"), _version_satisfies_pairs())
 def test_version_satisfies_ok(req, spec):
-    req_spec = PythonSpec.from_string_spec("python{}".format(req))
-    sat_spec = PythonSpec.from_string_spec("python{}".format(spec))
+    req_spec = PythonSpec.from_string_spec(f"python{req}")
+    sat_spec = PythonSpec.from_string_spec(f"python{spec}")
     assert sat_spec.satisfies(req_spec) is True
 
 
@@ -102,10 +100,10 @@ def _version_not_satisfies_pairs():
     return sorted(target)
 
 
-@pytest.mark.parametrize("req, spec", _version_not_satisfies_pairs())
+@pytest.mark.parametrize(("req", "spec"), _version_not_satisfies_pairs())
 def test_version_satisfies_nok(req, spec):
-    req_spec = PythonSpec.from_string_spec("python{}".format(req))
-    sat_spec = PythonSpec.from_string_spec("python{}".format(spec))
+    req_spec = PythonSpec.from_string_spec(f"python{req}")
+    sat_spec = PythonSpec.from_string_spec(f"python{spec}")
     assert sat_spec.satisfies(req_spec) is False
 
 

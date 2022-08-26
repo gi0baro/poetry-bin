@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import itertools
 import sys
 from shutil import copy2
@@ -12,17 +10,17 @@ from virtualenv.seed.wheels.bundle import load_embed_wheel
 from virtualenv.seed.wheels.embed import BUNDLE_FOLDER, BUNDLE_SUPPORT
 
 
-@pytest.mark.slow
+@pytest.mark.slow()
 @pytest.mark.parametrize("no", ["pip", "setuptools", "wheel", ""])
 def test_base_bootstrap_via_pip_invoke(tmp_path, coverage_env, mocker, current_fastest, no):
     extra_search_dir = tmp_path / "extra"
     extra_search_dir.mkdir()
-    for_py_version = "{}.{}".format(*sys.version_info[0:2])
+    for_py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
     new = BUNDLE_SUPPORT[for_py_version]
     for wheel_filename in BUNDLE_SUPPORT[for_py_version].values():
         copy2(str(BUNDLE_FOLDER / wheel_filename), str(extra_search_dir))
 
-    def _load_embed_wheel(app_data, distribution, for_py_version, version):
+    def _load_embed_wheel(app_data, distribution, for_py_version, version):  # noqa: U100
         return load_embed_wheel(app_data, distribution, old_ver, version)
 
     old_ver = "2.7"
@@ -66,9 +64,9 @@ def test_base_bootstrap_via_pip_invoke(tmp_path, coverage_env, mocker, current_f
         str(tmp_path / "app-data"),
     ]
     for dist, version in versions.items():
-        create_cmd.extend(["--{}".format(dist), version])
+        create_cmd.extend([f"--{dist}", version])
     if no:
-        create_cmd.append("--no-{}".format(no))
+        create_cmd.append(f"--no-{no}")
     result = cli_run(create_cmd)
     coverage_env()
 
