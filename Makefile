@@ -64,13 +64,13 @@ tests:
 	@cd vendor/poetry-core && \
 		python -m venv .venv && \
 		.venv/bin/pip install -r vendors/deps.txt && \
-		.venv/bin/pip install ../requests ../virtualenv . && \
+		.venv/bin/pip install ../jsonschema ../requests ../virtualenv . && \
 		.venv/bin/pip install build pytest pytest-mock && \
 		.venv/bin/pytest && \
 		rm -r .venv
 	@cd vendor/poetry && \
 		python -m venv .venv && \
-		.venv/bin/pip install ../importlib_metadata ../requests ../virtualenv && \
+		.venv/bin/pip install ../importlib_metadata ../jsonschema ../requests ../virtualenv && \
 		.venv/bin/pip install -r ../poetry-core/vendors/deps.txt && \
 		.venv/bin/pip install ../poetry-core . && \
 		.venv/bin/pip install httpretty pytest pytest-mock && \
