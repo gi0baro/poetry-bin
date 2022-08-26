@@ -1,10 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+from poetry.core.packages.constraints import AnyConstraint
 from poetry.core.packages.constraints.constraint import Constraint
 from poetry.core.packages.constraints.empty_constraint import EmptyConstraint
 from poetry.core.packages.constraints.multi_constraint import MultiConstraint
 from poetry.core.packages.constraints.union_constraint import UnionConstraint
 
 
-def test_allows():
+if TYPE_CHECKING:
+    from poetry.core.packages.constraints import BaseConstraint
+
+
+def test_allows() -> None:
     c = Constraint("win32")
 
     assert c.allows(Constraint("win32"))
@@ -16,7 +27,7 @@ def test_allows():
     assert c.allows(Constraint("linux"))
 
 
-def test_allows_any():
+def test_allows_any() -> None:
     c = Constraint("win32")
 
     assert c.allows_any(Constraint("win32"))
@@ -32,7 +43,7 @@ def test_allows_any():
     assert c.allows_any(Constraint("linux", "!="))
 
 
-def test_allows_all():
+def test_allows_all() -> None:
     c = Constraint("win32")
 
     assert c.allows_all(Constraint("win32"))
@@ -41,49 +52,117 @@ def test_allows_all():
     assert not c.allows_all(UnionConstraint(Constraint("win32"), Constraint("linux")))
 
 
-def test_intersect():
-    c = Constraint("win32")
+@pytest.mark.parametrize(
+    ("constraint1", "constraint2", "expected"),
+    [
+        (
+            Constraint("win32"),
+            Constraint("win32"),
+            Constraint("win32"),
+        ),
+        (
+            Constraint("win32"),
+            Constraint("linux"),
+            EmptyConstraint(),
+        ),
+        (
+            Constraint("win32"),
+            UnionConstraint(Constraint("win32"), Constraint("linux")),
+            Constraint("win32"),
+        ),
+        (
+            Constraint("win32"),
+            UnionConstraint(Constraint("linux"), Constraint("linux2")),
+            EmptyConstraint(),
+        ),
+        (
+            Constraint("win32"),
+            Constraint("linux", "!="),
+            Constraint("win32"),
+        ),
+        (
+            Constraint("win32", "!="),
+            Constraint("linux"),
+            Constraint("linux"),
+        ),
+        (
+            Constraint("win32", "!="),
+            Constraint("linux", "!="),
+            MultiConstraint(Constraint("win32", "!="), Constraint("linux", "!=")),
+        ),
+        (
+            UnionConstraint(Constraint("win32"), Constraint("linux")),
+            UnionConstraint(Constraint("win32"), Constraint("darwin")),
+            Constraint("win32"),
+        ),
+        (
+            UnionConstraint(Constraint("win32"), Constraint("linux")),
+            MultiConstraint(Constraint("win32", "!="), Constraint("darwin", "!=")),
+            Constraint("linux"),
+        ),
+    ],
+)
+def test_intersect(
+    constraint1: BaseConstraint,
+    constraint2: BaseConstraint,
+    expected: BaseConstraint,
+) -> None:
+    intersection = constraint1.intersect(constraint2)
+    assert intersection == expected
 
-    intersection = c.intersect(Constraint("linux"))
-    assert intersection == EmptyConstraint()
 
-    intersection = c.intersect(
-        UnionConstraint(Constraint("win32"), Constraint("linux"))
-    )
-    assert intersection == Constraint("win32")
+@pytest.mark.parametrize(
+    ("constraint1", "constraint2", "expected"),
+    [
+        (
+            Constraint("win32"),
+            Constraint("win32"),
+            Constraint("win32"),
+        ),
+        (
+            Constraint("win32"),
+            Constraint("linux"),
+            UnionConstraint(Constraint("win32"), Constraint("linux")),
+        ),
+        (
+            Constraint("win32"),
+            UnionConstraint(Constraint("win32"), Constraint("linux")),
+            UnionConstraint(Constraint("win32"), Constraint("linux")),
+        ),
+        (
+            Constraint("win32"),
+            UnionConstraint(Constraint("linux"), Constraint("linux2")),
+            UnionConstraint(
+                Constraint("win32"), Constraint("linux"), Constraint("linux2")
+            ),
+        ),
+        (
+            Constraint("win32"),
+            Constraint("linux", "!="),
+            Constraint("linux", "!="),
+        ),
+        (
+            Constraint("win32", "!="),
+            Constraint("linux"),
+            Constraint("win32", "!="),
+        ),
+        (
+            Constraint("win32", "!="),
+            Constraint("linux", "!="),
+            AnyConstraint(),
+        ),
+    ],
+)
+def test_union(
+    constraint1: BaseConstraint,
+    constraint2: BaseConstraint,
+    expected: BaseConstraint,
+) -> None:
+    union = constraint1.union(constraint2)
+    assert union == expected
 
-    intersection = c.intersect(
-        UnionConstraint(Constraint("linux"), Constraint("linux2"))
-    )
-    assert intersection == EmptyConstraint()
 
-    intersection = c.intersect(Constraint("linux", "!="))
-    assert intersection == c
-
-    c = Constraint("win32", "!=")
-
-    intersection = c.intersect(Constraint("linux", "!="))
-    assert intersection == MultiConstraint(
-        Constraint("win32", "!="), Constraint("linux", "!=")
-    )
-
-
-def test_union():
-    c = Constraint("win32")
-
-    union = c.union(Constraint("linux"))
-    assert union == UnionConstraint(Constraint("win32"), Constraint("linux"))
-
-    union = c.union(UnionConstraint(Constraint("win32"), Constraint("linux")))
-    assert union == UnionConstraint(Constraint("win32"), Constraint("linux"))
-
-    union = c.union(UnionConstraint(Constraint("linux"), Constraint("linux2")))
-    assert union == UnionConstraint(
-        Constraint("win32"), Constraint("linux"), Constraint("linux2")
-    )
-
-
-def test_difference():
+def test_difference() -> None:
     c = Constraint("win32")
 
     assert c.difference(Constraint("win32")).is_empty()

@@ -96,7 +96,7 @@ assets: _path_assets
 	@mkdir -p ${ASSETSPATH}/virtualenv/create
 	@mkdir -p ${ASSETSPATH}/virtualenv/discovery
 	@mkdir -p ${ASSETSPATH}/virtualenv/seed/wheels
-	@cp -R vendor/poetry-core/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars
+	@cp -R vendor/poetry-core/src/poetry/core/version/grammars ${ASSETSPATH}/core/version/grammars
 	@cp vendor/virtualenv/src/virtualenv/create/debug.py ${ASSETSPATH}/virtualenv/create/debug.py
 	@cp vendor/virtualenv/src/virtualenv/discovery/py_info.py ${ASSETSPATH}/virtualenv/discovery/py_info.py
 	@cp vendor/virtualenv/src/virtualenv/seed/wheels/embed/*.whl ${ASSETSPATH}/virtualenv/seed/wheels

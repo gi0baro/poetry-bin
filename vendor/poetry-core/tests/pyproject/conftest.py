@@ -1,11 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
-from poetry.core.utils._compat import Path
-from poetry.core.utils._compat import decode
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
-def pyproject_toml(tmp_path):  # type: (Path) -> Path
+def pyproject_toml(tmp_path: Path) -> Path:
     path = tmp_path / "pyproject.toml"
     with path.open(mode="w"):
         pass
@@ -13,19 +18,19 @@ def pyproject_toml(tmp_path):  # type: (Path) -> Path
 
 
 @pytest.fixture
-def build_system_section(pyproject_toml):  # type: (Path) -> str
+def build_system_section(pyproject_toml: Path) -> str:
     content = """
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 """
     with pyproject_toml.open(mode="a") as f:
-        f.write(decode(content))
+        f.write(content)
     return content
 
 
 @pytest.fixture
-def poetry_section(pyproject_toml):  # type: (Path) -> str
+def poetry_section(pyproject_toml: Path) -> str:
     content = """
 [tool.poetry]
 name = "poetry"
@@ -34,5 +39,5 @@ name = "poetry"
 python = "^3.5"
 """
     with pyproject_toml.open(mode="a") as f:
-        f.write(decode(content))
+        f.write(content)
     return content
