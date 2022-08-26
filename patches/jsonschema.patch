@@ -6,7 +6,7 @@ index 0000000..d32a48d
 @@ -0,0 +1 @@
 +__version__ = "4.10.3"
 diff --git a/jsonschema/_utils.py b/jsonschema/_utils.py
-index 7e11325..2e90750 100644
+index 7e11325..687b95a 100644
 --- a/jsonschema/_utils.py
 +++ b/jsonschema/_utils.py
 @@ -5,11 +5,7 @@ import json
@@ -22,13 +22,15 @@ index 7e11325..2e90750 100644
  
  
  class URIDict(MutableMapping):
-@@ -57,9 +53,7 @@ def load_schema(name):
+@@ -56,10 +52,8 @@ def load_schema(name):
+     """
      Load a schema from ./schemas/``name``.json and return it.
      """
- 
+-
 -    path = resources.files(__package__).joinpath(f"schemas/{name}.json")
 -    data = path.read_text(encoding="utf-8")
 -    return json.loads(data)
++    from . import __name__
 +    return json.loads(resources.read_text(f"{__name__}.schemas", f"{name}.json"))
  
  

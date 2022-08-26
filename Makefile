@@ -27,6 +27,7 @@ clean_vendor:
 
 patches:
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
+	@cd src/jsonschema && git diff --binary HEAD > ../../patches/jsonschema.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
 	@cd src/requests && git diff --binary HEAD > ../../patches/requests.patch
@@ -34,6 +35,7 @@ patches:
 
 apply_patches:
 	@cd src/importlib_metadata && git apply --reject --ignore-whitespace ../../patches/importlib_metadata.patch
+	@cd src/jsonschema && git apply --reject --ignore-whitespace ../../patches/jsonschema.patch
 	@cd src/poetry-core && git apply --reject --ignore-whitespace ../../patches/poetry-core.patch
 	@cd src/poetry && git apply --reject --ignore-whitespace ../../patches/poetry.patch
 	@cd src/requests && git apply --reject --ignore-whitespace ../../patches/requests.patch

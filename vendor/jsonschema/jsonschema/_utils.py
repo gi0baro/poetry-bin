@@ -52,7 +52,7 @@ def load_schema(name):
     """
     Load a schema from ./schemas/``name``.json and return it.
     """
-
+    from . import __name__
     return json.loads(resources.read_text(f"{__name__}.schemas", f"{name}.json"))
 
 
