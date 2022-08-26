@@ -80,11 +80,6 @@ def mock_git_info(mocker: MockerFixture) -> None:
     )
 
 
-@pytest.fixture(autouse=True)
-def mock_installed_repository_vendors(mocker: MockerFixture) -> None:
-    mocker.patch("poetry.repositories.installed_repository._VENDORS", str(VENDOR_DIR))
-
-
 @pytest.fixture
 def repository(mocker: MockerFixture, env: MockEnv) -> InstalledRepository:
     mocker.patch(
@@ -104,7 +99,7 @@ def get_package_from_repository(
 
 
 def test_load_successful(repository: InstalledRepository):
-    assert len(repository.packages) == len(INSTALLED_RESULTS) - 1
+    assert len(repository.packages) == len(INSTALLED_RESULTS)
 
 
 def test_load_successful_with_invalid_distribution(
@@ -119,18 +114,13 @@ def test_load_successful_with_invalid_distribution(
     repository_with_invalid_distribution = InstalledRepository.load(env)
 
     assert (
-        len(repository_with_invalid_distribution.packages) == len(INSTALLED_RESULTS) - 1
+        len(repository_with_invalid_distribution.packages) == len(INSTALLED_RESULTS)
     )
     assert len(caplog.messages) == 1
 
     message = caplog.messages[0]
     assert message.startswith("Project environment contains an invalid distribution")
     assert str(invalid_dist_info) in message
-
-
-def test_load_ensure_isolation(repository: InstalledRepository):
-    package = get_package_from_repository("attrs", repository)
-    assert package is None
 
 
 def test_load_standard_package(repository: InstalledRepository):

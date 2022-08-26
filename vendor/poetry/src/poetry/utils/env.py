@@ -30,7 +30,7 @@ from packaging.tags import Tag
 from packaging.tags import interpreter_name
 from packaging.tags import interpreter_version
 from packaging.tags import sys_tags
-from poetry.core.packages import Package
+from poetry.core.packages.package import Package
 from poetry.core.semver.helpers import parse_constraint
 from poetry.core.semver.version import Version
 from poetry.core.toml.file import TOMLFile
@@ -949,14 +949,6 @@ class EnvManager:
                 flags=self._poetry.config.get("virtualenvs.options"),
                 prompt=venv_prompt,
             )
-
-            if not root_venv:
-                envs = tomlkit.document()
-                envs_file = TOMLFile(venv_path / self.ENVS_FILE)
-                if envs_file.exists():
-                    envs = envs_file.read()
-                envs[name] = {"minor": python_minor, "patch": python_patch}
-                envs_file.write(envs)
 
         return VirtualEnv(venv)
 
@@ -2014,15 +2006,10 @@ class InterpreterLookup:
             python_patch = decode(
                 subprocess.check_output(
                     list_to_shell_command(
-                        [
-                            executable,
-                            "-c",
-                            "\"import sys; print('.'.join([str(s) for s in sys.version_info[:3]]))\"",
-                        ]
+                        [executable, "-c", GET_PYTHON_VERSION_ONELINER]
                     ),
-                    stderr=subprocess.STDOUT,
-                    shell=True,
-                ).strip()
+                    shell=True
+                )
             )
         except CalledProcessError:
             return False, None, None
@@ -2048,24 +2035,16 @@ class InterpreterLookup:
             if match:
                 return guess, minor, patch
 
-        for python_to_try in reversed(
-            sorted(
-                Package.AVAILABLE_PYTHONS,
-                key=lambda v: (v.startswith("3"), -len(v), v),
-            )
+        for python_to_try in sorted(
+            Package.AVAILABLE_PYTHONS,
+            key=lambda v: (
+                v.startswith("3"),
+                len(v) == 1,
+                int(v.split(".")[0]) * 100 + int((v.split(".") + ["0"])[1])
+            ),
+            reverse=True
         ):
-            if constraint:
-                if len(python_to_try) == 1:
-                    if not parse_constraint("^{}.0".format(python_to_try)).allows_any(
-                        constraint
-                    ):
-                        continue
-                elif not constraint.allows_all(
-                    parse_constraint(python_to_try + ".*")
-                ):
-                    continue
-
-            guess = "python" + python_to_try
+            guess = f"python{python_to_try}"
             match, minor, patch = cls._version_check(guess, constraint)
             if match:
                 executable = guess

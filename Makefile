@@ -75,7 +75,7 @@ tests:
 		.venv/bin/pip install ../importlib_metadata ../jsonschema ../requests ../virtualenv && \
 		.venv/bin/pip install -r ../poetry-core/vendors/deps.txt && \
 		.venv/bin/pip install ../poetry-core . && \
-		.venv/bin/pip install httpretty pytest pytest-mock && \
+		.venv/bin/pip install deepdiff flatdict httpretty pytest pytest-mock && \
 		.venv/bin/pytest && \
 		rm -r .venv
 

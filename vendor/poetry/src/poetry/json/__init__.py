@@ -1,17 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 
-from pathlib import Path
+from importlib import resources
 from typing import Any
 
 import jsonschema
-
-from poetry.core.json import SCHEMA_DIR as CORE_SCHEMA_DIR
-
-
-SCHEMA_DIR = os.path.join(os.path.dirname(__file__), "schemas")
 
 
 class ValidationError(ValueError):
@@ -19,8 +13,7 @@ class ValidationError(ValueError):
 
 
 def validate_object(obj: dict[str, Any]) -> list[str]:
-    schema_file = Path(SCHEMA_DIR, "poetry.json")
-    schema = json.loads(schema_file.read_text(encoding="utf-8"))
+    schema = json.loads(resources.read_text(f"{__name__}.schemas", "poetry.json"))
 
     validator = jsonschema.Draft7Validator(schema)
     validation_errors = sorted(
@@ -39,7 +32,7 @@ def validate_object(obj: dict[str, Any]) -> list[str]:
         errors.append(message)
 
     core_schema = json.loads(
-        Path(CORE_SCHEMA_DIR, "poetry-schema.json").read_text(encoding="utf-8")
+        resources.read_text(f"poetry.core.json.schemas", "poetry-schema.json")
     )
 
     if core_schema["additionalProperties"]:
