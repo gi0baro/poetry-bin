@@ -1,5 +1,5 @@
 def make_exe():
-    dist = default_python_distribution(python_version="3.9")
+    dist = default_python_distribution(python_version="3.10")
 
     policy = dist.make_python_packaging_policy()
     policy.resources_location_fallback = "filesystem-relative:lib"
