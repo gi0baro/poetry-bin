@@ -31,6 +31,7 @@ clean_vendor:
 sources: clean_src
 	@git clone https://github.com/python/importlib_metadata.git src/importlib_metadata && cd src/importlib_metadata && git checkout v4.12.0
 	@git clone https://github.com/python-jsonschema/jsonschema.git src/jsonschema && cd src/jsonschema && git checkout v4.10.3
+	@git clone https://github.com/lark-parser/lark.git src/lark && cd src/lark && git checkout 1.1.2
 	@git clone https://github.com/python-poetry/poetry.git src/poetry && cd src/poetry && git checkout 1.2.0rc2
 	@git clone https://github.com/python-poetry/poetry-core.git src/poetry-core && cd src/poetry-core && git checkout 1.1.0rc3
 	@git clone https://github.com/psf/requests.git src/requests && cd src/requests && git checkout v2.28.1
@@ -39,6 +40,7 @@ sources: clean_src
 patches:
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
 	@cd src/jsonschema && git diff --binary HEAD > ../../patches/jsonschema.patch
+	@cd src/lark && git diff --binary HEAD > ../../patches/lark.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
 	@cd src/requests && git diff --binary HEAD > ../../patches/requests.patch
@@ -47,6 +49,7 @@ patches:
 apply_patches:
 	@cd src/importlib_metadata && git apply --reject --ignore-whitespace ../../patches/importlib_metadata.patch
 	@cd src/jsonschema && git apply --reject --ignore-whitespace ../../patches/jsonschema.patch
+	@cd src/lark && git apply --reject --ignore-whitespace ../../patches/lark.patch
 	@cd src/poetry-core && git apply --reject --ignore-whitespace ../../patches/poetry-core.patch
 	@cd src/poetry && git apply --reject --ignore-whitespace ../../patches/poetry.patch
 	@cd src/requests && git apply --reject --ignore-whitespace ../../patches/requests.patch
@@ -77,13 +80,13 @@ tests:
 	@cd vendor/poetry-core && \
 		python -m venv .venv && \
 		.venv/bin/pip install -r vendors/deps.txt && \
-		.venv/bin/pip install ../jsonschema ../requests ../virtualenv . && \
+		.venv/bin/pip install ../jsonschema ../lark ../requests ../virtualenv . && \
 		.venv/bin/pip install build pytest pytest-mock && \
 		.venv/bin/pytest && \
 		rm -r .venv
 	@cd vendor/poetry && \
 		python -m venv .venv && \
-		.venv/bin/pip install ../importlib_metadata ../jsonschema ../requests ../virtualenv && \
+		.venv/bin/pip install ../importlib_metadata ../jsonschema ../lark ../requests ../virtualenv && \
 		.venv/bin/pip install -r ../poetry-core/vendors/deps.txt && \
 		.venv/bin/pip install ../poetry-core . && \
 		.venv/bin/pip install deepdiff flatdict httpretty pytest pytest-mock && \

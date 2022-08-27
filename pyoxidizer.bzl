@@ -34,6 +34,7 @@ def make_exe():
     exe.add_python_resources(exe.pip_install(["-r", "vendor/poetry-core/vendors/deps.txt"]))
     exe.add_python_resources(exe.pip_install(["./vendor/importlib_metadata"]))
     exe.add_python_resources(exe.pip_install(["./vendor/jsonschema"]))
+    exe.add_python_resources(exe.pip_install(["./vendor/lark"]))
     exe.add_python_resources(exe.pip_install(["./vendor/requests"]))
 
     for resource in exe.pip_install(["./vendor/virtualenv"]):
