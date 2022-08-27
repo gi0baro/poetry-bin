@@ -1,5 +1,5 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index 7829c6e9..5d49544f 100644
+index 626531b1..caa6d6b0 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -54,7 +54,7 @@ html5lib = "^1.0"
@@ -12,7 +12,7 @@ index 7829c6e9..5d49544f 100644
  packaging = ">=20.4"
  pexpect = "^4.7.0"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
-index 274cfcfc..9cd59231 100644
+index 2b6bd633..bf64986e 100644
 --- a/src/poetry/console/application.py
 +++ b/src/poetry/console/application.py
 @@ -83,7 +83,7 @@ COMMANDS = [
