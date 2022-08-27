@@ -19,11 +19,22 @@ _path_assets: _path_build
 clean_build: _path_build
 	@rm -rf ${BUILDPATH}
 
+clean_src:
+	@rm -rf src/*
+
 clean_dist:
 	@rm -rf dist
 
 clean_vendor:
 	@rm -rf vendor
+
+sources: clean_src
+	@git clone https://github.com/python/importlib_metadata.git src/importlib_metadata && cd src/importlib_metadata && git checkout v4.12.0
+	@git clone https://github.com/python-jsonschema/jsonschema.git src/jsonschema && cd src/jsonschema && git checkout v4.10.3
+	@git clone https://github.com/python-poetry/poetry.git src/poetry && cd src/poetry && git checkout 1.2.0rc2
+	@git clone https://github.com/python-poetry/poetry-core.git src/poetry-core && cd src/poetry-core && git checkout 1.1.0rc3
+	@git clone https://github.com/psf/requests.git src/requests && cd src/requests && git checkout v2.28.1
+	@git clone https://github.com/pypa/virtualenv.git src/virtualenv && cd src/virtualenv && git checkout 20.16.3
 
 patches:
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch
