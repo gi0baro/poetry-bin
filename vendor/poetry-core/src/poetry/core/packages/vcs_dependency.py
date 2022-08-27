@@ -42,7 +42,7 @@ class VCSDependency(Dependency):
             allows_prereleases=True,
             source_type=self._vcs.lower(),
             source_url=self._source,
-            source_reference=branch or tag or rev,
+            source_reference=branch or tag or rev or "HEAD",
             source_resolved_reference=resolved_rev,
             source_subdirectory=directory,
             extras=extras,
@@ -117,12 +117,9 @@ class VCSDependency(Dependency):
             requirement += f"@{self.reference}"
 
         if self._directory:
-            requirement += f"#subdirectory{self._directory}"
+            requirement += f"#subdirectory={self._directory}"
 
         return requirement
 
     def is_vcs(self) -> bool:
-        return True
-
-    def accepts_prereleases(self) -> bool:
         return True
