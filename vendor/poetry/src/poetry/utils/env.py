@@ -16,6 +16,7 @@ import warnings
 
 from contextlib import contextmanager
 from copy import deepcopy
+from importlib import resources
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
@@ -47,6 +48,8 @@ from poetry.utils.helpers import is_dir_writable
 from poetry.utils.helpers import paths_csv
 from poetry.utils.helpers import remove_directory
 
+from . import __name__ as _pkg
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -60,29 +63,7 @@ if TYPE_CHECKING:
     from poetry.poetry import Poetry
 
 
-GET_SYS_TAGS = f"""
-import importlib.util
-import json
-import sys
-
-from pathlib import Path
-
-spec = importlib.util.spec_from_file_location(
-    "packaging", Path(r"{packaging.__file__}")
-)
-packaging = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = packaging
-
-spec = importlib.util.spec_from_file_location(
-    "packaging.tags", Path(r"{packaging.tags.__file__}")
-)
-packaging_tags = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(packaging_tags)
-
-print(
-    json.dumps([(t.interpreter, t.abi, t.platform) for t in packaging_tags.sys_tags()])
-)
-"""
+GET_SYS_TAGS = resources.read_text(_pkg, "packaging_tags.py.template")
 
 
 GET_ENVIRONMENT_INFO = """\

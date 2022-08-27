@@ -102,11 +102,10 @@ build_win: _build_win assets
 _build_posix: _path_build _path_lib clean_build
 	pyoxidizer build --release --target-triple=${ARCH}
 	@mv ${BUILDPATH}/bin/lib ${BUILDPATH}
-	@cp -a vendor/poetry-core/poetry/core/_vendor/. ${LIBPATH}
+	@rm ${BUILDPATH}/bin/COPYING.txt
 
 _build_win: _path_build _path_lib clean_build
 	pyoxidizer build --release --target-triple=${ARCH} --var WIN_BUILD 1
-	@cp -a vendor/poetry-core/poetry/core/_vendor/. ${LIBPATH}
 
 assets: _path_assets
 	@mkdir -p ${ASSETSPATH}
