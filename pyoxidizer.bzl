@@ -1,5 +1,5 @@
 def force_fs_libs(policy, resource):
-    for lib in ["certifi"]:
+    for lib in ["certifi", "poetry-plugin-export"]:
         if (
             resource.name == lib or
             resource.name.startswith("{}.".format(lib)) or (
