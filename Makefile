@@ -9,8 +9,6 @@ BUILD_VERSION := latest
 
 _path_build:
 	$(eval BUILDPATH := build/${ARCH}/release/${TARGET})
-_path_bin:
-	$(eval BINPATH := ${BUILDPATH}${BIN_SUFFIX})
 _path_lib: _path_build
 	$(eval LIBPATH := ${BUILDPATH}/lib)
 _path_assets: _path_build
@@ -34,7 +32,6 @@ sources: clean_src
 	@git clone https://github.com/lark-parser/lark.git src/lark && cd src/lark && git checkout 1.1.2
 	@git clone https://github.com/python-poetry/poetry.git src/poetry && cd src/poetry && git checkout 1.2.0rc2
 	@git clone https://github.com/python-poetry/poetry-core.git src/poetry-core && cd src/poetry-core && git checkout 1.1.0rc3
-	@git clone https://github.com/psf/requests.git src/requests && cd src/requests && git checkout v2.28.1
 	@git clone https://github.com/pypa/virtualenv.git src/virtualenv && cd src/virtualenv && git checkout 20.16.3
 
 patches:
@@ -43,7 +40,6 @@ patches:
 	@cd src/lark && git diff --binary HEAD > ../../patches/lark.patch
 	@cd src/poetry-core && git diff --binary HEAD > ../../patches/poetry-core.patch
 	@cd src/poetry && git diff --binary HEAD > ../../patches/poetry.patch
-	@cd src/requests && git diff --binary HEAD > ../../patches/requests.patch
 	@cd src/virtualenv && git diff --binary HEAD > ../../patches/virtualenv.patch
 
 apply_patches:
@@ -52,7 +48,6 @@ apply_patches:
 	@cd src/lark && git apply --reject --ignore-whitespace ../../patches/lark.patch
 	@cd src/poetry-core && git apply --reject --ignore-whitespace ../../patches/poetry-core.patch
 	@cd src/poetry && git apply --reject --ignore-whitespace ../../patches/poetry.patch
-	@cd src/requests && git apply --reject --ignore-whitespace ../../patches/requests.patch
 	@cd src/virtualenv && git apply --reject --ignore-whitespace ../../patches/virtualenv.patch
 
 vendor: clean_vendor
@@ -66,12 +61,6 @@ tests:
 		.venv/bin/pip install .[testing] pyfakefs && \
 		.venv/bin/python -m unittest discover && \
 		rm -r .venv
-	@cd vendor/requests && \
-		python -m venv .venv && \
-		.venv/bin/pip install -e .[socks] && \
-		.venv/bin/pip install -r requirements-dev.txt && \
-		.venv/bin/pytest tests && \
-		rm -r .venv
 	@cd vendor/virtualenv && \
 		python -m venv .venv && \
 		.venv/bin/pip install .[testing] && \
@@ -80,13 +69,13 @@ tests:
 	@cd vendor/poetry-core && \
 		python -m venv .venv && \
 		.venv/bin/pip install -r vendors/deps.txt && \
-		.venv/bin/pip install ../jsonschema ../lark ../requests ../virtualenv . && \
+		.venv/bin/pip install ../jsonschema ../lark ../virtualenv . && \
 		.venv/bin/pip install build pytest pytest-mock && \
 		.venv/bin/pytest && \
 		rm -r .venv
 	@cd vendor/poetry && \
 		python -m venv .venv && \
-		.venv/bin/pip install ../importlib_metadata ../jsonschema ../lark ../requests ../virtualenv && \
+		.venv/bin/pip install ../importlib_metadata ../jsonschema ../lark ../virtualenv && \
 		.venv/bin/pip install -r ../poetry-core/vendors/deps.txt && \
 		.venv/bin/pip install ../poetry-core . && \
 		.venv/bin/pip install deepdiff flatdict httpretty pytest pytest-mock && \
@@ -104,8 +93,7 @@ build_win: _build_win assets
 
 _build_posix: _path_build _path_lib clean_build
 	pyoxidizer build --release --target-triple=${ARCH}
-	@mv ${BUILDPATH}/bin/lib ${BUILDPATH}
-	@rm ${BUILDPATH}/bin/COPYING.txt
+	@rm ${BUILDPATH}/COPYING.txt
 
 _build_win: _path_build _path_lib clean_build
 	pyoxidizer build --release --target-triple=${ARCH} --var WIN_BUILD 1
@@ -122,24 +110,22 @@ assets: _path_assets
 	@cp vendor/virtualenv/src/virtualenv/seed/wheels/embed/*.whl ${ASSETSPATH}/virtualenv/seed/wheels
 
 sign: _path_build _path_lib
-	@codesign -s - ${BUILDPATH}/bin/poetry
+	@codesign -s - ${BUILDPATH}/poetry
 	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$
 
 verify_build_linux: ARCH := ${ARCH_LINUX}
-verify_build_linux: BIN_SUFFIX := /bin
 verify_build_linux: _verify_build
 
 verify_build_mac: ARCH := ${ARCH_MAC_INTEL}
-verify_build_mac: BIN_SUFFIX := /bin
 verify_build_mac: _verify_build
 
 verify_build_win: ARCH := ${ARCH_WIN}
 verify_build_win: _verify_build
 
-_verify_build: _path_build _path_bin
-	${BINPATH}/poetry --version
-	${BINPATH}/poetry config virtualenvs.in-project true
-	@cd tests && ../${BINPATH}/poetry install
+_verify_build: _path_build
+	${BUILDPATH}/poetry --version
+	${BUILDPATH}/poetry config virtualenvs.in-project true
+	@cd tests && ../${BUILDPATH}/poetry install -vvv
 	@rm -rf tests/.venv
 
 pack_linux: ARCH := ${ARCH_LINUX}

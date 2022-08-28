@@ -44900,10 +44900,10 @@ index 00d4bc6..1dde745 100644
      for name, license_info in data.items():
          license = License(name, license_info[0], license_info[1], license_info[2])
 diff --git a/src/poetry/core/version/grammars/__init__.py b/src/poetry/core/version/grammars/__init__.py
-index caf504b..16e9a6a 100644
+index caf504b..971104e 100644
 --- a/src/poetry/core/version/grammars/__init__.py
 +++ b/src/poetry/core/version/grammars/__init__.py
-@@ -1,9 +1,17 @@
+@@ -1,9 +1,16 @@
  from __future__ import annotations
  
 +import sys
@@ -44913,9 +44913,8 @@ index caf504b..16e9a6a 100644
  
 -GRAMMAR_DIR = Path(__file__).parent
 +if getattr(sys, "oxidized", False):
-+    parents = 4 if sys.platform.startswith("win") else 5
 +    GRAMMAR_DIR = (
-+        Path(__path__[0]).parents[parents] / "assets" / "core" / "version" / "grammars"
++        Path(__path__[0]).parents[4] / "assets" / "core" / "version" / "grammars"
 +    )
 +else:
 +    GRAMMAR_DIR = Path(__path__[0])

@@ -4,8 +4,7 @@ from pathlib import Path
 
 __path_pack__ = Path(__path__[0])
 if getattr(sys, "oxidized", False):
-    parents = 1 if sys.platform.startswith("win") else 2
-    __path_assets__ = __path_pack__.parents[parents] / "assets" / "virtualenv"
+    __path_assets__ = __path_pack__.parents[1] / "assets" / "virtualenv"
 else:
     __path_assets__ = None
 
