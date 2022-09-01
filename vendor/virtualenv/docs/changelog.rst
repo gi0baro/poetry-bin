@@ -5,6 +5,65 @@ Release History
 
 .. towncrier release notes start
 
+v20.16.3 (2022-08-04)
+---------------------
+
+Bugfixes - 20.16.3
+~~~~~~~~~~~~~~~~~~
+- Upgrade embedded pip to ``22.2.2`` from ``22.2.1`` and setuptools to ``63.4.1`` from ``63.2.0`` - by :user:`gaborbernat`. (`#2395 <https://github.com/pypa/virtualenv/issues/2395>`_)
+
+
+v20.16.2 (2022-07-27)
+---------------------
+
+Bugfixes - 20.16.2
+~~~~~~~~~~~~~~~~~~
+- Bump embeded pip from ``22.2`` to ``22.2.1`` - by :user:`gaborbernat`. (`#2391 <https://github.com/pypa/virtualenv/issues/2391>`_)
+
+
+v20.16.1 (2022-07-26)
+---------------------
+
+Features - 20.16.1
+~~~~~~~~~~~~~~~~~~
+- Update Nushell activation scripts to version 0.67 - by :user:`kubouch`. (`#2386 <https://github.com/pypa/virtualenv/issues/2386>`_)
+
+
+v20.16.0 (2022-07-25)
+---------------------
+
+Features - 20.16.0
+~~~~~~~~~~~~~~~~~~
+- Drop support for running under Python 2 (still can generate Python 2 environments) - by :user:`gaborbernat`. (`#2382 <https://github.com/pypa/virtualenv/issues/2382>`_)
+- Upgrade embedded pip to ``22.2`` from ``22.1.2`` and  setuptools to ``63.2.0`` from ``62.6.0`` -
+  by :user:`gaborbernat`. (`#2383 <https://github.com/pypa/virtualenv/issues/2383>`_)
+
+
+v20.15.1 (2022-06-28)
+---------------------
+
+Bugfixes - 20.15.1
+~~~~~~~~~~~~~~~~~~
+- Fix the incorrect operation when ``setuptools`` plugins output something into ``stdout``. (`#2335 <https://github.com/pypa/virtualenv/issues/2335>`_)
+- CPython3Windows creator ignores missing ``DLLs`` dir. (`#2368 <https://github.com/pypa/virtualenv/issues/2368>`_)
+
+
+v20.15.0 (2022-06-25)
+---------------------
+
+Features - 20.15.0
+~~~~~~~~~~~~~~~~~~
+- Support for Windows embeddable Python package: includes ``python<VERSION>.zip`` in the creator sources
+  - by :user:`reksarka`. (`#1774 <https://github.com/pypa/virtualenv/issues/1774>`_)
+
+Bugfixes - 20.15.0
+~~~~~~~~~~~~~~~~~~
+- Upgrade embedded setuptools to ``62.3.3`` from ``62.6.0`` and pip to ``22.1.2`` from ``22.0.4``
+  - by :user:`gaborbernat`. (`#2348 <https://github.com/pypa/virtualenv/issues/2348>`_)
+- Use ``shlex.quote`` instead of deprecated ``pipes.quote`` in Python 3 - by :user:`frenzymadness`. (`#2351 <https://github.com/pypa/virtualenv/issues/2351>`_)
+- Fix Windows PyPy 3.6 - by :user:`reksarka`. (`#2363 <https://github.com/pypa/virtualenv/issues/2363>`_)
+
+
 v20.14.1 (2022-04-11)
 ---------------------
 
@@ -967,6 +1026,7 @@ v20.0.0b1 (2020-01-28)
 
 * First public release of the rewrite. Everything is brand new and just added.
 * ``--download`` defaults to ``False``
+* No longer replaces builtin ``site`` module with `custom version baked within virtualenv code itself <https://github.com/pypa/virtualenv/blob/legacy/virtualenv_embedded/site.py>`_. A simple shim module is used to fix up things on Python 2 only.
 
 .. warning::
 

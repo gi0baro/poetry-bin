@@ -2,9 +2,15 @@
 
 This project builds [Poetry](https://github.com/python-poetry/poetry) Python dependency management tool into a binary executable using [PyOxidizer](https://github.com/indygreg/PyOxidizer).
 
-The aim is to have a Poetry instance which is fully independant of the local Python environment.
+The aim is to have a Poetry instance fully independent of the local Python environment.
 
 > **Note:** due to patches implemented over Poetry components, this build might introduce unwanted bugs over Poetry project, use at your own risk.
+
+Due to its nature, `poetry-bin` has some key differences compared to the "vanilla version", specifically:
+
+- `self` commands are dropped
+- 1.2 plugins are not supported (yet?). The only included plugin is the `export` one
+- the selection of the Python interpreter to use is slightly different, as it won't use `sys.executable` to make decisions
 
 ## Installation
 

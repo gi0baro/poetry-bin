@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from poetry.utils import patterns
@@ -32,7 +34,7 @@ from poetry.utils import patterns
         ),
     ],
 )
-def test_wheel_file_re(filename, expected):
+def test_wheel_file_re(filename: str, expected: dict[str, str | None]):
     match = patterns.wheel_file_re.match(filename)
     groups = match.groupdict()
 

@@ -1,13 +1,24 @@
+from __future__ import annotations
+
 import re
+
+from typing import Any
 
 import pytest
 
-from poetry.core.semver import parse_constraint
+from poetry.core.semver.helpers import parse_constraint
 from poetry.core.version.requirements import InvalidRequirement
 from poetry.core.version.requirements import Requirement
 
 
-def assert_requirement(req, name, url=None, extras=None, constraint="*", marker=None):
+def assert_requirement(
+    req: Requirement,
+    name: str,
+    url: str | None = None,
+    extras: list[str] | None = None,
+    constraint: str = "*",
+    marker: str | None = None,
+) -> None:
     if extras is None:
         extras = []
 
@@ -28,12 +39,16 @@ def assert_requirement(req, name, url=None, extras=None, constraint="*", marker=
         ("name", {"name": "name"}),
         ("foo-bar.quux_baz", {"name": "foo-bar.quux_baz"}),
         ("name>=3", {"name": "name", "constraint": ">=3"}),
-        ("name==1.0.org1", {"name": "name", "constraint": "==1.0.org1"}),
+        ("name>=3.*", {"name": "name", "constraint": ">=3.0"}),
+        ("name<3.*", {"name": "name", "constraint": "<3.0"}),
+        ("name>3.5.*", {"name": "name", "constraint": ">3.5"}),
+        ("name==1.0.post1", {"name": "name", "constraint": "==1.0.post1"}),
+        ("name==1.2.0b1.dev0", {"name": "name", "constraint": "==1.2.0b1.dev0"}),
         (
-            "name>=1.x.y;python_version=='2.6'",
+            "name>=1.2.3;python_version=='2.6'",
             {
                 "name": "name",
-                "constraint": ">=1.x.y",
+                "constraint": ">=1.2.3",
                 "marker": 'python_version == "2.6"',
             },
         ),
@@ -56,7 +71,10 @@ def assert_requirement(req, name, url=None, extras=None, constraint="*", marker=
             "name @ file:///absolute/path",
             {"name": "name", "url": "file:///absolute/path"},
         ),
-        ("name @ file://.", {"name": "name", "url": "file://."},),
+        (
+            "name @ file://.",
+            {"name": "name", "url": "file://."},
+        ),
         (
             "name [fred,bar] @ http://foo.com ; python_version=='2.7'",
             {
@@ -67,7 +85,8 @@ def assert_requirement(req, name, url=None, extras=None, constraint="*", marker=
             },
         ),
         (
-            "foo @ https://example.com/name;v=1.1/?query=foo&bar=baz#blah ; python_version=='3.4'",
+            "foo @ https://example.com/name;v=1.1/?query=foo&bar=baz#blah ;"
+            " python_version=='3.4'",
             {
                 "name": "foo",
                 "url": "https://example.com/name;v=1.1/?query=foo&bar=baz#blah",
@@ -75,16 +94,20 @@ def assert_requirement(req, name, url=None, extras=None, constraint="*", marker=
             },
         ),
         (
-            'foo (>=1.2.3) ; python_version >= "2.7" and python_version < "2.8" or python_version >= "3.4" and python_version < "3.5"',
+            'foo (>=1.2.3) ; python_version >= "2.7" and python_version < "2.8" or'
+            ' python_version >= "3.4" and python_version < "3.5"',
             {
                 "name": "foo",
                 "constraint": ">=1.2.3",
-                "marker": 'python_version >= "2.7" and python_version < "2.8" or python_version >= "3.4" and python_version < "3.5"',
+                "marker": (
+                    'python_version >= "2.7" and python_version < "2.8" or'
+                    ' python_version >= "3.4" and python_version < "3.5"'
+                ),
             },
         ),
     ],
 )
-def test_requirement(string, expected):
+def test_requirement(string: str, expected: dict[str, Any]) -> None:
     req = Requirement(string)
 
     assert_requirement(req, **expected)
@@ -99,9 +122,9 @@ def test_requirement(string, expected):
         ("name @ file:/.", "invalid URL"),
     ],
 )
-def test_invalid_requirement(string, exception):
+def test_invalid_requirement(string: str, exception: str) -> None:
     with pytest.raises(
         InvalidRequirement,
-        match=re.escape("The requirement is invalid: {}".format(exception)),
+        match=re.escape(f"The requirement is invalid: {exception}"),
     ):
         Requirement(string)

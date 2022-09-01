@@ -1,12 +1,9 @@
-from __future__ import absolute_import, unicode_literals
-
 import sys
 from collections import OrderedDict
-
 from importlib.metadata import entry_points
 
 
-class PluginLoader(object):
+class PluginLoader:
     _OPTIONS = None
     _ENTRY_POINTS = None
 
@@ -36,20 +33,26 @@ class ComponentBuilder(PluginLoader):
             cls._OPTIONS = cls.entry_points_for(key)
         return cls._OPTIONS
 
-    def add_selector_arg_parse(self, name, choices):
+    def add_selector_arg_parse(self, name, choices):  # noqa: U100
         raise NotImplementedError
 
     def handle_selected_arg_parse(self, options):
         selected = getattr(options, self.name)
         if selected not in self.possible:
-            raise RuntimeError("No implementation for {}".format(self.interpreter))
+            raise RuntimeError(f"No implementation for {self.interpreter}")
         self._impl_class = self.possible[selected]
         self.populate_selected_argparse(selected, options.app_data)
         return selected
 
     def populate_selected_argparse(self, selected, app_data):
-        self.parser.description = "options for {} {}".format(self.name, selected)
+        self.parser.description = f"options for {self.name} {selected}"
         self._impl_class.add_parser_arguments(self.parser, self.interpreter, app_data)
 
     def create(self, options):
         return self._impl_class(options, self.interpreter)
+
+
+__all__ = [
+    "PluginLoader",
+    "ComponentBuilder",
+]

@@ -1,17 +1,17 @@
 diff --git a/requests/adapters.py b/requests/adapters.py
-index fa4d9b3c..cfe4a344 100644
+index d3b2d5bb..64ce2d4a 100644
 --- a/requests/adapters.py
 +++ b/requests/adapters.py
-@@ -39,6 +39,7 @@ from .exceptions import (ConnectionError, ConnectTimeout, ReadTimeout, SSLError,
-                          ProxyError, RetryError, InvalidSchema, InvalidProxyURL,
-                          InvalidURL)
+@@ -28,6 +28,7 @@ from urllib3.util import parse_url
+ from urllib3.util.retry import Retry
+ 
  from .auth import _basic_auth_str
 +from .certs import contents as ca_bundle_contents
- 
- try:
-     from urllib3.contrib.socks import SOCKSProxyManager
-@@ -215,21 +216,24 @@ class HTTPAdapter(BaseAdapter):
-         if url.lower().startswith('https') and verify:
+ from .compat import basestring, urlparse
+ from .cookies import extract_cookies_to_jar
+ from .exceptions import (
+@@ -251,15 +252,16 @@ class HTTPAdapter(BaseAdapter):
+         if url.lower().startswith("https") and verify:
  
              cert_loc = None
 +            cert_data = None
@@ -26,10 +26,12 @@ index fa4d9b3c..cfe4a344 100644
  
 -            if not cert_loc or not os.path.exists(cert_loc):
 +            if not cert_data and (not cert_loc or not os.path.exists(cert_loc)):
-                 raise IOError("Could not find a suitable TLS CA certificate bundle, "
-                               "invalid path: {}".format(cert_loc))
+                 raise OSError(
+                     f"Could not find a suitable TLS CA certificate bundle, "
+                     f"invalid path: {cert_loc}"
+@@ -267,7 +269,9 @@ class HTTPAdapter(BaseAdapter):
  
-             conn.cert_reqs = 'CERT_REQUIRED'
+             conn.cert_reqs = "CERT_REQUIRED"
  
 -            if not os.path.isdir(cert_loc):
 +            if cert_data:
@@ -38,8 +40,8 @@ index fa4d9b3c..cfe4a344 100644
                  conn.ca_certs = cert_loc
              else:
                  conn.ca_cert_dir = cert_loc
-@@ -237,6 +241,7 @@ class HTTPAdapter(BaseAdapter):
-             conn.cert_reqs = 'CERT_NONE'
+@@ -275,6 +279,7 @@ class HTTPAdapter(BaseAdapter):
+             conn.cert_reqs = "CERT_NONE"
              conn.ca_certs = None
              conn.ca_cert_dir = None
 +            conn.ca_cert_data = None
@@ -47,24 +49,15 @@ index fa4d9b3c..cfe4a344 100644
          if cert:
              if not isinstance(cert, basestring):
 diff --git a/requests/certs.py b/requests/certs.py
-index d1a378d7..8788b087 100644
+index be422c3e..61b7d0bd 100644
 --- a/requests/certs.py
 +++ b/requests/certs.py
-@@ -12,7 +12,7 @@ If you are packaging Requests, e.g., for a Linux distribution or a managed
+@@ -11,7 +11,7 @@ If you are packaging Requests, e.g., for a Linux distribution or a managed
  environment, you can change the definition of where() to return a separately
  packaged CA bundle.
  """
 -from certifi import where
 +from certifi import contents, where
  
- if __name__ == '__main__':
+ if __name__ == "__main__":
      print(where())
-diff --git a/requirements-dev.txt b/requirements-dev.txt
-index effb0c81..e19c95ca 100644
---- a/requirements-dev.txt
-+++ b/requirements-dev.txt
-@@ -6,3 +6,4 @@ httpbin==0.7.0
- Flask>=1.0,<2.0
- trustme
- wheel
-+MarkupSafe==2.0.1

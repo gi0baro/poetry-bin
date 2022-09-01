@@ -1,48 +1,48 @@
 diff --git a/importlib_metadata/__init__.py b/importlib_metadata/__init__.py
-index b01e7e3..0d8feb5 100644
+index 8761307..9a5d8d2 100644
 --- a/importlib_metadata/__init__.py
 +++ b/importlib_metadata/__init__.py
-@@ -228,10 +228,13 @@ class Distribution:
+@@ -579,8 +579,12 @@ class Distribution:
          if context and kwargs:
              raise ValueError("cannot accept context and kwargs")
          context = context or DistributionFinder.Context(**kwargs)
 -        return itertools.chain.from_iterable(
--            resolver(context)
--            for resolver in cls._discover_resolvers()
+-            resolver(context) for resolver in cls._discover_resolvers()
 +        return filter(
 +            lambda v: hasattr(v, "_path"),
 +            itertools.chain.from_iterable(
 +                resolver(context)
 +                for resolver in cls._discover_resolvers()
-             )
-+        )
++             )
+         )
  
      @staticmethod
-     def at(path):
-@@ -620,4 +623,4 @@ def requires(distribution_name):
-     return distribution(distribution_name).requires
+diff --git a/pyproject.toml b/pyproject.toml
+index 60de242..b240064 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,12 +1,10 @@
+ [build-system]
+-requires = ["setuptools>=56", "setuptools_scm[toml]>=3.4.1"]
++requires = ["setuptools>=56"]
+ build-backend = "setuptools.build_meta"
  
+ [tool.black]
+ skip-string-normalization = true
  
--__version__ = version(__name__)
-+__version__ = "1.7.0"
+-[tool.setuptools_scm]
+-
+ [tool.pytest-enabler.black]
+ addopts = "--black"
+ 
 diff --git a/setup.cfg b/setup.cfg
-index 5dd09a4..d989cd0 100644
+index efd0a36..062f10b 100644
 --- a/setup.cfg
 +++ b/setup.cfg
-@@ -16,7 +16,6 @@ classifiers =
- 
- [options]
- python_requires = >=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*
--setup_requires = setuptools-scm
- install_requires =
-     zipp>=0.5
-     pathlib2; python_version < '3'
-diff --git a/setup.py b/setup.py
-index d5d43d7..0c9823c 100644
---- a/setup.py
-+++ b/setup.py
-@@ -1,3 +1,3 @@
- from setuptools import setup
- 
--setup(use_scm_version=True)
-+setup(use_scm_version=False)
+@@ -1,5 +1,6 @@
+ [metadata]
+ name = importlib_metadata
++version = 4.12.0
+ author = Jason R. Coombs
+ author_email = jaraco@jaraco.com
+ description = Read metadata from Python packages

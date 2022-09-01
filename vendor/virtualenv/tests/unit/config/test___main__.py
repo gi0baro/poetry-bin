@@ -1,17 +1,15 @@
-from __future__ import absolute_import, unicode_literals
-
 import re
 import sys
+from subprocess import PIPE, Popen, check_output
 
 import pytest
 
 from virtualenv.__main__ import run_with_catch
 from virtualenv.util.error import ProcessCallFailed
-from virtualenv.util.subprocess import Popen, subprocess
 
 
 def test_main():
-    process = Popen([sys.executable, "-m", "virtualenv", "--help"], universal_newlines=True, stdout=subprocess.PIPE)
+    process = Popen([sys.executable, "-m", "virtualenv", "--help"], universal_newlines=True, stdout=PIPE)
     out, _ = process.communicate()
     assert not process.returncode
     assert out
@@ -39,7 +37,7 @@ def test_fail_no_traceback(raise_on_session_done, tmp_path, capsys):
         run_with_catch([str(tmp_path)])
     assert context.value.code == 2
     out, err = capsys.readouterr()
-    assert out == "subprocess call failed for [{}] with code 2\nout\nSystemExit: 2\n".format(repr("something"))
+    assert out == f"subprocess call failed for [{'something'!r}] with code 2\nout\nSystemExit: 2\n"
     assert err == "err\n"
 
 
@@ -53,7 +51,8 @@ def test_fail_with_traceback(raise_on_session_done, tmp_path, capsys):
     assert err == ""
 
 
-def test_session_report_full(session_app_data, tmp_path, capsys):
+@pytest.mark.usefixtures("session_app_data")
+def test_session_report_full(tmp_path, capsys):
     run_with_catch([str(tmp_path)])
     out, err = capsys.readouterr()
     assert err == ""
@@ -70,11 +69,12 @@ def test_session_report_full(session_app_data, tmp_path, capsys):
 
 def _match_regexes(lines, regexes):
     for line, regex in zip(lines, regexes):
-        comp_regex = re.compile(r"^{}$".format(regex))
+        comp_regex = re.compile(rf"^{regex}$")
         assert comp_regex.match(line), line
 
 
-def test_session_report_minimal(session_app_data, tmp_path, capsys):
+@pytest.mark.usefixtures("session_app_data")
+def test_session_report_minimal(tmp_path, capsys):
     run_with_catch([str(tmp_path), "--activators", "", "--without-pip"])
     out, err = capsys.readouterr()
     assert err == ""
@@ -86,9 +86,10 @@ def test_session_report_minimal(session_app_data, tmp_path, capsys):
     _match_regexes(lines, regexes)
 
 
-def test_session_report_subprocess(session_app_data, tmp_path):
+@pytest.mark.usefixtures("session_app_data")
+def test_session_report_subprocess(tmp_path):
     # when called via a subprocess the logging framework should flush and POSIX line normalization happen
-    out = subprocess.check_output(
+    out = check_output(
         [sys.executable, "-m", "virtualenv", str(tmp_path), "--activators", "powershell", "--without-pip"],
         universal_newlines=True,
     )

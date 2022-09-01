@@ -1,13 +1,40 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import annotations
+
+import random
+
+from pathlib import Path
+from typing import cast
 
 import pytest
 
-from poetry.core.packages import Package
-from poetry.core.utils._compat import Path
+from poetry.core.factory import Factory
+from poetry.core.packages.dependency import Dependency
+from poetry.core.packages.dependency_group import DependencyGroup
+from poetry.core.packages.directory_dependency import DirectoryDependency
+from poetry.core.packages.file_dependency import FileDependency
+from poetry.core.packages.package import Package
+from poetry.core.packages.project_package import ProjectPackage
+from poetry.core.packages.url_dependency import URLDependency
+from poetry.core.packages.vcs_dependency import VCSDependency
+from poetry.core.semver.version import Version
 
 
-def test_package_authors():
+@pytest.fixture()
+def package_with_groups() -> Package:
+    package = Package("foo", "1.2.3")
+
+    optional_group = DependencyGroup("optional", optional=True)
+    optional_group.add_dependency(Factory.create_dependency("bam", "^3.0.0"))
+
+    package.add_dependency(Factory.create_dependency("bar", "^1.0.0"))
+    package.add_dependency(Factory.create_dependency("baz", "^1.1.0"))
+    package.add_dependency(Factory.create_dependency("bim", "^2.0.0", groups=["dev"]))
+    package.add_dependency_group(optional_group)
+
+    return package
+
+
+def test_package_authors() -> None:
     package = Package("foo", "0.1.0")
 
     package.authors.append("Sébastien Eustace <sebastien@eustace.io>")
@@ -19,7 +46,7 @@ def test_package_authors():
     assert package.author_email is None
 
 
-def test_package_authors_invalid():
+def test_package_authors_invalid() -> None:
     package = Package("foo", "0.1.0")
 
     package.authors.insert(0, "<John Doe")
@@ -32,21 +59,21 @@ def test_package_authors_invalid():
     )
 
 
-@pytest.mark.parametrize("category", ["main", "dev"])
-def test_package_add_dependency_vcs_category(category, f):
+@pytest.mark.parametrize("groups", [["main"], ["dev"]])
+def test_package_add_dependency_vcs_groups(groups: list[str], f: Factory) -> None:
     package = Package("foo", "0.1.0")
 
     dependency = package.add_dependency(
         f.create_dependency(
             "poetry",
             {"git": "https://github.com/python-poetry/poetry.git"},
-            category=category,
+            groups=groups,
         )
     )
-    assert dependency.category == category
+    assert dependency.groups == frozenset(groups)
 
 
-def test_package_add_dependency_vcs_category_default_main(f):
+def test_package_add_dependency_vcs_groups_default_main(f: Factory) -> None:
     package = Package("foo", "0.1.0")
 
     dependency = package.add_dependency(
@@ -54,12 +81,14 @@ def test_package_add_dependency_vcs_category_default_main(f):
             "poetry", {"git": "https://github.com/python-poetry/poetry.git"}
         )
     )
-    assert dependency.category == "main"
+    assert dependency.groups == frozenset(["main"])
 
 
-@pytest.mark.parametrize("category", ["main", "dev"])
+@pytest.mark.parametrize("groups", [["main"], ["dev"]])
 @pytest.mark.parametrize("optional", [True, False])
-def test_package_url_category_optional(category, optional, f):
+def test_package_url_groups_optional(
+    groups: list[str], optional: bool, f: Factory
+) -> None:
     package = Package("foo", "0.1.0")
 
     dependency = package.add_dependency(
@@ -69,20 +98,20 @@ def test_package_url_category_optional(category, optional, f):
                 "url": "https://github.com/python-poetry/poetry/releases/download/1.0.5/poetry-1.0.5-linux.tar.gz",
                 "optional": optional,
             },
-            category=category,
+            groups=groups,
         )
     )
-    assert dependency.category == category
+    assert dependency.groups == frozenset(groups)
     assert dependency.is_optional() == optional
 
 
-def test_package_equality_simple():
+def test_package_equality_simple() -> None:
     assert Package("foo", "0.1.0") == Package("foo", "0.1.0")
     assert Package("foo", "0.1.0") != Package("foo", "0.1.1")
     assert Package("bar", "0.1.0") != Package("foo", "0.1.0")
 
 
-def test_package_equality_source_type():
+def test_package_equality_source_type() -> None:
     a1 = Package("a", "0.1.0", source_type="file")
     a2 = Package(a1.name, a1.version, source_type="directory")
     a3 = Package(a1.name, a1.version, source_type=a1.source_type)
@@ -96,7 +125,7 @@ def test_package_equality_source_type():
     assert a2 != a4
 
 
-def test_package_equality_source_url():
+def test_package_equality_source_url() -> None:
     a1 = Package("a", "0.1.0", source_type="file", source_url="/some/path")
     a2 = Package(
         a1.name, a1.version, source_type=a1.source_type, source_url="/some/other/path"
@@ -114,7 +143,7 @@ def test_package_equality_source_url():
     assert a2 != a4
 
 
-def test_package_equality_source_reference():
+def test_package_equality_source_reference() -> None:
     a1 = Package(
         "a",
         "0.1.0",
@@ -146,7 +175,9 @@ def test_package_equality_source_reference():
     assert a2 != a4
 
 
-def test_package_resolved_reference_is_relevant_for_equality_only_if_present_for_both_packages():
+def test_package_resolved_reference_is_relevant_for_equality_only_if_present_for_both_packages() -> (
+    None
+):
     a1 = Package(
         "a",
         "0.1.0",
@@ -187,41 +218,72 @@ def test_package_resolved_reference_is_relevant_for_equality_only_if_present_for
     assert a2 == a4
 
 
-def test_complete_name():
-    assert "foo" == Package("foo", "1.2.3").complete_name
+def test_package_equality_source_subdirectory() -> None:
+    a1 = Package(
+        "a",
+        "0.1.0",
+        source_type="git",
+        source_url="https://foo.bar",
+        source_subdirectory="baz",
+    )
+    a2 = Package(
+        a1.name,
+        a1.version,
+        source_type="git",
+        source_url="https://foo.bar",
+        source_subdirectory="qux",
+    )
+    a3 = Package(
+        a1.name,
+        a1.version,
+        source_type="git",
+        source_url="https://foo.bar",
+        source_subdirectory="baz",
+    )
+    a4 = Package(a1.name, a1.version, source_type="git")
+
+    assert a1 == a3
+    assert a1 != a2
+    assert a2 != a3
+    assert a1 != a4
+    assert a2 != a4
+
+
+def test_complete_name() -> None:
+    assert Package("foo", "1.2.3").complete_name == "foo"
     assert (
-        "foo[bar,baz]" == Package("foo", "1.2.3", features=["baz", "bar"]).complete_name
+        Package("foo", "1.2.3", features=["baz", "bar"]).complete_name == "foo[bar,baz]"
     )
 
 
-def test_to_dependency():
+def test_to_dependency() -> None:
     package = Package("foo", "1.2.3")
     dep = package.to_dependency()
 
-    assert "foo" == dep.name
-    assert package.version == dep.constraint
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
 
 
-def test_to_dependency_with_python_constraint():
+def test_to_dependency_with_python_constraint() -> None:
     package = Package("foo", "1.2.3")
     package.python_versions = ">=3.6"
     dep = package.to_dependency()
 
-    assert "foo" == dep.name
-    assert package.version == dep.constraint
-    assert ">=3.6" == dep.python_versions
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
+    assert dep.python_versions == ">=3.6"
 
 
-def test_to_dependency_with_features():
+def test_to_dependency_with_features() -> None:
     package = Package("foo", "1.2.3", features=["baz", "bar"])
     dep = package.to_dependency()
 
-    assert "foo" == dep.name
-    assert package.version == dep.constraint
-    assert frozenset({"bar", "baz"}) == dep.features
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
+    assert dep.features == frozenset({"bar", "baz"})
 
 
-def test_to_dependency_for_directory():
+def test_to_dependency_for_directory() -> None:
     path = Path(__file__).parent.parent.joinpath("fixtures/simple_project")
     package = Package(
         "foo",
@@ -232,16 +294,17 @@ def test_to_dependency_for_directory():
     )
     dep = package.to_dependency()
 
-    assert "foo" == dep.name
-    assert package.version == dep.constraint
-    assert frozenset({"bar", "baz"}) == dep.features
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
+    assert dep.features == frozenset({"bar", "baz"})
     assert dep.is_directory()
-    assert path == dep.path
-    assert "directory" == dep.source_type
-    assert path.as_posix() == dep.source_url
+    dep = cast(DirectoryDependency, dep)
+    assert dep.path == path
+    assert dep.source_type == "directory"
+    assert dep.source_url == path.as_posix()
 
 
-def test_to_dependency_for_file():
+def test_to_dependency_for_file() -> None:
     path = Path(__file__).parent.parent.joinpath(
         "fixtures/distributions/demo-0.1.0.tar.gz"
     )
@@ -254,16 +317,17 @@ def test_to_dependency_for_file():
     )
     dep = package.to_dependency()
 
-    assert "foo" == dep.name
-    assert package.version == dep.constraint
-    assert frozenset({"bar", "baz"}) == dep.features
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
+    assert dep.features == frozenset({"bar", "baz"})
     assert dep.is_file()
-    assert path == dep.path
-    assert "file" == dep.source_type
-    assert path.as_posix() == dep.source_url
+    dep = cast(FileDependency, dep)
+    assert dep.path == path
+    assert dep.source_type == "file"
+    assert dep.source_url == path.as_posix()
 
 
-def test_to_dependency_for_url():
+def test_to_dependency_for_url() -> None:
     package = Package(
         "foo",
         "1.2.3",
@@ -273,16 +337,44 @@ def test_to_dependency_for_url():
     )
     dep = package.to_dependency()
 
-    assert "foo" == dep.name
-    assert package.version == dep.constraint
-    assert frozenset({"bar", "baz"}) == dep.features
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
+    assert dep.features == frozenset({"bar", "baz"})
     assert dep.is_url()
-    assert "https://example.com/path.tar.gz" == dep.url
-    assert "url" == dep.source_type
-    assert "https://example.com/path.tar.gz" == dep.source_url
+    dep = cast(URLDependency, dep)
+    assert dep.url == "https://example.com/path.tar.gz"
+    assert dep.source_type == "url"
+    assert dep.source_url == "https://example.com/path.tar.gz"
 
 
-def test_package_clone(f):
+def test_to_dependency_for_vcs() -> None:
+    package = Package(
+        "foo",
+        "1.2.3",
+        source_type="git",
+        source_url="https://github.com/foo/foo.git",
+        source_reference="master",
+        source_resolved_reference="123456",
+        source_subdirectory="baz",
+        features=["baz", "bar"],
+    )
+    dep = package.to_dependency()
+
+    assert dep.name == "foo"
+    assert dep.constraint == package.version
+    assert dep.features == frozenset({"bar", "baz"})
+    assert dep.is_vcs()
+    dep = cast(VCSDependency, dep)
+    assert dep.source_type == "git"
+    assert dep.source == "https://github.com/foo/foo.git"
+    assert dep.reference == "master"
+    assert dep.source_reference == "master"
+    assert dep.source_resolved_reference == "123456"
+    assert dep.directory == "baz"
+    assert dep.source_subdirectory == "baz"
+
+
+def test_package_clone(f: Factory) -> None:
     # TODO(nic): this test is not future-proof, in that any attributes added
     #  to the Package object and not filled out in this test setup might
     #  cause comparisons to match that otherwise should not.  A factory method
@@ -297,8 +389,11 @@ def test_package_clone(f):
         source_reference="fe4d2adabf3feb5d32b70ab5c105285fa713b10c",
         source_resolved_reference="fe4d2adabf3feb5d32b70ab5c105285fa713b10c",
         features=["abc", "def"],
+        develop=random.choice((True, False)),
     )
-    p.files = (["file1", "file2", "file3"],)
+    p.add_dependency(Factory.create_dependency("foo", "^1.2.3"))
+    p.add_dependency(Factory.create_dependency("foo", "^1.2.3", groups=["dev"]))
+    p.files = (["file1", "file2", "file3"],)  # type: ignore[assignment]
     p.homepage = "https://some.other.url"
     p.repository_url = "http://bug.farm"
     p.documentation_url = "http://lorem.ipsum/dolor/sit.amet"
@@ -306,3 +401,176 @@ def test_package_clone(f):
 
     assert p == p2
     assert p.__dict__ == p2.__dict__
+    assert len(p2.requires) == 1
+    assert len(p2.all_requires) == 2
+
+
+def test_dependency_groups(package_with_groups: Package) -> None:
+    assert len(package_with_groups.requires) == 2
+    assert len(package_with_groups.all_requires) == 4
+
+
+def test_without_dependency_groups(package_with_groups: Package) -> None:
+    package = package_with_groups.without_dependency_groups(["dev"])
+
+    assert len(package.requires) == 2
+    assert len(package.all_requires) == 3
+
+    package = package_with_groups.without_dependency_groups(["dev", "optional"])
+
+    assert len(package.requires) == 2
+    assert len(package.all_requires) == 2
+
+
+def test_with_dependency_groups(package_with_groups: Package) -> None:
+    package = package_with_groups.with_dependency_groups([])
+
+    assert len(package.requires) == 2
+    assert len(package.all_requires) == 3
+
+    package = package_with_groups.with_dependency_groups(["optional"])
+
+    assert len(package.requires) == 2
+    assert len(package.all_requires) == 4
+
+
+def test_without_optional_dependency_groups(package_with_groups: Package) -> None:
+    package = package_with_groups.without_optional_dependency_groups()
+
+    assert len(package.requires) == 2
+    assert len(package.all_requires) == 3
+
+
+def test_only_with_dependency_groups(package_with_groups: Package) -> None:
+    package = package_with_groups.with_dependency_groups(["dev"], only=True)
+
+    assert len(package.requires) == 0
+    assert len(package.all_requires) == 1
+
+    package = package_with_groups.with_dependency_groups(["dev", "optional"], only=True)
+
+    assert len(package.requires) == 0
+    assert len(package.all_requires) == 2
+
+    package = package_with_groups.with_dependency_groups(["main"], only=True)
+
+    assert len(package.requires) == 2
+    assert len(package.all_requires) == 2
+
+
+def test_get_readme_property_with_multiple_readme_files() -> None:
+    package = Package("foo", "0.1.0")
+
+    package.readmes = (Path("README.md"), Path("HISTORY.md"))
+    with pytest.deprecated_call():
+        assert package.readme == Path("README.md")
+
+
+def test_set_readme_property() -> None:
+    package = Package("foo", "0.1.0")
+
+    with pytest.deprecated_call():
+        package.readme = Path("README.md")
+
+    assert package.readmes == (Path("README.md"),)
+    with pytest.deprecated_call():
+        assert package.readme == Path("README.md")
+
+
+@pytest.mark.parametrize(
+    ("package", "dependency", "ignore_source_type", "result"),
+    [
+        (Package("foo", "0.1.0"), Dependency("foo", ">=0.1.0"), False, True),
+        (Package("foo", "0.1.0"), Dependency("foo", "<0.1.0"), False, False),
+        (
+            Package("foo", "0.1.0"),
+            Dependency("foo", ">=0.1.0", source_type="git"),
+            False,
+            False,
+        ),
+        (
+            Package("foo", "0.1.0"),
+            Dependency("foo", ">=0.1.0", source_type="git"),
+            True,
+            True,
+        ),
+        (
+            Package("foo", "0.1.0"),
+            Dependency("foo", "<0.1.0", source_type="git"),
+            True,
+            False,
+        ),
+    ],
+)
+def test_package_satisfies(
+    package: Package, dependency: Dependency, ignore_source_type: bool, result: bool
+) -> None:
+    assert package.satisfies(dependency, ignore_source_type) == result
+
+
+def test_package_pep592_default_not_yanked() -> None:
+    package = Package("foo", "1.0")
+
+    assert not package.yanked
+    assert package.yanked_reason == ""
+
+
+@pytest.mark.parametrize(
+    ("yanked", "expected_yanked", "expected_yanked_reason"),
+    [
+        (True, True, ""),
+        (False, False, ""),
+        ("the reason", True, "the reason"),
+        ("", True, ""),
+    ],
+)
+def test_package_pep592_yanked(
+    yanked: str | bool, expected_yanked: bool, expected_yanked_reason: str
+) -> None:
+    package = Package("foo", "1.0", yanked=yanked)
+
+    assert package.yanked == expected_yanked
+    assert package.yanked_reason == expected_yanked_reason
+
+
+def test_python_versions_are_normalized() -> None:
+    package = Package("foo", "1.2.3")
+    package.python_versions = ">3.6,<=3.10"
+
+    assert (
+        str(package.python_marker)
+        == 'python_version > "3.6" and python_version <= "3.10"'
+    )
+    assert str(package.python_constraint) == ">=3.7,<3.11"
+
+
+def test_cannot_update_package_version() -> None:
+    package = Package("foo", "1.2.3")
+    with pytest.raises(AttributeError):
+        package.version = "1.2.4"  # type: ignore[misc,assignment]
+
+
+def test_project_package_version_update_string() -> None:
+    package = ProjectPackage("foo", "1.2.3")
+    package.version = "1.2.4"  # type: ignore[assignment]
+    assert package.version.text == "1.2.4"
+
+
+def test_project_package_version_update_version() -> None:
+    package = ProjectPackage("foo", "1.2.3")
+    package.version = Version.parse("1.2.4")
+    assert package.version.text == "1.2.4"
+
+
+def test_project_package_hash_not_changed_when_version_is_changed() -> None:
+    package = ProjectPackage("foo", "1.2.3")
+    package_hash = hash(package)
+    package_clone = package.clone()
+    assert package == package_clone
+    assert hash(package) == hash(package_clone)
+
+    package.version = Version.parse("1.2.4")
+
+    assert hash(package) == package_hash, "Hash must not change!"
+    assert hash(package_clone) == package_hash
+    assert package != package_clone

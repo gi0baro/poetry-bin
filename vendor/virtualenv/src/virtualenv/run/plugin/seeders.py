@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 from importlib.metadata import EntryPoint
 
 from .base import ComponentBuilder
@@ -21,11 +19,11 @@ class SeederSelector(ComponentBuilder):
 
     def __init__(self, interpreter, parser):
         possible = self.options("virtualenv.seed")
-        super(SeederSelector, self).__init__(interpreter, parser, "seeder", possible)
+        super().__init__(interpreter, parser, "seeder", possible)
 
     def add_selector_arg_parse(self, name, choices):
         self.parser.add_argument(
-            "--{}".format(name),
+            f"--{name}",
             choices=choices,
             default=self._get_default(),
             required=False,
@@ -44,7 +42,12 @@ class SeederSelector(ComponentBuilder):
         return "app-data"
 
     def handle_selected_arg_parse(self, options):
-        return super(SeederSelector, self).handle_selected_arg_parse(options)
+        return super().handle_selected_arg_parse(options)
 
     def create(self, options):
         return self._impl_class(options)
+
+
+__all__ = [
+    "SeederSelector",
+]

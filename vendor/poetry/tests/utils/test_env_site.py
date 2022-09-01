@@ -1,13 +1,21 @@
+from __future__ import annotations
+
 import uuid
 
-from poetry.utils._compat import Path
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from poetry.utils._compat import decode
 from poetry.utils.env import SitePackages
 
 
-def test_env_site_simple(tmp_dir, mocker):
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
+
+def test_env_site_simple(tmp_dir: str, mocker: MockerFixture):
     # emulate permission error when creating directory
-    mocker.patch("poetry.utils._compat.Path.mkdir", side_effect=OSError())
+    mocker.patch("pathlib.Path.mkdir", side_effect=OSError())
     site_packages = SitePackages(Path("/non-existent"), fallbacks=[Path(tmp_dir)])
     candidates = site_packages.make_candidates(Path("hello.txt"), writable_only=True)
     hello = Path(tmp_dir) / "hello.txt"
@@ -23,7 +31,7 @@ def test_env_site_simple(tmp_dir, mocker):
     assert not (site_packages.path / "hello.txt").exists()
 
 
-def test_env_site_select_first(tmp_dir):
+def test_env_site_select_first(tmp_dir: str):
     path = Path(tmp_dir)
     fallback = path / "fallback"
     fallback.mkdir(parents=True)
