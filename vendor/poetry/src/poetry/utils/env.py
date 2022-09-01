@@ -946,7 +946,8 @@ class EnvManager:
     ) -> virtualenv.run.session.Session:
         if WINDOWS:
             path = get_real_windows_path(path)
-            executable = get_real_windows_path(executable) if executable else None
+            if isinstance(executable, Path):
+                executable = get_real_windows_path(executable) if executable else None
 
         flags = flags or {}
 
@@ -975,7 +976,7 @@ class EnvManager:
             "--no-download",
             "--no-periodic-update",
             "--python",
-            executable or "python",
+            executable or ("python.exe" if WINDOWS else "python"),
         ]
 
         if prompt is not None:
@@ -2012,6 +2013,8 @@ class InterpreterLookup:
         executable, minor, patch = None, None, None
 
         for guess in ["python", "python3", "python2"]:
+            if WINDOWS:
+                guess = f"{guess}.exe"
             match, minor, patch = cls._version_check(guess, constraint)
             if match:
                 return guess, minor, patch
@@ -2026,6 +2029,8 @@ class InterpreterLookup:
             reverse=True
         ):
             guess = f"python{python_to_try}"
+            if WINDOWS:
+                guess = f"{guess}.exe"
             match, minor, patch = cls._version_check(guess, constraint)
             if match:
                 executable = guess

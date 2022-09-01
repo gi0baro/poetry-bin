@@ -1,5 +1,5 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index 626531b1..caa6d6b0 100644
+index 9fad5d68..4c894530 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -54,7 +54,7 @@ html5lib = "^1.0"
@@ -12,7 +12,7 @@ index 626531b1..caa6d6b0 100644
  packaging = ">=20.4"
  pexpect = "^4.7.0"
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..4ab11ba1 100644
+index 13fa08fc..c68196d1 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -32,7 +32,7 @@ index 13fa08fc..4ab11ba1 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.2.0rc2"
++__version__ = "1.2.0"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
 index 2b6bd633..151043d5 100644
 --- a/src/poetry/console/application.py
@@ -198,7 +198,7 @@ index a1c81582..b06ce4fb 100644
  WINDOWS = sys.platform == "win32"
  
 diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
-index ab645bd7..3b8e444b 100644
+index ab645bd7..1feca307 100644
 --- a/src/poetry/utils/env.py
 +++ b/src/poetry/utils/env.py
 @@ -16,6 +16,7 @@ import warnings
@@ -369,16 +369,26 @@ index ab645bd7..3b8e444b 100644
          return VirtualEnv(venv)
  
      @classmethod
-@@ -1050,7 +975,7 @@ class EnvManager:
+@@ -1021,7 +946,8 @@ class EnvManager:
+     ) -> virtualenv.run.session.Session:
+         if WINDOWS:
+             path = get_real_windows_path(path)
+-            executable = get_real_windows_path(executable) if executable else None
++            if isinstance(executable, Path):
++                executable = get_real_windows_path(executable) if executable else None
+ 
+         flags = flags or {}
+ 
+@@ -1050,7 +976,7 @@ class EnvManager:
              "--no-download",
              "--no-periodic-update",
              "--python",
 -            executable or sys.executable,
-+            executable or "python",
++            executable or ("python.exe" if WINDOWS else "python"),
          ]
  
          if prompt is not None:
-@@ -1114,9 +1039,13 @@ class EnvManager:
+@@ -1114,9 +1040,13 @@ class EnvManager:
          want to retrieve Poetry's custom virtual environment
          (e.g. plugin installation or self update).
          """
@@ -395,7 +405,7 @@ index ab645bd7..3b8e444b 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1542,97 +1471,53 @@ class SystemEnv(Env):
+@@ -1542,97 +1472,53 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -526,7 +536,7 @@ index ab645bd7..3b8e444b 100644
  
      def is_venv(self) -> bool:
          return self._path != self._base
-@@ -1853,16 +1738,100 @@ class NullEnv(SystemEnv):
+@@ -1853,16 +1739,100 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -632,7 +642,7 @@ index ab645bd7..3b8e444b 100644
  
      def _run(self, cmd: list[str], **kwargs: Any) -> int | str:
          self.executed.append(cmd)
-@@ -2009,3 +1978,57 @@ class MockEnv(NullEnv):
+@@ -2009,3 +1979,61 @@ class MockEnv(NullEnv):
  
      def is_venv(self) -> bool:
          return self._is_venv
@@ -670,6 +680,8 @@ index ab645bd7..3b8e444b 100644
 +        executable, minor, patch = None, None, None
 +
 +        for guess in ["python", "python3", "python2"]:
++            if WINDOWS:
++                guess = f"{guess}.exe"
 +            match, minor, patch = cls._version_check(guess, constraint)
 +            if match:
 +                return guess, minor, patch
@@ -684,6 +696,8 @@ index ab645bd7..3b8e444b 100644
 +            reverse=True
 +        ):
 +            guess = f"python{python_to_try}"
++            if WINDOWS:
++                guess = f"{guess}.exe"
 +            match, minor, patch = cls._version_check(guess, constraint)
 +            if match:
 +                executable = guess
