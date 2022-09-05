@@ -27,7 +27,7 @@ RUN apk add --no-cache libgcc
 RUN mkdir -p /lib64
 RUN ln -s /usr/glibc-compat/lib/ld-linux-x86-64.so.2 /lib/ld-linux-x86-64.so.2
 RUN ln -s /usr/glibc-compat/lib/ld-linux-x86-64.so.2 /lib64/ld-linux-x86-64.so.2
-RUN ln -s /opt/poetry_bin/poetry /bin/poetry
+RUN ln -s /opt/poetry_bin/bin/poetry /bin/poetry
 
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=off
