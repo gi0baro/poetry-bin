@@ -1,5 +1,5 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index b705682..697a684 100644
+index db8fb06..ad57775 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -38,9 +38,6 @@ generate-setup-file = false
@@ -21,7 +21,7 @@ index b705682..697a684 100644
  build-backend = "poetry.core.masonry.api"
 -backend-path = ["src"]
 diff --git a/src/poetry/core/__init__.py b/src/poetry/core/__init__.py
-index 35854e9..9d63535 100644
+index 4223735..52b499e 100644
 --- a/src/poetry/core/__init__.py
 +++ b/src/poetry/core/__init__.py
 @@ -1,15 +1,6 @@
@@ -34,7 +34,7 @@ index 35854e9..9d63535 100644
  
  # this cannot presently be replaced with importlib.metadata.version as when building
  # itself, poetry-core is not available as an installed distribution.
- __version__ = "1.1.0"
+ __version__ = "1.2.0"
 -
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 -
