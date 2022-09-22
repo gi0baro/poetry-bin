@@ -1,8 +1,8 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index 9fad5d68..4c894530 100644
+index c38762d3..5198c6bc 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
-@@ -54,7 +54,7 @@ html5lib = "^1.0"
+@@ -55,7 +55,7 @@ html5lib = "^1.0"
  importlib-metadata = { version = "^4.4", python = "<3.10" }
  jsonschema = "^4.10.0"
  # keyring uses calver, so version is unclamped
@@ -12,7 +12,7 @@ index 9fad5d68..4c894530 100644
  packaging = ">=20.4"
  pexpect = "^4.7.0"
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..c68196d1 100644
+index 13fa08fc..a955fdae 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -32,9 +32,9 @@ index 13fa08fc..c68196d1 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.2.0"
++__version__ = "1.2.1"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
-index 2b6bd633..151043d5 100644
+index e54c679b..b80b18b8 100644
 --- a/src/poetry/console/application.py
 +++ b/src/poetry/console/application.py
 @@ -79,13 +79,13 @@ COMMANDS = [
@@ -178,14 +178,15 @@ index 228df353..087d01de 100644
  
                  if with_dependencies:
 diff --git a/src/poetry/utils/_compat.py b/src/poetry/utils/_compat.py
-index a1c81582..b06ce4fb 100644
+index 9ee8875f..b39ce41a 100644
 --- a/src/poetry/utils/_compat.py
 +++ b/src/poetry/utils/_compat.py
-@@ -4,14 +4,7 @@ import sys
+@@ -4,20 +4,9 @@ import sys
  
  from contextlib import suppress
  
--
++import importlib_metadata as metadata
+ 
 -# TODO: use try/except ImportError when
 -# https://github.com/python/mypy/issues/1393 is fixed
 -if sys.version_info < (3, 10):
@@ -193,12 +194,18 @@ index a1c81582..b06ce4fb 100644
 -    import importlib_metadata as metadata
 -else:
 -    from importlib import metadata
-+import importlib_metadata as metadata
+-
+-if sys.version_info < (3, 8):
+-    # compatibility for python <3.8
+-    from backports.cached_property import cached_property
+-else:
+-    from functools import cached_property
++from functools import cached_property
  
  WINDOWS = sys.platform == "win32"
  
 diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
-index ab645bd7..1feca307 100644
+index 5b8cf7f0..7b67f7eb 100644
 --- a/src/poetry/utils/env.py
 +++ b/src/poetry/utils/env.py
 @@ -16,6 +16,7 @@ import warnings
@@ -405,7 +412,7 @@ index ab645bd7..1feca307 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1542,97 +1472,53 @@ class SystemEnv(Env):
+@@ -1545,92 +1475,47 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -436,17 +443,8 @@ index ab645bd7..1feca307 100644
  
      def get_python_implementation(self) -> str:
 -        return platform.python_implementation()
-+        return self.marker_env["platform_python_implementation"]
- 
--    def get_pip_command(self, embedded: bool = False) -> list[str]:
--        # If we're not in a venv, assume the interpreter we're running on
--        # has a pip and use that
--        return [sys.executable, self.pip_embedded if embedded else self.pip]
-+    def get_marker_env(self) -> dict[str, Any]:
-+        output = self.run_python_script(GET_ENVIRONMENT_INFO)
-+        return json.loads(output)
- 
-     def get_paths(self) -> dict[str, str]:
+-
+-    def get_paths(self) -> dict[str, str]:
 -        # We can't use sysconfig.get_paths() because
 -        # on some distributions it does not return the proper paths
 -        # (those used by pip for instance). We go through distutils
@@ -480,13 +478,12 @@ index ab645bd7..1feca307 100644
 -                paths["userbase"] = userbase
 -
 -        return paths
-+        output = self.run_python_script(GET_PATHS)
-+        return json.loads(output)
- 
-     def get_supported_tags(self) -> list[Tag]:
--        return list(sys_tags())
 -
--    def get_marker_env(self) -> dict[str, Any]:
+-    def get_supported_tags(self) -> list[Tag]:
+-        return list(sys_tags())
++        return self.marker_env["platform_python_implementation"]
+ 
+     def get_marker_env(self) -> dict[str, Any]:
 -        if hasattr(sys, "implementation"):
 -            info = sys.implementation.version
 -            iver = f"{info.major}.{info.minor}.{info.micro}"
@@ -498,7 +495,9 @@ index ab645bd7..1feca307 100644
 -        else:
 -            iver = "0"
 -            implementation_name = ""
--
++        output = self.run_python_script(GET_ENVIRONMENT_INFO)
++        return json.loads(output)
+ 
 -        return {
 -            "implementation_name": implementation_name,
 -            "implementation_version": iver,
@@ -515,16 +514,15 @@ index ab645bd7..1feca307 100644
 -            "interpreter_name": interpreter_name(),
 -            "interpreter_version": interpreter_version(),
 -        }
-+        output = self.run_python_script(GET_SYS_TAGS)
-+        return [Tag(*t) for t in json.loads(output)]
++    def get_paths(self) -> dict[str, str]:
++        output = self.run_python_script(GET_PATHS)
++        return json.loads(output)
  
 -    def get_pip_version(self) -> Version:
 -        from pip import __version__
-+    def get_pip_command(self, embedded: bool = False) -> list[str]:
-+        return [
-+            self._bin(self._executable),
-+            self.pip_embedded if embedded else self.pip,
-+        ]
++    def get_supported_tags(self) -> list[Tag]:
++        output = self.run_python_script(GET_SYS_TAGS)
++        return [Tag(*t) for t in json.loads(output)]
  
 -        return Version.parse(__version__)
 +    def get_pip_version(self):
@@ -536,7 +534,7 @@ index ab645bd7..1feca307 100644
  
      def is_venv(self) -> bool:
          return self._path != self._base
-@@ -1853,16 +1739,100 @@ class NullEnv(SystemEnv):
+@@ -1843,11 +1728,101 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -560,11 +558,7 @@ index ab645bd7..1feca307 100644
 +    def get_python_implementation(self) -> str:
 +        return platform.python_implementation()
 +
-     def get_pip_command(self, embedded: bool = False) -> list[str]:
--        return [
--            self._bin(self._executable),
--            self.pip_embedded if embedded else self.pip,
--        ]
++    def get_pip_command(self, embedded: bool = False) -> list[str]:
 +        return [sys.executable, self.pip_embedded if embedded else self.pip]
 +
 +    def get_paths(self) -> dict[str, str]:
@@ -639,10 +633,11 @@ index ab645bd7..1feca307 100644
 +        from pip import __version__
 +
 +        return Version.parse(__version__)
- 
++
      def _run(self, cmd: list[str], **kwargs: Any) -> int | str:
          self.executed.append(cmd)
-@@ -2009,3 +1979,61 @@ class MockEnv(NullEnv):
+ 
+@@ -1993,3 +1968,61 @@ class MockEnv(NullEnv):
  
      def is_venv(self) -> bool:
          return self._is_venv
@@ -2424,7 +2419,7 @@ index 87dfe183..904a11cf 100644
      cleo = get_package_from_repository("cleo", repository)
      assert cleo is not None
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 32fb5cb0..2c7f58b1 100644
+index d645b293..2c7f58b1 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
 @@ -220,7 +220,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
@@ -2582,7 +2577,7 @@ index 32fb5cb0..2c7f58b1 100644
          assert env == ephemeral_env
          assert env.executed == [
              [
--                "python",
+-                sys.executable,
 +                env.python,
                  env.pip_embedded,
                  "install",

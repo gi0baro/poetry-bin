@@ -1323,7 +1323,10 @@ class Env:
         raise NotImplementedError()
 
     def get_pip_command(self, embedded: bool = False) -> list[str]:
-        raise NotImplementedError()
+        if embedded or not Path(self._bin(self._pip_executable)).exists():
+            return [self.python, self.pip_embedded]
+        # run as module so that pip can update itself on Windows
+        return [self.python, "-m", "pip"]
 
     def get_supported_tags(self) -> list[Tag]:
         raise NotImplementedError()
@@ -1357,7 +1360,7 @@ class Env:
         return self._run(cmd, **kwargs)
 
     def run_pip(self, *args: str, **kwargs: Any) -> int | str:
-        pip = self.get_pip_command(embedded=True)
+        pip = self.get_pip_command()
         cmd = pip + list(args)
         return self._run(cmd, **kwargs)
 
@@ -1507,12 +1510,6 @@ class SystemEnv(Env):
         output = self.run_python_script(GET_SYS_TAGS)
         return [Tag(*t) for t in json.loads(output)]
 
-    def get_pip_command(self, embedded: bool = False) -> list[str]:
-        return [
-            self._bin(self._executable),
-            self.pip_embedded if embedded else self.pip,
-        ]
-
     def get_pip_version(self):
         output = self.run_pip("--version").strip()
         m = re.match("pip (.+?)(?: from .+)?$", output)
@@ -1557,14 +1554,6 @@ class VirtualEnv(Env):
     def get_python_implementation(self) -> str:
         implementation: str = self.marker_env["platform_python_implementation"]
         return implementation
-
-    def get_pip_command(self, embedded: bool = False) -> list[str]:
-        # We're in a virtualenv that is known to be sane,
-        # so assume that we have a functional pip
-        return [
-            self._bin(self._executable),
-            self.pip_embedded if embedded else self.pip,
-        ]
 
     def get_supported_tags(self) -> list[Tag]:
         output = self.run_python_script(GET_SYS_TAGS)

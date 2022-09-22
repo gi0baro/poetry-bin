@@ -6,6 +6,8 @@ from contextlib import suppress
 
 import importlib_metadata as metadata
 
+from functools import cached_property
+
 WINDOWS = sys.platform == "win32"
 
 
@@ -46,4 +48,12 @@ def list_to_shell_command(cmd: list[str]) -> str:
     )
 
 
-__all__ = ["WINDOWS", "decode", "encode", "list_to_shell_command", "metadata", "to_str"]
+__all__ = [
+    "WINDOWS",
+    "cached_property",
+    "decode",
+    "encode",
+    "list_to_shell_command",
+    "metadata",
+    "to_str",
+]

@@ -6,6 +6,7 @@ from cleo.helpers import argument
 from cleo.helpers import option
 from packaging.utils import canonicalize_name
 
+from poetry.console.commands.env_command import EnvCommand
 from poetry.console.commands.group_command import GroupCommand
 
 
@@ -30,7 +31,7 @@ def reverse_deps(pkg: Package, repo: Repository) -> dict[str, str]:
     return required_by
 
 
-class ShowCommand(GroupCommand):
+class ShowCommand(GroupCommand, EnvCommand):
     name = "show"
     description = "Shows information about packages."
 
@@ -68,8 +69,9 @@ lists all packages available."""
     colors = ["cyan", "yellow", "green", "magenta", "blue"]
 
     def handle(self) -> int:
+        import shutil
+
         from cleo.io.null_io import NullIO
-        from cleo.terminal import Terminal
 
         from poetry.puzzle.solver import Solver
         from poetry.repositories.installed_repository import InstalledRepository
@@ -209,8 +211,7 @@ lists all packages available."""
 
         show_latest = self.option("latest")
         show_all = self.option("all")
-        terminal = Terminal()
-        width = terminal.width
+        width = shutil.get_terminal_size().columns
         name_length = version_length = latest_length = required_by_length = 0
         latest_packages = {}
         latest_statuses = {}
