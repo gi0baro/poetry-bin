@@ -12,20 +12,20 @@ from typing import Iterator
 from typing import TypeVar
 from typing import cast
 
+from poetry.core.constraints.version import parse_constraint
 from poetry.core.packages.dependency_group import MAIN_GROUP
 from poetry.core.packages.specification import PackageSpecification
 from poetry.core.packages.utils.utils import create_nested_marker
-from poetry.core.semver.helpers import parse_constraint
 from poetry.core.version.markers import parse_marker
 
 
 if TYPE_CHECKING:
     from packaging.utils import NormalizedName
 
+    from poetry.core.constraints.version import Version
+    from poetry.core.constraints.version import VersionConstraint
     from poetry.core.packages.dependency import Dependency
     from poetry.core.packages.dependency_group import DependencyGroup
-    from poetry.core.semver.version import Version
-    from poetry.core.semver.version_constraint import VersionConstraint
     from poetry.core.spdx.license import License
     from poetry.core.version.markers import BaseMarker
 
@@ -46,6 +46,7 @@ class Package(PackageSpecification):
         "3.8",
         "3.9",
         "3.10",
+        "3.11",
     }
 
     def __init__(
@@ -91,7 +92,7 @@ class Package(PackageSpecification):
         self._license: License | None = None
         self.readmes: tuple[Path, ...] = ()
 
-        self.extras: dict[str, list[Dependency]] = {}
+        self.extras: dict[NormalizedName, list[Dependency]] = {}
 
         self._dependency_groups: dict[str, DependencyGroup] = {}
 
@@ -212,7 +213,7 @@ class Package(PackageSpecification):
     def _set_version(
         self, version: str | Version, pretty_version: str | None = None
     ) -> None:
-        from poetry.core.semver.version import Version
+        from poetry.core.constraints.version import Version
 
         if not isinstance(version, Version):
             self._version = Version.parse(version)
@@ -291,7 +292,7 @@ class Package(PackageSpecification):
 
     @property
     def all_classifiers(self) -> list[str]:
-        from poetry.core.semver.version import Version
+        from poetry.core.constraints.version import Version
 
         classifiers = copy.copy(self.classifiers)
 

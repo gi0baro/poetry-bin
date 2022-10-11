@@ -4,15 +4,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from poetry.core.semver.empty_constraint import EmptyConstraint
-from poetry.core.semver.version import Version
-from poetry.core.semver.version_range import VersionRange
+from poetry.core.constraints.version import EmptyConstraint
+from poetry.core.constraints.version import Version
+from poetry.core.constraints.version import VersionRange
 from poetry.core.version.exceptions import InvalidVersion
 from poetry.core.version.pep440 import ReleaseTag
 
 
 if TYPE_CHECKING:
-    from poetry.core.semver.version_constraint import VersionConstraint
+    from poetry.core.constraints.version import VersionConstraint
 
 
 @pytest.mark.parametrize(
@@ -47,6 +47,145 @@ def test_parse_valid(text: str, version: Version) -> None:
 def test_parse_invalid(value: str | None) -> None:
     with pytest.raises(InvalidVersion):
         Version.parse(value)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "version, expected",
+    [
+        ("1", "1"),
+        ("1.2", "1.2"),
+        ("1.2.3", "1.2.3"),
+        ("2!1.2.3", "2!1.2.3"),
+        ("1.2.3+local", "1.2.3+local"),
+        ("1.2.3.4", "1.2.3.4"),
+        ("1.dev0", "1"),
+        ("1.2dev0", "1.2"),
+        ("1.2.3dev0", "1.2.3"),
+        ("1.2.3.4dev0", "1.2.3.4"),
+        ("1.post1", "1.post1"),
+        ("1.2.post1", "1.2.post1"),
+        ("1.2.3.post1", "1.2.3.post1"),
+        ("1.post1.dev0", "1.post1"),
+        ("1.2.post1.dev0", "1.2.post1"),
+        ("1.2.3.post1.dev0", "1.2.3.post1"),
+        ("1.a1", "1"),
+        ("1.2a1", "1.2"),
+        ("1.2.3a1", "1.2.3"),
+        ("1.2.3.4a1", "1.2.3.4"),
+        ("1.a1.post2", "1"),
+        ("1.2a1.post2", "1.2"),
+        ("1.2.3a1.post2", "1.2.3"),
+        ("1.2.3.4a1.post2", "1.2.3.4"),
+        ("1.a1.post2.dev0", "1"),
+        ("1.2a1.post2.dev0", "1.2"),
+        ("1.2.3a1.post2.dev0", "1.2.3"),
+        ("1.2.3.4a1.post2.dev0", "1.2.3.4"),
+    ],
+)
+def test_stable(version: str, expected: str) -> None:
+    subject = Version.parse(version)
+
+    assert subject.stable.text == expected
+
+
+@pytest.mark.parametrize(
+    "version, expected",
+    [
+        ("1", "2"),
+        ("1.2", "2.0"),
+        ("1.2.3", "2.0.0"),
+        ("2!1.2.3", "2!2.0.0"),
+        ("1.2.3+local", "2.0.0"),
+        ("1.2.3.4", "2.0.0.0"),
+        ("1.dev0", "2"),
+        ("1.2dev0", "2.0"),
+        ("1.2.3dev0", "2.0.0"),
+        ("1.2.3.4dev0", "2.0.0.0"),
+        ("1.post1", "2"),
+        ("1.2.post1", "2.0"),
+        ("1.2.3.post1", "2.0.0"),
+        ("1.post1.dev0", "2"),
+        ("1.2.post1.dev0", "2.0"),
+        ("1.2.3.post1.dev0", "2.0.0"),
+        ("2.a1", "3"),
+        ("2.2a1", "3.0"),
+        ("2.2.3a1", "3.0.0"),
+        ("2.2.3.4a1", "3.0.0.0"),
+        ("2.a1.post2", "3"),
+        ("2.2a1.post2", "3.0"),
+        ("2.2.3a1.post2", "3.0.0"),
+        ("2.2.3.4a1.post2", "3.0.0.0"),
+        ("2.a1.post2.dev0", "3"),
+        ("2.2a1.post2.dev0", "3.0"),
+        ("2.2.3a1.post2.dev0", "3.0.0"),
+        ("2.2.3.4a1.post2.dev0", "3.0.0.0"),
+    ],
+)
+def test_next_breaking_for_major_over_0_results_into_next_major_and_preserves_precision(
+    version: str, expected: str
+) -> None:
+    subject = Version.parse(version)
+
+    assert subject.next_breaking().text == expected
+
+
+@pytest.mark.parametrize(
+    "version, expected",
+    [
+        ("0", "1"),
+        ("0.0", "0.1"),
+        ("0.2", "0.3"),
+        ("0.2.3", "0.3.0"),
+        ("2!0.2.3", "2!0.3.0"),
+        ("0.2.3+local", "0.3.0"),
+        ("0.2.3.4", "0.3.0.0"),
+        ("0.0.3.4", "0.0.4.0"),
+        ("0.dev0", "1"),
+        ("0.0dev0", "0.1"),
+        ("0.2dev0", "0.3"),
+        ("0.2.3dev0", "0.3.0"),
+        ("0.0.3dev0", "0.0.4"),
+        ("0.post1", "1"),
+        ("0.0.post1", "0.1"),
+        ("0.2.post1", "0.3"),
+        ("0.2.3.post1", "0.3.0"),
+        ("0.0.3.post1", "0.0.4"),
+        ("0.post1.dev0", "1"),
+        ("0.0.post1.dev0", "0.1"),
+        ("0.2.post1.dev0", "0.3"),
+        ("0.2.3.post1.dev0", "0.3.0"),
+        ("0.0.3.post1.dev0", "0.0.4"),
+        ("0.a1", "1"),
+        ("0.0a1", "0.1"),
+        ("0.2a1", "0.3"),
+        ("0.2.3a1", "0.3.0"),
+        ("0.2.3.4a1", "0.3.0.0"),
+        ("0.0.3.4a1", "0.0.4.0"),
+        ("0.a1.post2", "1"),
+        ("0.0a1.post2", "0.1"),
+        ("0.2a1.post2", "0.3"),
+        ("0.2.3a1.post2", "0.3.0"),
+        ("0.2.3.4a1.post2", "0.3.0.0"),
+        ("0.0.3.4a1.post2", "0.0.4.0"),
+        ("0.a1.post2.dev0", "1"),
+        ("0.0a1.post2.dev0", "0.1"),
+        ("0.2a1.post2.dev0", "0.3"),
+        ("0.2.3a1.post2.dev0", "0.3.0"),
+        ("0.2.3.4a1.post2.dev0", "0.3.0.0"),
+        ("0.0.3.4a1.post2.dev0", "0.0.4.0"),
+        ("0-alpha.1", "1"),
+        ("0.0-alpha.1", "0.1"),
+        ("0.2-alpha.1", "0.3"),
+        ("0.0.1-alpha.2", "0.0.2"),
+        ("0.1.2-alpha.1", "0.2.0"),
+    ],
+)
+def test_next_breaking_for_major_0_is_treated_with_more_care_and_preserves_precision(
+    version: str, expected: str
+) -> None:
+    subject = Version.parse(version)
+
+    assert subject.next_breaking().text == expected
 
 
 @pytest.mark.parametrize(
@@ -288,3 +427,73 @@ def test_difference() -> None:
     assert (
         v.difference(VersionRange(Version.parse("1.4.0"), Version.parse("3.0.0"))) == v
     )
+
+
+@pytest.mark.parametrize(
+    "version,normalized_version",
+    [
+        (  # already normalized version
+            "1!2.3.4.5.6a7.post8.dev9+local1.123.abc",
+            "1!2.3.4.5.6a7.post8.dev9+local1.123.abc",
+        ),
+        # PEP 440 Normalization
+        # Case sensitivity
+        ("1.1RC1", "1.1rc1"),
+        # Integer Normalization
+        ("00", "0"),
+        ("09000", "9000"),
+        ("1.0+foo0100", "1.0+foo0100"),
+        # Pre-release separators
+        ("1.1.a1", "1.1a1"),
+        ("1.1-a1", "1.1a1"),
+        ("1.1_a1", "1.1a1"),
+        ("1.1a.1", "1.1a1"),
+        ("1.1a-1", "1.1a1"),
+        ("1.1a_1", "1.1a1"),
+        # Pre-release spelling
+        ("1.1alpha1", "1.1a1"),
+        ("1.1beta2", "1.1b2"),
+        ("1.1c3", "1.1rc3"),
+        ("1.1pre4", "1.1rc4"),
+        ("1.1preview5", "1.1rc5"),
+        # Implicit pre-release number
+        ("1.2a", "1.2a0"),
+        # Post release separators
+        ("1.2.post2", "1.2.post2"),
+        ("1.2-post2", "1.2.post2"),
+        ("1.2_post2", "1.2.post2"),
+        ("1.2post.2", "1.2.post2"),
+        ("1.2post-2", "1.2.post2"),
+        ("1.2post_2", "1.2.post2"),
+        # Post release spelling
+        ("1.0-r4", "1.0.post4"),
+        ("1.0-rev4", "1.0.post4"),
+        # Implicit post release number
+        ("1.2.post", "1.2.post0"),
+        # Implicit post releases
+        ("1.0-1", "1.0.post1"),
+        # Development release separators
+        ("1.2.dev2", "1.2.dev2"),
+        ("1.2-dev2", "1.2.dev2"),
+        ("1.2_dev2", "1.2.dev2"),
+        ("1.2dev.2", "1.2.dev2"),
+        ("1.2dev-2", "1.2.dev2"),
+        ("1.2dev_2", "1.2.dev2"),
+        # Implicit development release number
+        ("1.2.dev", "1.2.dev0"),
+        # Local version segments
+        ("1.0+ubuntu-1", "1.0+ubuntu.1"),
+        ("1.0+ubuntu_1", "1.0+ubuntu.1"),
+        # Preceding v character
+        ("v1.0", "1.0"),
+        # Leading and Trailing Whitespace
+        (" 1.0 ", "1.0"),
+        ("\t1.0\t", "1.0"),
+        ("\n1.0\n", "1.0"),
+        ("\r\n1.0\r\n", "1.0"),
+        ("\f1.0\f", "1.0"),
+        ("\v1.0\v", "1.0"),
+    ],
+)
+def test_to_string_normalizes(version: str, normalized_version: str) -> None:
+    assert Version.parse(version).to_string() == normalized_version

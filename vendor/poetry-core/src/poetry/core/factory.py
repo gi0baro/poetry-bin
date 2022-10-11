@@ -12,6 +12,8 @@ from typing import Union
 from typing import cast
 from warnings import warn
 
+from packaging.utils import canonicalize_name
+
 from poetry.core.utils.helpers import combine_unicode
 from poetry.core.utils.helpers import readme_content_type
 
@@ -175,6 +177,7 @@ class Factory:
 
         extras = config.get("extras", {})
         for extra_name, requirements in extras.items():
+            extra_name = canonicalize_name(extra_name)
             package.extras[extra_name] = []
 
             # Checking for dependency
@@ -226,8 +229,11 @@ class Factory:
         groups: list[str] | None = None,
         root_dir: Path | None = None,
     ) -> Dependency:
-        from poetry.core.packages.constraints import (
+        from poetry.core.constraints.generic import (
             parse_constraint as parse_generic_constraint,
+        )
+        from poetry.core.constraints.version import (
+            parse_constraint as parse_version_constraint,
         )
         from poetry.core.packages.dependency import Dependency
         from poetry.core.packages.dependency_group import MAIN_GROUP
@@ -236,7 +242,6 @@ class Factory:
         from poetry.core.packages.url_dependency import URLDependency
         from poetry.core.packages.utils.utils import create_nested_marker
         from poetry.core.packages.vcs_dependency import VCSDependency
-        from poetry.core.semver.helpers import parse_constraint
         from poetry.core.version.markers import AnyMarker
         from poetry.core.version.markers import parse_marker
 
@@ -344,7 +349,7 @@ class Factory:
                 marker = marker.intersect(
                     parse_marker(
                         create_nested_marker(
-                            "python_version", parse_constraint(python_versions)
+                            "python_version", parse_version_constraint(python_versions)
                         )
                     )
                 )
