@@ -15,9 +15,9 @@ from typing import TYPE_CHECKING
 from typing import cast
 
 from cleo.ui.progress_indicator import ProgressIndicator
+from poetry.core.constraints.version import EmptyConstraint
+from poetry.core.constraints.version import Version
 from poetry.core.packages.utils.utils import get_python_constraint_from_marker
-from poetry.core.semver.empty_constraint import EmptyConstraint
-from poetry.core.semver.version import Version
 from poetry.core.version.markers import AnyMarker
 from poetry.core.version.markers import MarkerUnion
 
@@ -32,7 +32,6 @@ from poetry.packages.package_collection import PackageCollection
 from poetry.puzzle.exceptions import OverrideNeeded
 from poetry.repositories.exceptions import PackageNotFound
 from poetry.utils.helpers import download_file
-from poetry.utils.helpers import safe_extra
 from poetry.vcs.git import Git
 
 
@@ -42,13 +41,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from cleo.io.io import IO
+    from poetry.core.constraints.version import VersionConstraint
     from poetry.core.packages.dependency import Dependency
     from poetry.core.packages.directory_dependency import DirectoryDependency
     from poetry.core.packages.file_dependency import FileDependency
     from poetry.core.packages.package import Package
     from poetry.core.packages.url_dependency import URLDependency
     from poetry.core.packages.vcs_dependency import VCSDependency
-    from poetry.core.semver.version_constraint import VersionConstraint
     from poetry.core.version.markers import BaseMarker
 
     from poetry.repositories import Pool
@@ -563,7 +562,6 @@ class Provider:
         # to the current package
         if dependency.extras:
             for extra in dependency.extras:
-                extra = safe_extra(extra)
                 if extra not in package.extras:
                     continue
 
@@ -590,9 +588,7 @@ class Provider:
                 (dep.is_optional() and dep.name not in optional_dependencies)
                 or (
                     dep.in_extras
-                    and not set(dep.in_extras).intersection(
-                        {safe_extra(extra) for extra in dependency.extras}
-                    )
+                    and not set(dep.in_extras).intersection(dependency.extras)
                 )
             ):
                 continue

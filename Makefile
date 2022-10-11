@@ -30,7 +30,7 @@ sources: clean_src
 	@git clone https://github.com/python/importlib_metadata.git src/importlib_metadata && cd src/importlib_metadata && git checkout v4.12.0
 	@git clone https://github.com/python-jsonschema/jsonschema.git src/jsonschema && cd src/jsonschema && git checkout v4.10.3
 	@git clone https://github.com/lark-parser/lark.git src/lark && cd src/lark && git checkout 1.1.2
-	@git clone https://github.com/python-poetry/poetry.git src/poetry && cd src/poetry && git checkout 1.2.1
+	@git clone https://github.com/python-poetry/poetry.git src/poetry && cd src/poetry && git checkout 1.2.2
 	@git clone https://github.com/python-poetry/poetry-core.git src/poetry-core && cd src/poetry-core && git checkout 1.3.2
 	@git clone https://github.com/pypa/virtualenv.git src/virtualenv && cd src/virtualenv && git checkout 20.16.3
 
@@ -78,7 +78,7 @@ tests:
 		.venv/bin/pip install ../importlib_metadata ../jsonschema ../lark ../virtualenv && \
 		.venv/bin/pip install -r ../poetry-core/vendors/deps.txt && \
 		.venv/bin/pip install ../poetry-core . && \
-		.venv/bin/pip install deepdiff flatdict httpretty pytest pytest-mock && \
+		.venv/bin/pip install deepdiff flatdict httpretty pytest pytest-mock pytest-xdist[psutil] && \
 		.venv/bin/pytest && \
 		rm -r .venv
 

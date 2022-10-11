@@ -12,7 +12,7 @@ import pytest
 import tomlkit
 
 from cleo.io.null_io import NullIO
-from poetry.core.semver.version import Version
+from poetry.core.constraints.version import Version
 from poetry.core.toml.file import TOMLFile
 
 from poetry.factory import Factory
@@ -895,10 +895,11 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
     mocker.patch("sys.version_info", (2, 7, 16))
     mocker.patch("subprocess.check_output", side_effect=[
         "3.5.3",
-        "3.10.0",
+        "3.5.3",
         "3.5.3",
         "3.5.3",
         "2.7.16",
+        "3.5.3",
         "3.5.3",
         "3.10.0"
     ])

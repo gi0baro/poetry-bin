@@ -11,10 +11,11 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import cast
 
+from packaging.utils import canonicalize_name
+from poetry.core.constraints.version import Version
+from poetry.core.constraints.version import parse_constraint
 from poetry.core.packages.dependency import Dependency
 from poetry.core.packages.package import Package
-from poetry.core.semver.helpers import parse_constraint
-from poetry.core.semver.version import Version
 from poetry.core.toml.file import TOMLFile
 from poetry.core.version.markers import parse_marker
 from poetry.core.version.requirements import InvalidRequirement
@@ -67,10 +68,7 @@ class Locker:
         """
         Checks whether the locker has been locked (lockfile found).
         """
-        if not self._lock.exists():
-            return False
-
-        return "package" in self.lock_data
+        return self._lock.exists()
 
     def is_fresh(self) -> bool:
         """
@@ -109,8 +107,9 @@ class Locker:
             if source_type in ["directory", "file"]:
                 url = self._lock.path.parent.joinpath(url).resolve().as_posix()
 
+            name = info["name"]
             package = Package(
-                info["name"],
+                name,
                 info["version"],
                 info["version"],
                 source_type=source_type,
@@ -123,8 +122,19 @@ class Locker:
             package.category = info.get("category", "main")
             package.optional = info["optional"]
             metadata = cast("dict[str, Any]", lock_data["metadata"])
-            name = info["name"]
-            if "hashes" in metadata:
+
+            # Storing of package files and hashes has been through a few generations in
+            # the lockfile, we can read them all:
+            #
+            # - latest and preferred is that this is read per package, from
+            #   package.files
+            # - oldest is that hashes were stored in metadata.hashes without filenames
+            # - in between those two, hashes were stored alongside filenames in
+            #   metadata.files
+            package_files = info.get("files")
+            if package_files is not None:
+                package.files = package_files
+            elif "hashes" in metadata:
                 # Old lock so we create dummy files from the hashes
                 hashes = cast("dict[str, Any]", metadata["hashes"])
                 package.files = [{"name": h, "hash": h} for h in hashes[name]]
@@ -145,6 +155,7 @@ class Locker:
             extras = info.get("extras", {})
             if extras:
                 for name, deps in extras.items():
+                    name = canonicalize_name(name)
                     package.extras[name] = []
 
                     for dep in deps:
@@ -244,12 +255,18 @@ class Locker:
             "files": files,
         }
 
-        if not self.is_locked() or lock != self.lock_data:
+        do_write = True
+        if self.is_locked():
+            try:
+                lock_data = self.lock_data
+            except RuntimeError:
+                # incompatible, invalid or no lock file
+                pass
+            else:
+                do_write = lock != lock_data
+        if do_write:
             self._write_lock_data(lock)
-
-            return True
-
-        return False
+        return do_write
 
     def _write_lock_data(self, data: TOMLDocument) -> None:
         self.lock.write(data)
@@ -288,6 +305,12 @@ class Locker:
 
         metadata = cast("Table", lock_data["metadata"])
         lock_version = Version.parse(metadata.get("lock-version", "1.0"))
+
+        # As a special case: the ability to read a 2.0 lockfile was backported and is
+        # fully supported.
+        if lock_version == Version.parse("2.0"):
+            return lock_data
+
         current_version = Version.parse(self._VERSION)
         # We expect the locker to be able to read lock files
         # from the same semantic versioning range
