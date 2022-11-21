@@ -8,7 +8,7 @@ ENV GLIBC_VERSION=2.33-r0
 RUN apk add --no-cache curl
 RUN curl -sSL ${GLIBC_REPO}/releases/download/${GLIBC_VERSION}/glibc-${GLIBC_VERSION}.apk -o glibc.apk
 RUN curl -sSL ${GLIBC_REPO}/releases/download/${GLIBC_VERSION}/glibc-bin-${GLIBC_VERSION}.apk -o glibc-bin.apk
-RUN apk add --allow-untrusted glibc.apk glibc-bin.apk
+RUN apk add --allow-untrusted --force-overwrite glibc.apk glibc-bin.apk
 
 FROM alpine:3.14 as fetcher
 
