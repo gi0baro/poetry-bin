@@ -1,12 +1,12 @@
 diff --git a/jsonschema/__version__.py b/jsonschema/__version__.py
 new file mode 100644
-index 0000000..d32a48d
+index 0000000..4afe96e
 --- /dev/null
 +++ b/jsonschema/__version__.py
 @@ -0,0 +1 @@
-+__version__ = "4.10.3"
++__version__ = "4.17.1"
 diff --git a/jsonschema/_utils.py b/jsonschema/_utils.py
-index 7e11325..687b95a 100644
+index 418348c..9a8776f 100644
 --- a/jsonschema/_utils.py
 +++ b/jsonschema/_utils.py
 @@ -5,11 +5,7 @@ import json
@@ -39,13 +39,13 @@ diff --git a/jsonschema/schemas/__init__.py b/jsonschema/schemas/__init__.py
 new file mode 100644
 index 0000000..e69de29
 diff --git a/pyproject.toml b/pyproject.toml
-index 5041a10..46a3e40 100644
+index f5fe8db..ea9a547 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -1,9 +1,9 @@
  [build-system]
--requires = ["hatchling", "hatch-vcs"]
-+requires = ["hatchling"]
+-requires = ["hatchling", "hatch-vcs", "hatch-fancy-pypi-readme"]
++requires = ["hatchling", "hatch-fancy-pypi-readme"]
  build-backend = "hatchling.build"
  
  [tool.hatch.version]

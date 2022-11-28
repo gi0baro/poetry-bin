@@ -5,6 +5,12 @@ Schema Validation
 
 .. currentmodule:: jsonschema
 
+.. tip::
+
+   Most of the documentation for this package assumes you're familiar with the fundamentals of writing JSON schemas themselves, and focuses on how this library helps you validate with them in Python.
+
+   If you aren't already comfortable with writing schemas and need an introduction which teaches about JSON Schema the specification, you may find `Understanding JSON Schema <ujs:basics>` to be a good read!
+
 
 The Basics
 ----------
@@ -13,27 +19,27 @@ The simplest way to validate an instance under a given schema is to use the
 :func:`validate` function.
 
 .. autofunction:: validate
-
-.. [#] For information on creating JSON schemas to validate
-    your data, there is a good introduction to JSON Schema
-    fundamentals underway at `Understanding JSON Schema
-    <https://json-schema.org/understanding-json-schema/>`_
+    :noindex:
 
 .. _validator-protocol:
 
 The Validator Protocol
------------------------
+----------------------
 
-`jsonschema` defines a protocol that all validator classes should adhere
-to.
+`jsonschema` defines a `protocol <typing.Protocol>` that all validator classes adhere to.
+
+.. hint::
+
+    If you are unfamiliar with protocols, either as a general notion or as specifically implemented by `typing.Protocol`, you can think of them as a set of attributes and methods that all objects satisfying the protocol have.
+
+    Here, in the context of `jsonschema`, the `Validator.iter_errors` method can be called on `jsonschema.validators.Draft202012Validator`, or `jsonschema.validators.Draft7Validator`, or indeed any validator class, as all of them have it, along with all of the other methods described below.
 
 .. autoclass:: jsonschema.protocols.Validator
+    :noindex:
     :members:
 
-All of the `versioned validators <versioned-validators>` that are included with
-`jsonschema` adhere to the protocol, and implementers of validator classes
-that extend or complement the ones included should adhere to it as well. For
-more information see `creating-validators`.
+All of the `versioned validators <versioned-validators>` that are included with `jsonschema` adhere to the protocol, and any `extensions of these validators <jsonschema.validators.extend>` will as well.
+For more information on `creating <jsonschema.validators.create>` or `extending <jsonschema.validators.extend>` validators see `creating-validators`.
 
 Type Checking
 -------------
@@ -54,6 +60,7 @@ versions.
     :members:
 
 .. autoexception:: jsonschema.exceptions.UndefinedTypeCheck
+    :noindex:
 
     Raised when trying to remove a type check that is not known to this
     TypeChecker, or when calling `jsonschema.TypeChecker.is_type`
@@ -88,7 +95,7 @@ existing `TypeChecker` or create a new one. You may then create a new
 
     from jsonschema import validators
 
-    class MyInteger(object):
+    class MyInteger:
         pass
 
     def is_my_int(checker, instance):
@@ -109,28 +116,35 @@ existing `TypeChecker` or create a new one. You may then create a new
 
 
 .. autoexception:: jsonschema.exceptions.UnknownType
+    :noindex:
 
 .. _versioned-validators:
 
 Versioned Validators
 --------------------
 
-`jsonschema` ships with validator classes for various versions of
-the JSON Schema specification. For details on the methods and attributes
-that each validator class provides see the `Validator` protocol,
-which each included validator class implements.
+`jsonschema` ships with validator classes for various versions of the JSON Schema specification.
+For details on the methods and attributes that each validator class provides see the `Validator` protocol, which each included validator class implements.
+
+Each of the below cover a specific release of the JSON Schema specification.
 
 .. autoclass:: Draft202012Validator
+    :noindex:
 
 .. autoclass:: Draft201909Validator
+    :noindex:
 
 .. autoclass:: Draft7Validator
+    :noindex:
 
 .. autoclass:: Draft6Validator
+    :noindex:
 
 .. autoclass:: Draft4Validator
+    :noindex:
 
 .. autoclass:: Draft3Validator
+    :noindex:
 
 
 For example, if you wanted to validate a schema you created against the
@@ -158,11 +172,9 @@ Draft 2020-12 meta-schema, you could use:
 Validating Formats
 ------------------
 
-JSON Schema defines the :kw:`format` keyword which can be used to check
-if primitive types (``string``\s, ``number``\s, ``boolean``\s) conform to
-well-defined formats. By default, no validation is enforced, but optionally,
-validation can be enabled by hooking in a format-checking object into an
-`Validator`.
+JSON Schema defines the :kw:`format` keyword which can be used to check if primitive types (``string``\s, ``number``\s, ``boolean``\s) conform to well-defined formats.
+By default, as per the specification, no validation is enforced.
+Optionally however, validation can be enabled by hooking a `format-checking object <jsonschema.FormatChecker>` into a `Validator`.
 
 .. doctest::
 
@@ -170,75 +182,37 @@ validation can be enabled by hooking in a format-checking object into an
     >>> validate(
     ...     instance="-12",
     ...     schema={"format" : "ipv4"},
-    ...     format_checker=draft202012_format_checker,
+    ...     format_checker=Draft202012Validator.FORMAT_CHECKER,
     ... )
     Traceback (most recent call last):
         ...
     ValidationError: "-12" is not a "ipv4"
 
-.. autoclass:: FormatChecker
-    :members:
-    :exclude-members: cls_checks
 
-    .. attribute:: checkers
+Some formats require additional dependencies to be installed.
 
-        A mapping of currently known formats to tuple of functions that
-        validate them and errors that should be caught. New checkers can be
-        added and removed either per-instance or globally for all checkers
-        using the `FormatChecker.checks` or `FormatChecker.cls_checks`
-        decorators respectively.
+The easiest way to ensure you have what is needed is to install ``jsonschema`` using the ``format`` or ``format-nongpl`` extras.
 
-    .. classmethod:: cls_checks(format, raises=())
-
-        Register a decorated function as *globally* validating a new format.
-
-        Any instance created after this function is called will pick up the
-        supplied checker.
-
-        :argument str format: the format that the decorated function will check
-        :argument Exception raises: the exception(s) raised
-            by the decorated function when an invalid instance is
-            found. The exception object will be accessible as the
-            `jsonschema.exceptions.ValidationError.cause` attribute
-            of the resulting validation error.
-
-
-.. autoexception:: FormatError
-    :members:
-
-
-There are a number of default checkers that `FormatChecker`\s know how
-to validate. Their names can be viewed by inspecting the
-`FormatChecker.checkers` attribute. Certain checkers will only be
-available if an appropriate package is available for use. The easiest way to
-ensure you have what is needed is to install ``jsonschema`` using the
-``format`` or ``format_nongpl`` collection of optional dependencies -- e.g.
+For example:
 
 .. code-block:: sh
 
-   $ pip install jsonschema[format]
-
-which will install all of the below dependencies for all formats.
+    $ pip install jsonschema[format]
 
 Or if you want to install MIT-license compatible dependencies only:
 
 .. code-block:: sh
 
-   $ pip install jsonschema[format_nongpl]
+    $ pip install jsonschema[format-nongpl]
 
-The non-GPL extra is intended to not install any direct dependencies
-that are GPL (but that of course end-users should do their own verification).
-At the moment, it supports all the available checkers except for ``iri`` and
-``iri-reference``.
+The non-GPL extra is intended to not install any direct dependencies that are GPL licensed (but that of course end-users should do their own verification).
+At the moment, it supports all the available checkers except for ``iri`` and ``iri-reference``.
 
-The more specific list of available checkers, along with their requirement
-(if any,) are listed below.
+The more specific list of formats along with any additional dependencies they have is shown below.
 
-.. note::
+.. warning::
 
-    If the following packages are not installed when using a checker
-    that requires it, validation will succeed without throwing an error,
-    as specified by the JSON Schema specification.
+    If a dependency is not installed when using a checker that requires it, validation will succeed without throwing an error, as also specified by the specification.
 
 =========================  ====================
 Checker                    Notes
@@ -271,18 +245,57 @@ Checker                    Notes
 .. _rfc3339-validator: https://pypi.org/project/rfc3339-validator/
 .. _rfc3986-validator: https://pypi.org/project/rfc3986-validator/
 .. _rfc3987: https://pypi.org/pypi/rfc3987/
-.. _rfc5322: https://tools.ietf.org/html/rfc5322#section-3.4.1
 .. _uri-template: https://pypi.org/pypi/uri-template/
 .. _webcolors: https://pypi.org/pypi/webcolors/
 
-.. note::
+The supported mechanism for ensuring these dependencies are present is again as shown above, not by directly installing the packages.
 
-    Since in most cases "validating" an email address is an attempt
-    instead to confirm that mail sent to it will deliver to a recipient,
-    and that that recipient is the correct one the email is intended
-    for, and since many valid email addresses are in many places
-    incorrectly rejected, and many invalid email addresses are in many
-    places incorrectly accepted, the ``email`` format keyword only
-    provides a sanity check, not full rfc5322_ validation.
+.. autoclass:: FormatChecker
+    :members:
+    :exclude-members: cls_checks
 
-    The same applies to the ``idn-email`` format.
+    .. attribute:: checkers
+
+        A mapping of currently known formats to tuple of functions that validate them and errors that should be caught.
+        New checkers can be added and removed either per-instance or globally for all checkers using the `FormatChecker.checks` decorator.
+
+    .. classmethod:: cls_checks(format, raises=())
+
+        Register a decorated function as *globally* validating a new format.
+
+        Any instance created after this function is called will pick up the supplied checker.
+
+        :argument str format: the format that the decorated function will check
+        :argument Exception raises: the exception(s) raised
+            by the decorated function when an invalid instance is
+            found. The exception object will be accessible as the
+            `jsonschema.exceptions.ValidationError.cause` attribute
+            of the resulting validation error.
+
+        .. deprecated:: v4.14.0
+
+            Use `FormatChecker.checks` on an instance instead.
+
+.. autoexception:: FormatError
+    :noindex:
+    :members:
+
+
+Format-Specific Notes
+~~~~~~~~~~~~~~~~~~~~~
+
+regex
+^^^^^
+
+The JSON Schema specification `recommends (but does not require) <https://json-schema.org/draft/2020-12/json-schema-core.html#name-regular-expressions>`_ that implementations use ECMA 262 regular expressions.
+
+Given that there is no current library in Python capable of supporting the ECMA 262 dialect, the ``regex`` format will instead validate *Python* regular expressions, which are the ones used by this implementation for other keywords like :kw:`pattern` or :kw:`patternProperties`.
+
+email
+^^^^^
+
+Since in most cases "validating" an email address is an attempt instead to confirm that mail sent to it will deliver to a recipient, and that that recipient is the correct one the email is intended for, and since many valid email addresses are in many places incorrectly rejected, and many invalid email addresses are in many places incorrectly accepted, the ``email`` format keyword only provides a sanity check, not full :RFC:`5322` validation.
+
+The same applies to the ``idn-email`` format.
+
+If you indeed want a particular well-specified set of emails to be considered valid, you can use `FormatChecker.checks` to provide your specific definition.

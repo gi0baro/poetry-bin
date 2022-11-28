@@ -1,4 +1,6 @@
 .. module:: jsonschema
+   :noindex:
+
 .. include:: ../README.rst
 
 
@@ -10,13 +12,12 @@ Contents
 
     validate
     errors
-    references
     creating
     faq
+    api/index
 
 
 Indices and tables
 ==================
 
 * `genindex`
-* `search`

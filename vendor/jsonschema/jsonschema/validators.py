@@ -16,6 +16,7 @@ import reprlib
 import typing
 import warnings
 
+from pyrsistent import m
 import attr
 
 from jsonschema import (
@@ -102,7 +103,11 @@ def _id_of(schema):
 
 def _store_schema_list():
     if not _VOCABULARIES:
-        _VOCABULARIES.extend(_utils.load_schema("vocabularies").items())
+        package = _utils.resources.files(__package__)
+        for version in package.joinpath("schemas", "vocabularies").iterdir():
+            for path in version.iterdir():
+                vocabulary = json.loads(path.read_text())
+                _VOCABULARIES.append((vocabulary["$id"], vocabulary))
     return [
         (id, validator.META_SCHEMA) for id, validator in _META_SCHEMAS.items()
     ] + _VOCABULARIES
@@ -191,6 +196,21 @@ def create(
         resolver = attr.ib(default=None, repr=False)
         format_checker = attr.ib(default=None)
 
+        def __init_subclass__(cls):
+            warnings.warn(
+                (
+                    "Subclassing validator classes is not intended to "
+                    "be part of their public API. A future version "
+                    "will make doing so an error, as the behavior of "
+                    "subclasses isn't guaranteed to stay the same "
+                    "between releases of jsonschema. Instead, prefer "
+                    "composition of validators, wrapping them in an object "
+                    "owned entirely by the downstream library."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
         def __attrs_post_init__(self):
             if self.resolver is None:
                 self.resolver = RefResolver.from_schema(
@@ -199,8 +219,15 @@ def create(
                 )
 
         @classmethod
-        def check_schema(cls, schema):
-            for error in cls(cls.META_SCHEMA).iter_errors(schema):
+        def check_schema(cls, schema, format_checker=_UNSET):
+            Validator = validator_for(cls.META_SCHEMA, default=cls)
+            if format_checker is _UNSET:
+                format_checker = Validator.FORMAT_CHECKER
+            validator = Validator(
+                schema=cls.META_SCHEMA,
+                format_checker=format_checker,
+            )
+            for error in validator.iter_errors(schema):
                 raise exceptions.SchemaError.create_from(error)
 
         def evolve(self, **changes):
@@ -429,7 +456,7 @@ Draft3Validator = create(
     type_checker=_types.draft3_type_checker,
     format_checker=_format.draft3_format_checker,
     version="draft3",
-    id_of=lambda schema: schema.get("id", ""),
+    id_of=_legacy_validators.id_of_ignore_ref(property="id"),
     applicable_validators=_legacy_validators.ignore_ref_siblings,
 )
 
@@ -466,7 +493,7 @@ Draft4Validator = create(
     type_checker=_types.draft4_type_checker,
     format_checker=_format.draft4_format_checker,
     version="draft4",
-    id_of=lambda schema: schema.get("id", ""),
+    id_of=_legacy_validators.id_of_ignore_ref(property="id"),
     applicable_validators=_legacy_validators.ignore_ref_siblings,
 )
 
@@ -508,6 +535,7 @@ Draft6Validator = create(
     type_checker=_types.draft6_type_checker,
     format_checker=_format.draft6_format_checker,
     version="draft6",
+    id_of=_legacy_validators.id_of_ignore_ref(),
     applicable_validators=_legacy_validators.ignore_ref_siblings,
 )
 
@@ -550,6 +578,7 @@ Draft7Validator = create(
     type_checker=_types.draft7_type_checker,
     format_checker=_format.draft7_format_checker,
     version="draft7",
+    id_of=_legacy_validators.id_of_ignore_ref(),
     applicable_validators=_legacy_validators.ignore_ref_siblings,
 )
 
@@ -589,7 +618,7 @@ Draft201909Validator = create(
         "propertyNames": _validators.propertyNames,
         "required": _validators.required,
         "type": _validators.type,
-        "unevaluatedItems": _validators.unevaluatedItems,
+        "unevaluatedItems": _legacy_validators.unevaluatedItems_draft2019,
         "unevaluatedProperties": _validators.unevaluatedProperties,
         "uniqueItems": _validators.uniqueItems,
     },
@@ -647,7 +676,7 @@ Draft202012Validator = create(
 _LATEST_VERSION = Draft202012Validator
 
 
-class RefResolver(object):
+class RefResolver:
     """
     Resolve JSON References.
 
@@ -695,7 +724,7 @@ class RefResolver(object):
         self,
         base_uri,
         referrer,
-        store=(),
+        store=m(),
         cache_remote=True,
         handlers=(),
         urljoin_cache=None,
@@ -711,8 +740,13 @@ class RefResolver(object):
         self.handlers = dict(handlers)
 
         self._scopes_stack = [base_uri]
+
         self.store = _utils.URIDict(_store_schema_list())
         self.store.update(store)
+        self.store.update(
+            (schema["$id"], schema)
+            for schema in store.values() if "$id" in schema
+        )
         self.store[base_uri] = referrer
 
         self._urljoin_cache = urljoin_cache
@@ -734,7 +768,7 @@ class RefResolver(object):
             `RefResolver`
         """
 
-        return cls(base_uri=id_of(schema), referrer=schema, *args, **kwargs)
+        return cls(base_uri=id_of(schema), referrer=schema, *args, **kwargs)  # noqa: B026, E501
 
     def push_scope(self, scope):
         """
@@ -785,6 +819,8 @@ class RefResolver(object):
     def in_scope(self, scope):
         """
         Temporarily enter the given scope for the duration of the context.
+
+        .. deprecated:: v4.0.0
         """
         warnings.warn(
             "jsonschema.RefResolver.in_scope is deprecated and will be "
@@ -844,6 +880,7 @@ class RefResolver(object):
             if target_uri.rstrip("/") == uri.rstrip("/"):
                 if fragment:
                     subschema = self.resolve_fragment(subschema, fragment)
+                self.store[url] = subschema
                 return url, subschema
         return None
 
@@ -864,16 +901,16 @@ class RefResolver(object):
         Resolve the given URL.
         """
         url, fragment = urldefrag(url)
-        if url:
+        if not url:
+            url = self.base_uri
+
+        try:
+            document = self.store[url]
+        except KeyError:
             try:
-                document = self.store[url]
-            except KeyError:
-                try:
-                    document = self.resolve_remote(url)
-                except Exception as exc:
-                    raise exceptions.RefResolutionError(exc)
-        else:
-            document = self.referrer
+                document = self.resolve_remote(url)
+            except Exception as exc:
+                raise exceptions.RefResolutionError(exc)
 
         return self.resolve_fragment(document, fragment)
 
@@ -1027,10 +1064,11 @@ def validate(instance, schema, cls=None, *args, **kwargs):
     itself valid, since not doing so can lead to less obvious error
     messages and fail in less obvious or consistent ways.
 
-    If you know you have a valid schema already, especially if you
-    intend to validate multiple instances with the same schema, you
-    likely would prefer using the `Validator.validate` method directly
-    on a specific validator (e.g. ``Draft7Validator.validate``).
+    If you know you have a valid schema already, especially
+    if you intend to validate multiple instances with
+    the same schema, you likely would prefer using the
+    `jsonschema.protocols.Validator.validate` method directly on a
+    specific validator (e.g. ``Draft20212Validator.validate``).
 
 
     Arguments:
@@ -1043,7 +1081,7 @@ def validate(instance, schema, cls=None, *args, **kwargs):
 
             The schema to validate with
 
-        cls (Validator):
+        cls (jsonschema.protocols.Validator):
 
             The class that will be used to validate the instance.
 
@@ -1060,11 +1098,13 @@ def validate(instance, schema, cls=None, *args, **kwargs):
 
     Raises:
 
-        `jsonschema.exceptions.ValidationError` if the instance
-            is invalid
+        `jsonschema.exceptions.ValidationError`:
 
-        `jsonschema.exceptions.SchemaError` if the schema itself
-            is invalid
+            if the instance is invalid
+
+        `jsonschema.exceptions.SchemaError`:
+
+            if the schema itself is invalid
 
     .. rubric:: Footnotes
     .. [#] known by a validator registered with

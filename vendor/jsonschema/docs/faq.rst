@@ -2,7 +2,6 @@
 Frequently Asked Questions
 ==========================
 
-
 My schema specifies format validation. Why do invalid instances seem valid?
 ---------------------------------------------------------------------------
 
@@ -74,12 +73,38 @@ implemented here, across any other implementation they encounter.
         the object which implements format validation
 
 
-How do I configure a base URI for ``$ref`` resolution using local files?
-------------------------------------------------------------------------
+Can jsonschema be used to validate YAML, TOML, etc.?
+----------------------------------------------------
+
+Like most JSON Schema implementations, `jsonschema` doesn't actually deal directly with JSON at all (other than in relation to the :kw:`$ref` keyword, elaborated on below).
+
+In other words as far as this library is concerned, schemas and instances are simply runtime Python objects.
+The JSON object ``{}`` is simply the Python `dict` ``{}``, and a JSON Schema like ``{"type": "object", {"properties": {}}}`` is really an assertion about particular Python objects and their keys.
+
+.. note::
+
+   The :kw:`$ref` keyword is a single notable exception.
+
+   Specifically, in the case where `jsonschema` is asked to `resolve a remote reference <jsonschema.validators.RefResolver>`, it has no choice but to assume that the remote reference is serialized as JSON, and to deserialize it using the `json` module.
+
+   One cannot today therefore reference some remote piece of YAML and have it deserialized into Python objects by this library without doing some additional work.
+
+In practice what this means for JSON-like formats like YAML and TOML is that indeed one can generally schematize and then validate them exactly as if they were JSON by simply first deserializing them using libraries like ``PyYAML`` or the like, and passing the resulting Python objects into functions within this library.
+
+Beware however that there are cases where the behavior of the JSON Schema specification itself is only well-defined within the data model of JSON itself, and therefore only for Python objects that could have "in theory" come from JSON.
+As an example, JSON supports only string-valued keys, whereas YAML supports additional types.
+The JSON Schema specification does not deal with how to apply the :kw:`patternProperties` keyword to non-string properties.
+The behavior of this library is therefore similarly not defined when presented with Python objects of this form, which could never have come from JSON.
+In such cases one is recommended to first pre-process the data such that the resulting behavior is well-defined.
+In the previous example, if the desired behavior is to transparently coerce numeric properties to strings, as Javascript might, then do the conversion explicitly before passing data to this library.
+
+
+How do I configure a base URI for $ref resolution using local files?
+--------------------------------------------------------------------
 
 `jsonschema` supports loading schemas from the filesystem.
 
-The most common mistake when configuring a :class:`~jsonschema.RefResolver`
+The most common mistake when configuring a `jsonschema.validators.RefResolver`
 to retrieve schemas from the local filesystem is to give it a base URI
 which points to a directory, but forget to add a trailing slash.
 
@@ -187,8 +212,8 @@ be valid under the schema.)
 
 See the above-linked document for more info on how this works,
 but basically, it just extends the :kw:`properties` keyword on a
-`jsonschema.Draft202012Validator` to then go ahead and update all the
-defaults.
+`jsonschema.validators.Draft202012Validator` to then go ahead and update
+all the defaults.
 
 .. note::
 

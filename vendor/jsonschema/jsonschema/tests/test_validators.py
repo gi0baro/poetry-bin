@@ -197,6 +197,38 @@ class TestCreateAndExtend(TestCase):
             ),
         )
 
+    def test_check_schema_with_different_metaschema(self):
+        """
+        One can create a validator class whose metaschema uses a different
+        dialect than itself.
+        """
+
+        NoEmptySchemasValidator = validators.create(
+            meta_schema={
+                "$schema": validators.Draft202012Validator.META_SCHEMA["$id"],
+                "not": {"const": {}},
+            },
+        )
+        NoEmptySchemasValidator.check_schema({"foo": "bar"})
+
+        with self.assertRaises(exceptions.SchemaError):
+            NoEmptySchemasValidator.check_schema({})
+
+        NoEmptySchemasValidator({"foo": "bar"}).validate("foo")
+
+    def test_check_schema_with_different_metaschema_defaults_to_self(self):
+        """
+        A validator whose metaschema doesn't declare $schema defaults to its
+        own validation behavior, not the latest "normal" specification.
+        """
+
+        NoEmptySchemasValidator = validators.create(
+            meta_schema={"fail": [{"message": "Meta schema whoops!"}]},
+            validators={"fail": fail},
+        )
+        with self.assertRaises(exceptions.SchemaError):
+            NoEmptySchemasValidator.check_schema({})
+
     def test_extend(self):
         original = dict(self.Validator.VALIDATORS)
         new = object()
@@ -602,7 +634,26 @@ class TestValidationErrorMessages(TestCase):
         message = self.message_for(instance="foo", schema=schema)
         self.assertEqual(message, "'foo' is not of type 'array'")
 
-    def test_unevaluated_properties(self):
+    def test_unevaluated_properties_invalid_against_subschema(self):
+        schema = {
+            "properties": {"foo": {"type": "string"}},
+            "unevaluatedProperties": {"const": 12},
+        }
+        message = self.message_for(
+            instance={
+                "foo": "foo",
+                "bar": "bar",
+                "baz": 12,
+            },
+            schema=schema,
+        )
+        self.assertEqual(
+            message,
+            "Unevaluated properties are not valid under the given schema "
+            "('bar' was unevaluated and invalid)",
+        )
+
+    def test_unevaluated_properties_disallowed(self):
         schema = {"type": "object", "unevaluatedProperties": False}
         message = self.message_for(
             instance={
@@ -1406,7 +1457,7 @@ class TestValidationErrorDetails(TestCase):
         )
 
 
-class MetaSchemaTestsMixin(object):
+class MetaSchemaTestsMixin:
     # TODO: These all belong upstream
     def test_invalid_properties(self):
         with self.assertRaises(exceptions.SchemaError):
@@ -1421,17 +1472,45 @@ class MetaSchemaTestsMixin(object):
         """
         Technically, all the spec says is they SHOULD have elements, not MUST.
 
+        (As of Draft 6. Previous drafts do say MUST).
+
         See #529.
         """
-        self.Validator.check_schema({"enum": []})
+        if self.Validator in {
+            validators.Draft3Validator,
+            validators.Draft4Validator,
+        }:
+            with self.assertRaises(exceptions.SchemaError):
+                self.Validator.check_schema({"enum": []})
+        else:
+            self.Validator.check_schema({"enum": []})
 
     def test_enum_allows_non_unique_items(self):
         """
         Technically, all the spec says is they SHOULD be unique, not MUST.
 
+        (As of Draft 6. Previous drafts do say MUST).
+
         See #529.
         """
-        self.Validator.check_schema({"enum": [12, 12]})
+        if self.Validator in {
+            validators.Draft3Validator,
+            validators.Draft4Validator,
+        }:
+            with self.assertRaises(exceptions.SchemaError):
+                self.Validator.check_schema({"enum": [12, 12]})
+        else:
+            self.Validator.check_schema({"enum": [12, 12]})
+
+    def test_schema_with_invalid_regex(self):
+        with self.assertRaises(exceptions.SchemaError):
+            self.Validator.check_schema({"pattern": "*notaregex"})
+
+    def test_schema_with_invalid_regex_with_disabled_format_validation(self):
+        self.Validator.check_schema(
+            {"pattern": "*notaregex"},
+            format_checker=None,
+        )
 
 
 class ValidatorTestMixin(MetaSchemaTestsMixin, object):
@@ -1485,10 +1564,11 @@ class ValidatorTestMixin(MetaSchemaTestsMixin, object):
         the interim, we haven't broken those users.
         """
 
-        @attr.s
-        class OhNo(self.Validator):
-            foo = attr.ib(factory=lambda: [1, 2, 3])
-            _bar = attr.ib(default=37)
+        with self.assertWarns(DeprecationWarning):
+            @attr.s
+            class OhNo(self.Validator):
+                foo = attr.ib(factory=lambda: [1, 2, 3])
+                _bar = attr.ib(default=37)
 
         validator = OhNo({}, bar=12)
         self.assertEqual(validator.foo, [1, 2, 3])
@@ -1503,7 +1583,7 @@ class ValidatorTestMixin(MetaSchemaTestsMixin, object):
         resolution.
         """
 
-        class LegacyRefResolver(object):
+        class LegacyRefResolver:
             @contextmanager
             def resolving(this, ref):
                 self.assertEqual(ref, "the ref")
@@ -1676,7 +1756,7 @@ class ValidatorTestMixin(MetaSchemaTestsMixin, object):
                 validator.validate(instance)
 
 
-class AntiDraft6LeakMixin(object):
+class AntiDraft6LeakMixin:
     """
     Make sure functionality from draft 6 doesn't leak backwards in time.
     """
@@ -2201,7 +2281,7 @@ def sorted_errors(errors):
 
 
 @attr.s
-class ReallyFakeRequests(object):
+class ReallyFakeRequests:
 
     _responses = attr.ib()
 
@@ -2213,7 +2293,7 @@ class ReallyFakeRequests(object):
 
 
 @attr.s
-class _ReallyFakeJSONResponse(object):
+class _ReallyFakeJSONResponse:
 
     _response = attr.ib()
 

@@ -171,7 +171,7 @@ Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Provides-Extra: time
 Requires-Dist: cachy[msgpack] (>=0.2.0,<0.3.0)
 Requires-Dist: cleo (>=0.6,<0.7)
-Requires-Dist: pendulum (>=1.4,<2.0); (python_version ~= "2.7" and sys_platform == "win32" or python_version in "3.4 3.5") and (extra == "time")
+Requires-Dist: pendulum (>=1.4,<2.0) ; (python_version ~= "2.7" and sys_platform == "win32" or python_version in "3.4 3.5") and (extra == "time")
 Project-URL: Documentation, https://python-poetry.org/docs
 Project-URL: Issue Tracker, https://github.com/python-poetry/poetry/issues
 Project-URL: Repository, https://github.com/python-poetry/poetry
@@ -235,3 +235,22 @@ def test_build_editable_wheel() -> None:
 
             assert "my_package.pth" in namelist
             assert pkg_dir.as_posix() == z.read("my_package.pth").decode().strip()
+
+
+def test_build_wheel_with_metadata_directory() -> None:
+    with temporary_directory() as metadata_tmp_dir, cwd(
+        os.path.join(fixtures, "complete")
+    ):
+        metadata_directory = api.prepare_metadata_for_build_wheel(metadata_tmp_dir)
+
+        with temporary_directory() as wheel_tmp_dir:
+            dist_info_path = Path(metadata_tmp_dir) / metadata_directory
+            filename = api.build_wheel(
+                wheel_tmp_dir, metadata_directory=str(dist_info_path)
+            )
+            validate_wheel_contents(
+                name="my_package",
+                version="1.2.3",
+                path=str(os.path.join(wheel_tmp_dir, filename)),
+                files=["entry_points.txt"],
+            )

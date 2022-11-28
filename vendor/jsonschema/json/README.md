@@ -103,6 +103,8 @@ The precise steps described do not need to be followed exactly, but the results 
 
 To test a specific version:
 
+* For 2019-09 and later published drafts, implementations that are able to detect the draft of each schema via `$schema` SHOULD be configured to do so
+* For draft-07 and earlier, draft-next, and implementations unable to detect via `$schema`, implementations MUST be configured to expect the draft matching the test directory name
 * Load any remote references [described below](additional-assumptions) and configure your implementation to retrieve them via their URIs
 * Walk the filesystem tree for that version's subdirectory and for each `.json` file found:
 
@@ -222,6 +224,7 @@ This suite is being used by:
 ### C++
 
 * [Modern C++ JSON schema validator](https://github.com/pboettch/json-schema-validator)
+* [Valijson](https://github.com/tristanpenman/valijson)
 
 ### Dart
 
@@ -337,3 +340,5 @@ There are some sanity checks in place for testing the test suite. You can run
 them with `bin/jsonschema_suite check` or `tox`. They will be run automatically
 by [GitHub Actions](https://github.com/json-schema-org/JSON-Schema-Test-Suite/actions?query=workflow%3A%22Test+Suite+Sanity+Checking%22)
 as well.
+
+This repository is maintained by the JSON Schema organization, and will be governed by the JSON Schema steering committee (once it exists).

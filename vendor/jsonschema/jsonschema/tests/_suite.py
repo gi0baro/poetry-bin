@@ -36,7 +36,7 @@ def _find_suite():
 
 
 @attr.s(hash=True)
-class Suite(object):
+class Suite:
 
     _root = attr.ib(default=attr.Factory(_find_suite))
 
@@ -63,7 +63,7 @@ class Suite(object):
 
 
 @attr.s(hash=True)
-class Version(object):
+class Version:
 
     _path = attr.ib()
     _remotes = attr.ib()
@@ -140,7 +140,7 @@ class Version(object):
 
 
 @attr.s(hash=True, repr=False)
-class _Test(object):
+class _Test:
 
     version = attr.ib()
 
@@ -191,7 +191,7 @@ class _Test(object):
 
         fn.__name__ = self.method_name
         reason = skip(self)
-        if reason is None:
+        if reason is None or os.environ.get("JSON_SCHEMA_DEBUG", "0") != "0":
             return fn
         elif os.environ.get("JSON_SCHEMA_EXPECTED_FAILURES", "0") != "0":
             return unittest.expectedFailure(fn)

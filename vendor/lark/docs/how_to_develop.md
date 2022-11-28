@@ -7,10 +7,14 @@ There are many ways you can help the project:
 * Write new grammars for Lark's library
 * Write a blog post introducing Lark to your audience
 * Port Lark to another language
-* Help me with code development
+* Help with code development
 
-If you're interested in taking one of these on, let me know and I will provide more details and assist you in the process.
+If you're interested in taking one of these on, contact us on [Gitter](https://gitter.im/lark-parser/Lobby) or [Github Discussion](https://github.com/lark-parser/lark/discussions), and we will provide more details and assist you in the process.
 
+## Code Style
+
+Lark does not follow a predefined code style.
+We accept any code style that makes sense, as long as it's Pythonic and easy to read.
 
 ## Unit Tests
 
@@ -54,15 +58,10 @@ You can also run the tests using pytest:
 pytest tests
 ```
 
-### Code Style
-
-Lark does not follow a predefined code style.
-We accept any code style that makes sense, as long as it's Pythonic and easy to read.
-
 ### Using setup.py
 
 Another way to run the tests is using setup.py:
 
 ```bash
-python setup.py test 
+python setup.py test
 ```

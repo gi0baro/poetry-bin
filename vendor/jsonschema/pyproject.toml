@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -8,7 +8,6 @@ path = "jsonschema/__version__.py"
 [project]
 name = "jsonschema"
 description = "An implementation of JSON Schema validation for Python"
-readme = "README.rst"
 requires-python = ">=3.7"
 license = {text = "MIT"}
 keywords = ["validation", "data validation", "jsonschema", "json"]
@@ -30,7 +29,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 
 dependencies = [
   "attrs>=17.4.0",
@@ -77,6 +76,30 @@ Tidelift = "https://tidelift.com/subscription/pkg/pypi-jsonschema?utm_source=pyp
 Changelog = "https://github.com/python-jsonschema/jsonschema/blob/main/CHANGELOG.rst"
 Source = "https://github.com/python-jsonschema/jsonschema"
 
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/x-rst"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.rst"
+end-before = ".. start cut from PyPI"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.rst"
+start-after = ".. end cut from PyPI\n\n\n"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+text = """
+
+
+Release Information
+-------------------
+
+"""
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "CHANGELOG.rst"
+pattern = "(^v.+?)\nv"
+
 [tool.isort]
 from_first = true
 include_trailing_comma = true
@@ -84,6 +107,7 @@ multi_line_output = 3
 
 [tool.mypy]
 ignore_missing_imports = true
+show_error_codes = true
 
 [tool.pydocstyle]
 match = "(?!(test_|_|compat|cli)).*\\.py"  # see PyCQA/pydocstyle#323

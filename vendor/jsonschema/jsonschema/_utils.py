@@ -39,7 +39,7 @@ class URIDict(MutableMapping):
         return repr(self.store)
 
 
-class Unset(object):
+class Unset:
     """
     An as-of-yet unset attribute or unprovided default parameter.
     """

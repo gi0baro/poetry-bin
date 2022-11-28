@@ -64,17 +64,17 @@ Features
 --------
 
 * Partial support for
-  `Draft 2020-12 <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.Draft202012Validator>`_ and
-  `Draft 2019-09 <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.Draft201909Validator>`_,
+  `Draft 2020-12 <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/validators/#jsonschema.validators.Draft202012Validator>`_ and
+  `Draft 2019-09 <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/validators/#jsonschema.validators.Draft201909Validator>`_,
   except for ``dynamicRef`` / ``recursiveRef`` and ``$vocabulary`` (in-progress).
   Full support for
-  `Draft 7 <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.Draft7Validator>`_,
-  `Draft 6 <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.Draft6Validator>`_,
-  `Draft 4 <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.Draft4Validator>`_
+  `Draft 7 <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/validators/#jsonschema.validators.Draft7Validator>`_,
+  `Draft 6 <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/validators/#jsonschema.validators.Draft6Validator>`_,
+  `Draft 4 <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/validators/#jsonschema.validators.Draft4Validator>`_
   and
-  `Draft 3 <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.Draft3Validator>`_
+  `Draft 3 <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/validators/#jsonschema.validators.Draft3Validator>`_
 
-* `Lazy validation <https://python-jsonschema.readthedocs.io/en/latest/validate/#jsonschema.protocols.Validator.iter_errors>`_
+* `Lazy validation <https://python-jsonschema.readthedocs.io/en/latest/api/jsonschema/protocols/#jsonschema.protocols.Validator.iter_errors>`_
   that can iteratively report *all* validation errors.
 
 * `Programmatic querying <https://python-jsonschema.readthedocs.io/en/latest/errors/>`_
@@ -90,6 +90,25 @@ Installation
 
     $ pip install jsonschema
 
+
+Extras
+======
+
+Two extras are available when installing the package, both currently related to ``format`` validation:
+
+    * ``format``
+    * ``format-nongpl``
+
+They can be used when installing in order to include additional dependencies, e.g.:
+
+.. code-block:: bash
+
+    $ pip install jsonschema'[format]'
+
+Be aware that the mere presence of these dependencies – or even the specification of ``format`` checks in a schema – do *not* activate format checks (as per the specification).
+Please read the `format validation documentation <https://python-jsonschema.readthedocs.io/en/latest/validate/#validating-formats>`_ for further details.
+
+.. start cut from PyPI
 
 Running the Test Suite
 ----------------------
@@ -124,6 +143,8 @@ schemas can be found there.
 
 Otherwise, asking questions on Stack Overflow is another means of
 getting help if you're stuck.
+
+.. end cut from PyPI
 
 
 About

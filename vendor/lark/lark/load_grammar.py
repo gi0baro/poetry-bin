@@ -1052,6 +1052,8 @@ def _make_rule_tuple(modifiers_tree, name, params, priority_tree, expansions):
     if modifiers_tree.children:
         m ,= modifiers_tree.children
         expand1 = '?' in m
+        if expand1 and name.startswith('_'):
+            raise GrammarError("Inlined rules (_rule) cannot use the ?rule modifier.")
         keep_all_tokens = '!' in m
     else:
         keep_all_tokens = False
@@ -1314,7 +1316,7 @@ class GrammarBuilder:
             except IOError:
                 continue
             else:
-                h = hashlib.md5(text.encode('utf8')).hexdigest()
+                h = md5_digest(text)
                 if self.used_files.get(joined_path, h) != h:
                     raise RuntimeError("Grammar file was changed during importing")
                 self.used_files[joined_path] = h
@@ -1393,7 +1395,7 @@ def verify_used_files(file_hashes):
         if text is None: # We don't know how to load the path. ignore it.
             continue
 
-        current = hashlib.md5(text.encode()).hexdigest()
+        current = md5_digest(text)
         if old != current:
             logger.info("File %r changed, rebuilding Parser" % path)
             return False
@@ -1409,3 +1411,15 @@ def load_grammar(grammar, source, import_paths, global_keep_all_tokens):
     builder = GrammarBuilder(global_keep_all_tokens, import_paths)
     builder.load_grammar(grammar, source)
     return builder.build(), builder.used_files
+
+
+def md5_digest(s: str) -> str:
+    """Get the md5 digest of a string
+
+    Supports the `usedforsecurity` argument for Python 3.9+ to allow running on
+    a FIPS-enabled system.
+    """
+    if sys.version_info >= (3, 9):
+        return hashlib.md5(s.encode('utf8'), usedforsecurity=False).hexdigest()
+    else:
+        return hashlib.md5(s.encode('utf8')).hexdigest()

@@ -1,6 +1,9 @@
 from unittest import TestCase
+import importlib
+import subprocess
+import sys
 
-from jsonschema import validators
+from jsonschema import FormatChecker, validators
 
 
 class TestDeprecations(TestCase):
@@ -121,3 +124,170 @@ class TestDeprecations(TestCase):
                 "Passing a schema to Validator.iter_errors is deprecated ",
             ),
         )
+
+    def test_Validator_subclassing(self):
+        """
+        As of v4.12.0, subclassing a validator class produces an explicit
+        deprecation warning.
+
+        This was never intended to be public API (and some comments over the
+        years in issues said so, but obviously that's not a great way to make
+        sure it's followed).
+
+        A future version will explicitly raise an error.
+        """
+
+        with self.assertWarns(DeprecationWarning) as w:
+            class Subclass(validators.Draft202012Validator):
+                pass
+
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith("Subclassing validator classes is "),
+        )
+
+        with self.assertWarns(DeprecationWarning) as w:
+            class AnotherSubclass(validators.create(meta_schema={})):
+                pass
+
+    def test_FormatChecker_cls_checks(self):
+        """
+        As of v4.14.0, FormatChecker.cls_checks is deprecated without
+        replacement.
+        """
+
+        self.addCleanup(FormatChecker.checkers.pop, "boom", None)
+
+        with self.assertWarns(DeprecationWarning) as w:
+            FormatChecker.cls_checks("boom")
+
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith("FormatChecker.cls_checks "),
+        )
+
+    def test_draftN_format_checker(self):
+        """
+        As of v4.16.0, accessing jsonschema.draftn_format_checker is deprecated
+        in favor of Validator.FORMAT_CHECKER.
+        """
+
+        with self.assertWarns(DeprecationWarning) as w:
+            from jsonschema import draft202012_format_checker  # noqa
+
+        self.assertIs(
+            draft202012_format_checker,
+            validators.Draft202012Validator.FORMAT_CHECKER,
+        )
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "Accessing jsonschema.draft202012_format_checker is ",
+            ),
+            msg=w.warning,
+        )
+
+        with self.assertWarns(DeprecationWarning) as w:
+            from jsonschema import draft201909_format_checker  # noqa
+
+        self.assertIs(
+            draft201909_format_checker,
+            validators.Draft201909Validator.FORMAT_CHECKER,
+        )
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "Accessing jsonschema.draft201909_format_checker is ",
+            ),
+            msg=w.warning,
+        )
+
+        with self.assertWarns(DeprecationWarning) as w:
+            from jsonschema import draft7_format_checker  # noqa
+
+        self.assertIs(
+            draft7_format_checker,
+            validators.Draft7Validator.FORMAT_CHECKER,
+        )
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "Accessing jsonschema.draft7_format_checker is ",
+            ),
+            msg=w.warning,
+        )
+
+        with self.assertWarns(DeprecationWarning) as w:
+            from jsonschema import draft6_format_checker  # noqa
+
+        self.assertIs(
+            draft6_format_checker,
+            validators.Draft6Validator.FORMAT_CHECKER,
+        )
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "Accessing jsonschema.draft6_format_checker is ",
+            ),
+            msg=w.warning,
+        )
+
+        with self.assertWarns(DeprecationWarning) as w:
+            from jsonschema import draft4_format_checker  # noqa
+
+        self.assertIs(
+            draft4_format_checker,
+            validators.Draft4Validator.FORMAT_CHECKER,
+        )
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "Accessing jsonschema.draft4_format_checker is ",
+            ),
+            msg=w.warning,
+        )
+
+        with self.assertWarns(DeprecationWarning) as w:
+            from jsonschema import draft3_format_checker  # noqa
+
+        self.assertIs(
+            draft3_format_checker,
+            validators.Draft3Validator.FORMAT_CHECKER,
+        )
+        self.assertEqual(w.filename, __file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "Accessing jsonschema.draft3_format_checker is ",
+            ),
+            msg=w.warning,
+        )
+
+        with self.assertRaises(ImportError):
+            from jsonschema import draft1234_format_checker  # noqa
+
+    def test_import_cli(self):
+        """
+        As of v4.17.0, importing jsonschema.cli is deprecated.
+        """
+
+        with self.assertWarns(DeprecationWarning) as w:
+            import jsonschema.cli
+            importlib.reload(jsonschema.cli)
+
+        self.assertEqual(w.filename, importlib.__file__)
+        self.assertTrue(
+            str(w.warning).startswith(
+                "The jsonschema CLI is deprecated and will be removed ",
+            ),
+        )
+
+    def test_cli(self):
+        """
+        As of v4.17.0, the jsonschema CLI is deprecated.
+        """
+
+        process = subprocess.run(
+            [sys.executable, "-m", "jsonschema"],
+            capture_output=True,
+        )
+        self.assertIn(b"The jsonschema CLI is deprecated ", process.stderr)
