@@ -9,7 +9,7 @@ The aim is to have a Poetry instance fully independent of the local Python envir
 Due to its nature, `poetry-bin` has some key differences compared to the "vanilla version", specifically:
 
 - `self` commands are dropped
-- 1.2 plugins are not supported (yet?). The only included plugin is the `export` one
+- Plugins are not supported (yet?). The only included plugin is the `export` one
 - the selection of the Python interpreter to use is slightly different, as it won't use `sys.executable` to make decisions
 
 ## Installation
