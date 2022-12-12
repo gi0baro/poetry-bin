@@ -13,7 +13,7 @@ from cleo.testers.command_tester import CommandTester
 from packaging.utils import canonicalize_name
 
 from poetry.console.commands.init import InitCommand
-from poetry.repositories import Pool
+from poetry.repositories import RepositoryPool
 from poetry.utils._compat import decode
 from tests.helpers import PoetryTestApplication
 from tests.helpers import get_package
@@ -46,7 +46,8 @@ def source_dir(tmp_path: Path) -> Iterator[Path]:
 def patches(mocker: MockerFixture, source_dir: Path, repo: TestRepository) -> None:
     mocker.patch("pathlib.Path.cwd", return_value=source_dir)
     mocker.patch(
-        "poetry.console.commands.init.InitCommand._get_pool", return_value=Pool([repo])
+        "poetry.console.commands.init.InitCommand._get_pool",
+        return_value=RepositoryPool([repo]),
     )
 
 
@@ -1005,3 +1006,54 @@ def test__validate_package_valid(name: str | None):
 def test__validate_package_invalid(name: str):
     with pytest.raises(ValueError):
         assert InitCommand._validate_package(name)
+
+
+@pytest.mark.parametrize(
+    "package_name, include",
+    (
+        ("mypackage", None),
+        ("my-package", "my_package"),
+        ("my.package", "my"),
+        ("my-awesome-package", "my_awesome_package"),
+        ("my.awesome.package", "my"),
+    ),
+)
+def test_package_include(
+    tester: CommandTester,
+    package_name: str,
+    include: str | None,
+):
+    tester.execute(
+        inputs="\n".join(
+            (
+                package_name,
+                "",  # Version
+                "",  # Description
+                "poetry",  # Author
+                "",  # License
+                "^3.10",  # Python
+                "n",  # Interactive packages
+                "n",  # Interactive dev packages
+                "\n",  # Generate
+            ),
+        ),
+    )
+
+    if include is None:
+        packages = ""
+    else:
+        packages = f'packages = [{{include = "{include}"}}]\n'
+
+    expected = (
+        f"[tool.poetry]\n"
+        f'name = "{package_name.replace(".", "-")}"\n'  # canonicalized
+        f'version = "0.1.0"\n'
+        f'description = ""\n'
+        f'authors = ["poetry"]\n'
+        f'readme = "README.md"\n'
+        f"{packages}"  # This line is optional. Thus no newline here.
+        f"\n"
+        f"[tool.poetry.dependencies]\n"
+        f'python = "^3.10"\n'
+    )
+    assert expected in tester.io.fetch_output()

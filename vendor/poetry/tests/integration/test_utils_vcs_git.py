@@ -16,7 +16,7 @@ from dulwich.config import ConfigFile
 from dulwich.repo import Repo
 from poetry.core.pyproject.toml import PyProjectTOML
 
-from poetry.console.exceptions import PoetrySimpleConsoleException
+from poetry.console.exceptions import PoetryConsoleError
 from poetry.utils.authenticator import Authenticator
 from poetry.vcs.git import Git
 from poetry.vcs.git.backend import GitRefSpec
@@ -111,6 +111,13 @@ def remote_default_branch(remote_default_ref: bytes) -> str:
     return remote_default_ref.decode("utf-8").replace("refs/heads/", "")
 
 
+# Regression test for https://github.com/python-poetry/poetry/issues/6722
+def test_use_system_git_client_from_environment_variables():
+    os.environ["POETRY_EXPERIMENTAL_SYSTEM_GIT_CLIENT"] = "true"
+
+    assert Git.is_using_legacy_client()
+
+
 def test_git_local_info(
     source_url: str, remote_refs: FetchPackResult, remote_default_ref: bytes
 ) -> None:
@@ -139,7 +146,7 @@ def test_git_clone_default_branch_head(
 def test_git_clone_fails_for_non_existent_branch(source_url: str):
     branch = uuid.uuid4().hex
 
-    with pytest.raises(PoetrySimpleConsoleException) as e:
+    with pytest.raises(PoetryConsoleError) as e:
         Git.clone(url=source_url, branch=branch)
 
     assert f"Failed to clone {source_url} at '{branch}'" in str(e.value)
@@ -148,7 +155,7 @@ def test_git_clone_fails_for_non_existent_branch(source_url: str):
 def test_git_clone_fails_for_non_existent_revision(source_url: str):
     revision = sha1(uuid.uuid4().bytes).hexdigest()
 
-    with pytest.raises(PoetrySimpleConsoleException) as e:
+    with pytest.raises(PoetryConsoleError) as e:
         Git.clone(url=source_url, revision=revision)
 
     assert f"Failed to clone {source_url} at '{revision}'" in str(e.value)

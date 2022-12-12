@@ -6,7 +6,22 @@ from contextlib import suppress
 
 import importlib_metadata as metadata
 
-from functools import cached_property
+
+# TODO: use try/except ImportError when
+# https://github.com/python/mypy/issues/1393 is fixed
+
+if sys.version_info < (3, 11):
+    # compatibility for python <3.11
+    import tomli as tomllib
+else:
+    import tomllib  # nopycln: import
+
+
+if sys.version_info < (3, 8):
+    # compatibility for python <3.8
+    from backports.cached_property import cached_property
+else:
+    from functools import cached_property
 
 WINDOWS = sys.platform == "win32"
 
@@ -56,4 +71,5 @@ __all__ = [
     "list_to_shell_command",
     "metadata",
     "to_str",
+    "tomllib",
 ]

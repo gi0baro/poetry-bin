@@ -19,8 +19,8 @@ from poetry.factory import Factory
 from poetry.inspection.info import PackageInfo
 from poetry.packages import DependencyPackage
 from poetry.puzzle.provider import Provider
-from poetry.repositories.pool import Pool
 from poetry.repositories.repository import Repository
+from poetry.repositories.repository_pool import RepositoryPool
 from poetry.utils.env import EnvCommandError
 from poetry.utils.env import MockEnv as BaseMockEnv
 from tests.helpers import get_dependency
@@ -49,15 +49,15 @@ def repository() -> Repository:
 
 
 @pytest.fixture
-def pool(repository: Repository) -> Pool:
-    pool = Pool()
+def pool(repository: Repository) -> RepositoryPool:
+    pool = RepositoryPool()
     pool.add_repository(repository)
 
     return pool
 
 
 @pytest.fixture
-def provider(root: ProjectPackage, pool: Pool) -> Provider:
+def provider(root: ProjectPackage, pool: RepositoryPool) -> Provider:
     return Provider(root, pool, NullIO())
 
 
@@ -622,6 +622,29 @@ def test_search_for_file_wheel_with_extras(provider: Provider):
     }
 
 
+def test_complete_package_does_not_merge_different_source_names(
+    provider: Provider, root: ProjectPackage
+) -> None:
+    foo_source_1 = get_dependency("foo")
+    foo_source_1.source_name = "source_1"
+    foo_source_2 = get_dependency("foo")
+    foo_source_2.source_name = "source_2"
+
+    root.add_dependency(foo_source_1)
+    root.add_dependency(foo_source_2)
+
+    complete_package = provider.complete_package(
+        DependencyPackage(root.to_dependency(), root)
+    )
+
+    requires = complete_package.package.all_requires
+    assert len(requires) == 2
+    assert {requires[0].source_name, requires[1].source_name} == {
+        "source_1",
+        "source_2",
+    }
+
+
 def test_complete_package_preserves_source_type(
     provider: Provider, root: ProjectPackage
 ) -> None:
@@ -688,3 +711,53 @@ def test_complete_package_preserves_source_type_with_subdirectories(
         dependency_one_copy.to_pep_508(),
         dependency_two.to_pep_508(),
     }
+
+
+@pytest.mark.parametrize("source_name", [None, "repo"])
+def test_complete_package_with_extras_preserves_source_name(
+    provider: Provider, repository: Repository, source_name: str | None
+) -> None:
+    package_a = Package("A", "1.0")
+    package_b = Package("B", "1.0")
+    dep = get_dependency("B", "^1.0", optional=True)
+    package_a.add_dependency(dep)
+    package_a.extras = {"foo": [dep]}
+    repository.add_package(package_a)
+    repository.add_package(package_b)
+
+    dependency = Dependency("A", "1.0", extras=["foo"])
+    if source_name:
+        dependency.source_name = source_name
+
+    complete_package = provider.complete_package(
+        DependencyPackage(dependency, package_a)
+    )
+
+    requires = complete_package.package.all_requires
+    assert len(requires) == 2
+    assert requires[0].name == "a"
+    assert requires[0].source_name == source_name
+    assert requires[1].name == "b"
+    assert requires[1].source_name is None
+
+
+@pytest.mark.parametrize("with_extra", [False, True])
+def test_complete_package_fetches_optional_vcs_dependency_only_if_requested(
+    provider: Provider, repository: Repository, mocker: MockerFixture, with_extra: bool
+):
+    optional_vcs_dependency = Factory.create_dependency(
+        "demo", {"git": "https://github.com/demo/demo.git", "optional": True}
+    )
+    package = Package("A", "1.0", features=["foo"] if with_extra else [])
+    package.add_dependency(optional_vcs_dependency)
+    package.extras["foo"] = [optional_vcs_dependency]
+    repository.add_package(package)
+
+    spy = mocker.spy(provider, "_search_for_vcs")
+
+    provider.complete_package(DependencyPackage(package.to_dependency(), package))
+
+    if with_extra:
+        spy.assert_called()
+    else:
+        spy.assert_not_called()

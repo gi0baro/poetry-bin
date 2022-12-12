@@ -8,18 +8,17 @@ from packaging.utils import canonicalize_name
 
 from poetry.config.config import Config
 from poetry.console.commands.command import Command
+from poetry.utils.cache import FileCache
 
 
 class CacheClearCommand(Command):
     name = "cache clear"
-    description = "Clears Poetry's cache."
+    description = "Clears a Poetry cache by name."
 
     arguments = [argument("cache", description="The name of the cache to clear.")]
     options = [option("all", description="Clear all entries in the cache.")]
 
     def handle(self) -> int:
-        from cachy import CacheManager
-
         cache = self.argument("cache")
 
         parts = cache.split(":")
@@ -33,13 +32,7 @@ class CacheClearCommand(Command):
         except ValueError:
             raise ValueError(f"{root} is not a valid repository cache")
 
-        cache = CacheManager(
-            {
-                "default": parts[0],
-                "serializer": "json",
-                "stores": {parts[0]: {"driver": "file", "path": str(cache_dir)}},
-            }
-        )
+        cache = FileCache(cache_dir)
 
         if len(parts) == 1:
             if not self.option("all"):
@@ -47,7 +40,7 @@ class CacheClearCommand(Command):
                     f"Add the --all option if you want to clear all {parts[0]} caches"
                 )
 
-            if not os.path.exists(cache_dir):
+            if not cache_dir.exists():
                 self.line(f"No cache entries for {parts[0]}")
                 return 0
 

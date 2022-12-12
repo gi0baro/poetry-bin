@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import io
 import os
 import shutil
 import stat
@@ -12,13 +14,13 @@ from typing import TYPE_CHECKING
 from typing import Any
 from typing import Iterator
 from typing import Mapping
-from typing import cast
 
 from poetry.utils.constants import REQUESTS_TIMEOUT
 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from io import BufferedWriter
 
     from poetry.core.packages.package import Package
     from requests import Session
@@ -34,6 +36,24 @@ def directory(path: Path) -> Iterator[Path]:
         yield path
     finally:
         os.chdir(cwd)
+
+
+@contextmanager
+def atomic_open(filename: str | os.PathLike[str]) -> Iterator[BufferedWriter]:
+    """
+    write a file to the disk in an atomic fashion
+
+    Taken from requests.utils
+    (https://github.com/psf/requests/blob/7104ad4b135daab0ed19d8e41bd469874702342b/requests/utils.py#L296)
+    """
+    tmp_descriptor, tmp_name = tempfile.mkstemp(dir=os.path.dirname(filename))
+    try:
+        with os.fdopen(tmp_descriptor, "wb") as tmp_handler:
+            yield tmp_handler
+        os.replace(tmp_name, filename)
+    except BaseException:
+        os.remove(tmp_name)
+        raise
 
 
 def _on_rm_error(func: Callable[[str], None], path: str, exc_info: Exception) -> None:
@@ -170,7 +190,8 @@ def _get_win_folder_from_registry(csidl_name: str) -> str:
     )
     dir, type = _winreg.QueryValueEx(key, shell_folder_name)
 
-    return cast(str, dir)
+    assert isinstance(dir, str)
+    return dir
 
 
 def _get_win_folder_with_ctypes(csidl_name: str) -> str:
@@ -233,3 +254,12 @@ def get_real_windows_path(path: str | Path) -> Path:
         path = path.resolve()
 
     return path
+
+
+def get_file_hash(path: Path, hash_name: str = "sha256") -> str:
+    h = hashlib.new(hash_name)
+    with path.open("rb") as fp:
+        for content in iter(lambda: fp.read(io.DEFAULT_BUFFER_SIZE), b""):
+            h.update(content)
+
+    return h.hexdigest()

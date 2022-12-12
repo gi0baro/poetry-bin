@@ -19,6 +19,7 @@ from poetry.core.packages.package import Package
 from poetry.core.packages.project_package import ProjectPackage
 
 from poetry.factory import Factory
+from poetry.packages.locker import GENERATED_COMMENT
 from poetry.packages.locker import Locker
 from tests.helpers import get_dependency
 from tests.helpers import get_package
@@ -93,7 +94,9 @@ def test_lock_file_data_is_ordered(locker: Locker, root: ProjectPackage):
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
 
-    expected = """\
+    expected = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "A"
 version = "1.0.0"
@@ -101,6 +104,10 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = [
+    {{file = "bar", hash = "123"}},
+    {{file = "foo", hash = "456"}},
+]
 
 [package.dependencies]
 B = "^1.0"
@@ -112,6 +119,9 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = [
+    {{file = "baz", hash = "345"}},
+]
 
 [[package]]
 name = "B"
@@ -120,6 +130,7 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [[package]]
 name = "git-package"
@@ -128,6 +139,7 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 develop = false
 
 [package.source]
@@ -143,6 +155,7 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 develop = false
 
 [package.source]
@@ -159,6 +172,7 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.source]
 type = "url"
@@ -171,33 +185,25 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.source]
 type = "url"
 url = "https://example.org/url-package-1.0-cp39-win_amd64.whl"
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = [
-    {file = "bar", hash = "123"},
-    {file = "foo", hash = "456"},
-    {file = "baz", hash = "345"},
-]
-B = []
-git-package = []
-git-package-subdir = []
-url-package = []
-"""
+"""  # noqa: E800
 
     assert content == expected
 
 
 def test_locker_properly_loads_extras(locker: Locker):
-    content = """\
+    content = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "cachecontrol"
 version = "0.12.5"
@@ -205,6 +211,7 @@ description = "httplib2 caching for requests"
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+files = []
 
 [package.dependencies]
 msgpack = "*"
@@ -219,15 +226,14 @@ filecache = ["lockfile (>=0.9)"]
 redis = ["redis (>=2.10.5)"]
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "~2.7 || ^3.4"
 content-hash = "c3d07fca33fba542ef2b2a4d75bf5b48d892d21a830e2ad9c952ba5123a52f77"
+"""  # noqa: E800
 
-[metadata.files]
-cachecontrol = []
-"""
-
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     packages = locker.locked_repository().packages
 
@@ -242,7 +248,9 @@ cachecontrol = []
 
 
 def test_locker_properly_loads_nested_extras(locker: Locker):
-    content = """\
+    content = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "a"
 version = "1.0"
@@ -250,9 +258,10 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.dependencies]
-b = {version = "^1.0", optional = true, extras = "c"}
+b = {{version = "^1.0", optional = true, extras = "c"}}
 
 [package.extras]
 b = ["b[c] (>=1.0,<2.0)"]
@@ -264,9 +273,10 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.dependencies]
-c = {version = "^1.0", optional = true}
+c = {{version = "^1.0", optional = true}}
 
 [package.extras]
 c = ["c (>=1.0,<2.0)"]
@@ -278,19 +288,17 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [metadata]
 python-versions = "*"
-lock-version = "1.1"
+lock-version = "2.0"
 content-hash = "123456789"
+"""  # noqa: E800
 
-[metadata.files]
-"a" = []
-"b" = []
-"c" = []
-"""
-
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     repository = locker.locked_repository()
     assert len(repository.packages) == 3
@@ -322,7 +330,9 @@ content-hash = "123456789"
 
 
 def test_locker_properly_loads_extras_legacy(locker: Locker):
-    content = """\
+    content = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "a"
 version = "1.0"
@@ -330,9 +340,10 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.dependencies]
-b = {version = "^1.0", optional = true}
+b = {{version = "^1.0", optional = true}}
 
 [package.extras]
 b = ["b (^1.0)"]
@@ -344,18 +355,17 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [metadata]
 python-versions = "*"
-lock-version = "1.1"
+lock-version = "2.0"
 content-hash = "123456789"
+"""  # noqa: E800
 
-[metadata.files]
-"a" = []
-"b" = []
-"""
-
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     repository = locker.locked_repository()
     assert len(repository.packages) == 2
@@ -381,6 +391,7 @@ category = "main"
 optional = false
 python-versions = "*"
 develop = false
+files = []
 
 [package.source]
 type = "git"
@@ -390,14 +401,13 @@ resolved_reference = "123456"
 subdirectory = "subdir"
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-git-package-subdir = []
 """
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     repository = locker.locked_repository()
     assert len(repository.packages) == 1
@@ -493,7 +503,9 @@ demo = [
     {file = "demo-1.0-py3-none-any.whl", hash = "sha256"},
 ]
 """
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     repository = locker.locked_repository()
     assert len(repository.packages) == 5
@@ -532,22 +544,23 @@ def test_lock_packages_with_null_description(locker: Locker, root: ProjectPackag
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
 
-    expected = """[[package]]
+    expected = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
 
     assert content == expected
 
@@ -563,31 +576,32 @@ def test_lock_file_should_not_have_mixed_types(locker: Locker, root: ProjectPack
 
     locker.set_lock_data(root, [package_a])
 
-    expected = """[[package]]
+    expected = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.dependencies]
 B = [
-    {version = "^1.0.0"},
-    {version = ">=1.0.0", optional = true},
+    {{version = "^1.0.0"}},
+    {{version = ">=1.0.0", optional = true}},
 ]
 
 [package.extras]
 foo = ["B (>=1.0.0)"]
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
 
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
@@ -596,13 +610,17 @@ A = []
 
 
 def test_reading_lock_file_should_raise_an_error_on_invalid_data(locker: Locker):
-    content = """[[package]]
+    content = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.extras]
 foo = ["bar"]
@@ -611,13 +629,10 @@ foo = ["bar"]
 foo = ["bar"]
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
     with locker.lock.open("w", encoding="utf-8") as f:
         f.write(content)
 
@@ -644,13 +659,17 @@ def test_locking_legacy_repository_package_should_include_source_section(
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
 
-    expected = """[[package]]
+    expected = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.source]
 type = "legacy"
@@ -658,13 +677,10 @@ url = "https://foo.bar"
 reference = "legacy"
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
 
     assert content == expected
 
@@ -678,12 +694,12 @@ def test_locker_should_emit_warnings_if_lock_version_is_newer_but_allowed(
 lock-version = "{version}"
 python-versions = "~2.7 || ^3.4"
 content-hash = "c3d07fca33fba542ef2b2a4d75bf5b48d892d21a830e2ad9c952ba5123a52f77"
-
-[metadata.files]
 """
     caplog.set_level(logging.WARNING, logger="poetry.packages.locker")
 
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     _ = locker.lock_data
 
@@ -700,58 +716,22 @@ regenerate the lock file with the `poetry lock` command.\
     assert record.message == expected
 
 
-def test_locker_can_read_2_0_lockfile_because_backported(
-    locker: Locker, caplog: LogCaptureFixture
-):
-    content = """\
-[[package]]
-name = "demo"
-version = "1.0"
-description = ""
-category = "main"
-optional = false
-python-versions = "*"
-develop = false
-files = [
-    {file = "demo-1.0-cp39-win_amd64.whl", hash = "sha256"},
-    {file = "demo-1.0.tar.gz", hash = "sha256"},
-    {file = "demo-1.0-py3-none-any.whl", hash = "sha256"},
-]
-
-[metadata]
-lock-version = "2.0"
-python-versions = "~2.7 || ^3.4"
-content-hash = "c3d07fca33fba542ef2b2a4d75bf5b48d892d21a830e2ad9c952ba5123a52f77"
-"""
-    caplog.set_level(logging.WARNING, logger="poetry.packages.locker")
-
-    locker.lock.write(tomlkit.parse(content))
-
-    repository = locker.locked_repository()
-    packages = repository.packages
-    assert len(packages) == 1
-    package = packages[0]
-    assert package.files == [
-        {"file": "demo-1.0-cp39-win_amd64.whl", "hash": "sha256"},
-        {"file": "demo-1.0.tar.gz", "hash": "sha256"},
-        {"file": "demo-1.0-py3-none-any.whl", "hash": "sha256"},
-    ]
-
-
 def test_locker_should_raise_an_error_if_lock_version_is_newer_and_not_allowed(
     locker: Locker, caplog: LogCaptureFixture
 ):
-    content = """\
+    content = f"""\
+# {GENERATED_COMMENT}
+
 [metadata]
-lock-version = "2.1"
+lock-version = "3.0"
 python-versions = "~2.7 || ^3.4"
 content-hash = "c3d07fca33fba542ef2b2a4d75bf5b48d892d21a830e2ad9c952ba5123a52f77"
-
-[metadata.files]
-"""
+"""  # noqa: E800
     caplog.set_level(logging.WARNING, logger="poetry.packages.locker")
 
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     with pytest.raises(RuntimeError, match="^The lock file is not compatible"):
         _ = locker.lock_data
@@ -768,25 +748,26 @@ def test_extras_dependencies_are_ordered(locker: Locker, root: ProjectPackage):
 
     locker.set_lock_data(root, [package_a])
 
-    expected = """[[package]]
+    expected = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.dependencies]
-B = {version = "^1.0.0", extras = ["a", "b", "c"], optional = true}
+B = {{version = "^1.0.0", extras = ["a", "b", "c"], optional = true}}
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
 
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
@@ -797,10 +778,7 @@ A = []
 def test_locker_should_neither_emit_warnings_nor_raise_error_for_lower_compatible_versions(  # noqa: E501
     locker: Locker, caplog: LogCaptureFixture
 ):
-    current_version = Version.parse(Locker._VERSION)
-    older_version = ".".join(
-        [str(current_version.major), str(current_version.minor - 1)]
-    )
+    older_version = "1.1"
     content = f"""\
 [metadata]
 lock-version = "{older_version}"
@@ -811,7 +789,9 @@ content-hash = "c3d07fca33fba542ef2b2a4d75bf5b48d892d21a830e2ad9c952ba5123a52f77
 """
     caplog.set_level(logging.WARNING, logger="poetry.packages.locker")
 
-    locker.lock.write(tomlkit.parse(content))
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
     _ = locker.lock_data
 
@@ -858,29 +838,30 @@ def test_locker_dumps_dependency_information_correctly(
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
 
-    expected = """[[package]]
+    expected = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.dependencies]
-B = {path = "project_with_extras", develop = true}
-C = {path = "directory/project_with_transitive_directory_dependencies"}
-D = {path = "distributions/demo-0.1.0.tar.gz"}
-E = {url = "https://python-poetry.org/poetry-1.2.0.tar.gz"}
-F = {git = "https://github.com/python-poetry/poetry.git", branch = "foo"}
+B = {{path = "project_with_extras", develop = true}}
+C = {{path = "directory/project_with_transitive_directory_dependencies"}}
+D = {{path = "distributions/demo-0.1.0.tar.gz"}}
+E = {{url = "https://python-poetry.org/poetry-1.2.0.tar.gz"}}
+F = {{git = "https://github.com/python-poetry/poetry.git", branch = "foo"}}
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
 
     assert content == expected
 
@@ -901,7 +882,9 @@ def test_locker_dumps_subdir(locker: Locker, root: ProjectPackage) -> None:
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
 
-    expected = """\
+    expected = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "git-package-subdir"
 version = "1.2.3"
@@ -909,6 +892,7 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 develop = false
 
 [package.source]
@@ -919,13 +903,10 @@ resolved_reference = "123456"
 subdirectory = "subdir"
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-git-package-subdir = []
-"""
+"""  # noqa: E800
 
     assert content == expected
 
@@ -951,26 +932,27 @@ def test_locker_dumps_dependency_extras_in_correct_order(
     with locker.lock.open(encoding="utf-8") as f:
         content = f.read()
 
-    expected = """[[package]]
+    expected = f"""\
+# {GENERATED_COMMENT}
+
+[[package]]
 name = "A"
 version = "1.0.0"
 description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.extras]
 B = ["first (==1.0.0)", "second (==1.0.0)", "third (==1.0.0)"]
 C = ["first (==1.0.0)", "second (==1.0.0)", "third (==1.0.0)"]
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-A = []
-"""
+"""  # noqa: E800
 
     assert content == expected
 
@@ -978,7 +960,9 @@ A = []
 def test_locked_repository_uses_root_dir_of_package(
     locker: Locker, mocker: MockerFixture
 ):
-    content = """\
+    content = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "lib-a"
 version = "0.1.0"
@@ -987,25 +971,25 @@ category = "main"
 optional = false
 python-versions = "^2.7.9"
 develop = true
+file = []
 
 [package.dependencies]
-lib-b = {path = "../libB", develop = true}
+lib-b = {{path = "../libB", develop = true}}
 
 [package.source]
 type = "directory"
 url = "lib/libA"
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
+"""  # noqa: E800
 
-[metadata.files]
-lib-a = []
-lib-b = []
-"""
+    data = tomlkit.parse(content)
+    with open(locker.lock, "w", encoding="utf-8") as f:
+        f.write(data.as_string())
 
-    locker.lock.write(tomlkit.parse(content))
     create_dependency_patch = mocker.patch(
         "poetry.factory.Factory.create_dependency", autospec=True
     )
@@ -1018,7 +1002,7 @@ lib-b = []
     root_dir = call_kwargs["root_dir"]
     assert root_dir.match("*/lib/libA")
     # relative_to raises an exception if not relative - is_relative_to comes in py3.9
-    assert root_dir.relative_to(locker.lock.path.parent.resolve()) is not None
+    assert root_dir.relative_to(locker.lock.parent.resolve()) is not None
 
 
 @pytest.mark.parametrize(
@@ -1052,7 +1036,7 @@ def test_content_hash_with_legacy_is_compatible(
         relevant_content[key] = local_config.get(key)
 
     locker = locker.__class__(
-        lock=locker.lock.path,
+        lock=locker.lock,
         local_config=local_config,
     )
 
@@ -1119,6 +1103,8 @@ def test_lock_file_resolves_file_url_symlinks(root: ProjectPackage):
                 content = f.read()
 
             expected = f"""\
+# {GENERATED_COMMENT}
+
 [[package]]
 name = "local-package"
 version = "1.2.3"
@@ -1126,6 +1112,7 @@ description = ""
 category = "main"
 optional = false
 python-versions = "*"
+files = []
 
 [package.source]
 type = "file"
@@ -1141,12 +1128,9 @@ reference = "develop"
 resolved_reference = "123456"
 
 [metadata]
-lock-version = "1.1"
+lock-version = "2.0"
 python-versions = "*"
 content-hash = "115cf985d932e9bf5f540555bbdd75decbb62cac81e399375fc19f6277f8c1d8"
-
-[metadata.files]
-local-package = []
-"""
+"""  # noqa: E800
 
             assert content == expected

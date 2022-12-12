@@ -1,27 +1,5 @@
-diff --git a/pyproject.toml b/pyproject.toml
-index 0ffdda19..f64bb704 100644
---- a/pyproject.toml
-+++ b/pyproject.toml
-@@ -44,7 +44,7 @@ generate-setup-file = false
- [tool.poetry.dependencies]
- python = "^3.7"
- 
--poetry-core = "1.3.2"
-+poetry-core = "1.4.0"
- poetry-plugin-export = "^1.1.2"
- "backports.cached-property" = { version = "^1.0.2", python = "<3.8" }
- cachecontrol = { version = "^0.12.9", extras = ["filecache"] }
-@@ -55,7 +55,7 @@ html5lib = "^1.0"
- importlib-metadata = { version = "^4.4", python = "<3.10" }
- jsonschema = "^4.10.0"
- # keyring uses calver, so version is unclamped
--keyring = ">=21.2.0"
-+keyring = "~22.3.0"
- # packaging uses calver, so version is unclamped
- packaging = ">=20.4"
- pexpect = "^4.7.0"
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..bc86c944 100644
+index 13fa08fc..9c73af26 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -41,9 +19,9 @@ index 13fa08fc..bc86c944 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.2.2"
++__version__ = "1.3.1"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
-index e54c679b..b80b18b8 100644
+index 2dd42257..a3a4fb81 100644
 --- a/src/poetry/console/application.py
 +++ b/src/poetry/console/application.py
 @@ -79,13 +79,13 @@ COMMANDS = [
@@ -68,7 +46,7 @@ index e54c679b..b80b18b8 100644
      "source add",
      "source remove",
 diff --git a/src/poetry/console/commands/init.py b/src/poetry/console/commands/init.py
-index e2ebf9cf..ef4c98f1 100644
+index 329afc4d..91af0d43 100644
 --- a/src/poetry/console/commands/init.py
 +++ b/src/poetry/console/commands/init.py
 @@ -75,7 +75,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
@@ -78,9 +56,9 @@ index e2ebf9cf..ef4c98f1 100644
 -        from poetry.utils.env import SystemEnv
 +        from poetry.utils.env import SystemEnv, InterpreterLookup
  
-         pyproject = PyProjectTOML(Path.cwd() / "pyproject.toml")
+         project_path = Path.cwd()
  
-@@ -147,7 +147,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
+@@ -157,7 +157,8 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
  
          python = self.option("python")
          if not python:
@@ -91,7 +69,7 @@ index e2ebf9cf..ef4c98f1 100644
                  str(v) for v in current_env.version_info[:2]
              )
 diff --git a/src/poetry/console/commands/new.py b/src/poetry/console/commands/new.py
-index cde571aa..0a25b2a0 100644
+index 968a3a2a..63d53119 100644
 --- a/src/poetry/console/commands/new.py
 +++ b/src/poetry/console/commands/new.py
 @@ -32,7 +32,7 @@ class NewCommand(Command):
@@ -101,9 +79,9 @@ index cde571aa..0a25b2a0 100644
 -        from poetry.utils.env import SystemEnv
 +        from poetry.utils.env import SystemEnv, InterpreterLookup
  
-         if self.option("src"):
-             layout_cls = layout("src")
-@@ -65,7 +65,8 @@ class NewCommand(Command):
+         if self.io.input.option("directory"):
+             self.line_error(
+@@ -71,7 +71,8 @@ class NewCommand(Command):
              if author_email:
                  author += f" <{author_email}>"
  
@@ -187,34 +165,33 @@ index 228df353..087d01de 100644
  
                  if with_dependencies:
 diff --git a/src/poetry/utils/_compat.py b/src/poetry/utils/_compat.py
-index 9ee8875f..b39ce41a 100644
+index 1a37ad13..0acc552e 100644
 --- a/src/poetry/utils/_compat.py
 +++ b/src/poetry/utils/_compat.py
-@@ -4,20 +4,9 @@ import sys
+@@ -4,6 +4,8 @@ import sys
  
  from contextlib import suppress
  
 +import importlib_metadata as metadata
++
  
--# TODO: use try/except ImportError when
--# https://github.com/python/mypy/issues/1393 is fixed
+ # TODO: use try/except ImportError when
+ # https://github.com/python/mypy/issues/1393 is fixed
+@@ -15,12 +17,6 @@ else:
+     import tomllib  # nopycln: import
+ 
+ 
 -if sys.version_info < (3, 10):
 -    # compatibility for python <3.10
 -    import importlib_metadata as metadata
 -else:
 -    from importlib import metadata
 -
--if sys.version_info < (3, 8):
--    # compatibility for python <3.8
--    from backports.cached_property import cached_property
--else:
--    from functools import cached_property
-+from functools import cached_property
- 
- WINDOWS = sys.platform == "win32"
- 
+ if sys.version_info < (3, 8):
+     # compatibility for python <3.8
+     from backports.cached_property import cached_property
 diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
-index 3a766389..9a159230 100644
+index 74f1ed61..d0cf3cc8 100644
 --- a/src/poetry/utils/env.py
 +++ b/src/poetry/utils/env.py
 @@ -16,6 +16,7 @@ import warnings
@@ -225,7 +202,7 @@ index 3a766389..9a159230 100644
  from pathlib import Path
  from subprocess import CalledProcessError
  from typing import TYPE_CHECKING
-@@ -32,6 +33,7 @@ from packaging.tags import interpreter_version
+@@ -34,6 +35,7 @@ from packaging.tags import interpreter_version
  from packaging.tags import sys_tags
  from poetry.core.constraints.version import Version
  from poetry.core.constraints.version import parse_constraint
@@ -233,7 +210,7 @@ index 3a766389..9a159230 100644
  from poetry.core.toml.file import TOMLFile
  from poetry.core.utils.helpers import temporary_directory
  from virtualenv.seed.wheels.embed import get_embed_wheel
-@@ -46,6 +48,8 @@ from poetry.utils.helpers import is_dir_writable
+@@ -48,6 +50,8 @@ from poetry.utils.helpers import is_dir_writable
  from poetry.utils.helpers import paths_csv
  from poetry.utils.helpers import remove_directory
  
@@ -242,7 +219,7 @@ index 3a766389..9a159230 100644
  
  if TYPE_CHECKING:
      from collections.abc import Iterable
-@@ -59,29 +63,7 @@ if TYPE_CHECKING:
+@@ -61,29 +65,7 @@ if TYPE_CHECKING:
      from poetry.poetry import Poetry
  
  
@@ -273,19 +250,7 @@ index 3a766389..9a159230 100644
  
  
  GET_ENVIRONMENT_INFO = """\
-@@ -660,7 +642,10 @@ class EnvManager:
-         if self._env is not None and not reload:
-             return self._env
- 
--        python_minor = ".".join([str(v) for v in sys.version_info[:2]])
-+        python_minor = (
-+            InterpreterLookup.find()[1] or
-+            ".".join(str(c) for c in sys.version_info[:2])
-+        )
- 
-         venv_path = self._poetry.config.virtualenvs_path
- 
-@@ -861,8 +846,7 @@ class EnvManager:
+@@ -919,8 +901,7 @@ class EnvManager:
              name = self._poetry.package.name
          assert name is not None
  
@@ -295,7 +260,7 @@ index 3a766389..9a159230 100644
          if executable:
              python_patch = decode(
                  subprocess.check_output(
-@@ -875,7 +859,10 @@ class EnvManager:
+@@ -933,7 +914,10 @@ class EnvManager:
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -307,11 +272,11 @@ index 3a766389..9a159230 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -887,53 +874,7 @@ class EnvManager:
+@@ -945,55 +929,7 @@ class EnvManager:
                      self._poetry.package.python_versions, python_patch
                  )
  
--            io.write_error_line(
+-            self._io.write_error_line(
 -                f"<warning>The currently activated Python version {python_patch} is not"
 -                f" supported by the project ({self._poetry.package.python_versions}).\n"
 -                "Trying to find and use a compatible version.</warning> "
@@ -334,8 +299,8 @@ index 3a766389..9a159230 100644
 -
 -                python = "python" + python_to_try
 -
--                if io.is_debug():
--                    io.write_line(f"<debug>Trying {python}</debug>")
+-                if self._io.is_debug():
+-                    self._io.write_error_line(f"<debug>Trying {python}</debug>")
 -
 -                try:
 -                    python_patch = decode(
@@ -354,7 +319,9 @@ index 3a766389..9a159230 100644
 -                    continue
 -
 -                if supported_python.allows(Version.parse(python_patch)):
--                    io.write_line(f"Using <c1>{python}</c1> ({python_patch})")
+-                    self._io.write_error_line(
+-                        f"Using <c1>{python}</c1> ({python_patch})"
+-                    )
 -                    executable = python
 -                    python_minor = ".".join(python_patch.split(".")[:2])
 -                    break
@@ -362,7 +329,7 @@ index 3a766389..9a159230 100644
  
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -990,22 +931,6 @@ class EnvManager:
+@@ -1052,22 +988,6 @@ class EnvManager:
                  prompt=venv_prompt,
              )
  
@@ -385,7 +352,7 @@ index 3a766389..9a159230 100644
          return VirtualEnv(venv)
  
      @classmethod
-@@ -1021,7 +946,8 @@ class EnvManager:
+@@ -1083,7 +1003,8 @@ class EnvManager:
      ) -> virtualenv.run.session.Session:
          if WINDOWS:
              path = get_real_windows_path(path)
@@ -395,7 +362,7 @@ index 3a766389..9a159230 100644
  
          flags = flags or {}
  
-@@ -1050,7 +976,7 @@ class EnvManager:
+@@ -1112,7 +1033,7 @@ class EnvManager:
              "--no-download",
              "--no-periodic-update",
              "--python",
@@ -404,7 +371,7 @@ index 3a766389..9a159230 100644
          ]
  
          if prompt is not None:
-@@ -1114,9 +1040,13 @@ class EnvManager:
+@@ -1176,9 +1097,13 @@ class EnvManager:
          want to retrieve Poetry's custom virtual environment
          (e.g. plugin installation or self update).
          """
@@ -421,7 +388,7 @@ index 3a766389..9a159230 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1545,92 +1475,47 @@ class SystemEnv(Env):
+@@ -1609,92 +1534,47 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -543,7 +510,7 @@ index 3a766389..9a159230 100644
  
      def is_venv(self) -> bool:
          return self._path != self._base
-@@ -1843,11 +1728,101 @@ class NullEnv(SystemEnv):
+@@ -1907,11 +1787,101 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -646,7 +613,7 @@ index 3a766389..9a159230 100644
      def _run(self, cmd: list[str], **kwargs: Any) -> int | str:
          self.executed.append(cmd)
  
-@@ -1993,3 +1968,61 @@ class MockEnv(NullEnv):
+@@ -2069,3 +2039,61 @@ class MockEnv(NullEnv):
  
      def is_venv(self) -> bool:
          return self._is_venv
@@ -1971,10 +1938,10 @@ index e8447a32..00000000
 -    assert_plugin_add_result(tester, expected, "^1.2.3")
 diff --git a/tests/console/commands/self/test_remove_plugins.py b/tests/console/commands/self/test_remove_plugins.py
 deleted file mode 100644
-index 644e5748..00000000
+index 2b988443..00000000
 --- a/tests/console/commands/self/test_remove_plugins.py
 +++ /dev/null
-@@ -1,108 +0,0 @@
+@@ -1,107 +0,0 @@
 -from __future__ import annotations
 -
 -from typing import TYPE_CHECKING
@@ -2032,7 +1999,7 @@ index 644e5748..00000000
 -            "python-versions": "^3.6",
 -            "platform": "*",
 -            "content-hash": "123456789",
--            "hashes": {"poetry-plugin": []},
+-            "files": {"poetry-plugin": []},
 -        },
 -    }
 -    system_pyproject_file.parent.joinpath("poetry.lock").write_text(
@@ -2072,7 +2039,6 @@ index 644e5748..00000000
 -
 -Package operations: 0 installs, 0 updates, 1 removal, 1 skipped
 -
--  • Removing poetry-plugin (1.2.3)
 -  • Removing poetry-plugin (1.2.3)
 -  • Installing poetry ({__version__}): Skipped for the following reason: Already \
 -installed
@@ -2428,10 +2394,10 @@ index 87dfe183..904a11cf 100644
      cleo = get_package_from_repository("cleo", repository)
      assert cleo is not None
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 4dadfb1a..da8bcb69 100644
+index 8df2abb1..18a82484 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
-@@ -220,7 +220,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
+@@ -221,7 +221,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
      )
      mocker.patch(
          "subprocess.Popen.communicate",
@@ -2440,7 +2406,7 @@ index 4dadfb1a..da8bcb69 100644
      )
      m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
  
-@@ -522,7 +522,7 @@ def test_deactivate_non_activated_but_existing(
+@@ -519,7 +519,7 @@ def test_deactivate_non_activated_but_existing(
  
      mocker.patch(
          "subprocess.check_output",
@@ -2448,8 +2414,8 @@ index 4dadfb1a..da8bcb69 100644
 +        side_effect=check_output_wrapper(Version.parse("3.10.5")),
      )
  
-     manager.deactivate(NullIO())
-@@ -562,7 +562,7 @@ def test_deactivate_activated(
+     manager.deactivate()
+@@ -559,7 +559,7 @@ def test_deactivate_activated(
  
      mocker.patch(
          "subprocess.check_output",
@@ -2457,8 +2423,8 @@ index 4dadfb1a..da8bcb69 100644
 +        side_effect=check_output_wrapper(Version.parse("3.10.5")),
      )
  
-     manager.deactivate(NullIO())
-@@ -858,7 +858,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
+     manager.deactivate()
+@@ -992,7 +992,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
      mocker.patch("sys.version_info", (2, 7, 16))
      mocker.patch(
          "subprocess.check_output",
@@ -2467,8 +2433,8 @@ index 4dadfb1a..da8bcb69 100644
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -893,7 +893,16 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
-     venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
+@@ -1027,7 +1027,16 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
+     poetry.package.python_versions = "^3.6"
  
      mocker.patch("sys.version_info", (2, 7, 16))
 -    mocker.patch("subprocess.check_output", side_effect=["3.5.3", "3.9.0"])
@@ -2485,8 +2451,8 @@ index 4dadfb1a..da8bcb69 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -901,15 +910,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
-     manager.create_venv(NullIO())
+@@ -1035,15 +1044,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
+     manager.create_venv()
  
      m.assert_called_with(
 -        config_virtualenvs_path / f"{venv_name}-py3.9",
@@ -2504,7 +2470,7 @@ index 4dadfb1a..da8bcb69 100644
      )
  
  
-@@ -921,7 +930,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
+@@ -1055,7 +1064,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
  
      poetry.package.python_versions = "^4.8"
  
@@ -2513,7 +2479,7 @@ index 4dadfb1a..da8bcb69 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -947,7 +956,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
+@@ -1081,7 +1090,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
  
      poetry.package.python_versions = "^4.8"
  
@@ -2522,11 +2488,8 @@ index 4dadfb1a..da8bcb69 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -981,10 +990,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
-     )
-     venv_name = manager.generate_env_name("simple-project", str(poetry.file.parent))
- 
--    mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
+@@ -1118,7 +1127,7 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
+     mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
      check_output = mocker.patch(
          "subprocess.check_output",
 -        side_effect=check_output_wrapper(Version.parse("3.6.9")),
@@ -2534,9 +2497,9 @@ index 4dadfb1a..da8bcb69 100644
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -992,10 +1000,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
+@@ -1126,10 +1135,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
  
-     manager.create_venv(NullIO())
+     manager.create_venv()
  
 -    assert not check_output.called
      m.assert_called_with(
@@ -2546,7 +2509,7 @@ index 4dadfb1a..da8bcb69 100644
          flags={
              "always-copy": False,
              "system-site-packages": False,
-@@ -1100,7 +1107,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+@@ -1232,7 +1240,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
      )
      mocker.patch(
          "subprocess.Popen.communicate",
@@ -2555,7 +2518,7 @@ index 4dadfb1a..da8bcb69 100644
      )
      m = mocker.patch("poetry.utils.env.EnvManager.build_venv")
  
-@@ -1123,7 +1130,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+@@ -1255,7 +1263,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
  
  
  def test_system_env_has_correct_paths():
@@ -2564,7 +2527,7 @@ index 4dadfb1a..da8bcb69 100644
  
      paths = env.paths
  
-@@ -1133,18 +1140,6 @@ def test_system_env_has_correct_paths():
+@@ -1265,18 +1273,6 @@ def test_system_env_has_correct_paths():
      assert env.site_packages.path == Path(paths["purelib"])
  
  
@@ -2583,7 +2546,7 @@ index 4dadfb1a..da8bcb69 100644
  def test_venv_has_correct_paths(tmp_venv: VirtualEnv):
      paths = tmp_venv.paths
  
-@@ -1392,7 +1387,7 @@ def test_build_environment_called_build_script_specified(
+@@ -1527,7 +1523,7 @@ def test_build_environment_called_build_script_specified(
          assert env == ephemeral_env
          assert env.executed == [
              [
@@ -2592,7 +2555,7 @@ index 4dadfb1a..da8bcb69 100644
                  env.pip_embedded,
                  "install",
                  "--disable-pip-version-check",
-@@ -1446,7 +1441,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
+@@ -1582,7 +1578,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
  
      m.assert_called_with(
          config_virtualenvs_path / f"{venv_name}-py3.7",

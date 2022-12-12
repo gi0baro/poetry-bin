@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import os
 import tempfile
 import urllib.parse
@@ -13,7 +14,7 @@ from poetry.core.constraints.version import Version
 from poetry.core.pyproject.toml import PyProjectTOML
 
 from poetry.installation.base_installer import BaseInstaller
-from poetry.repositories.http import HTTPRepository
+from poetry.repositories.http_repository import HTTPRepository
 from poetry.utils._compat import encode
 from poetry.utils.helpers import remove_directory
 from poetry.utils.pip import pip_install
@@ -24,12 +25,12 @@ if TYPE_CHECKING:
     from poetry.core.masonry.builders.builder import Builder
     from poetry.core.packages.package import Package
 
-    from poetry.repositories.pool import Pool
+    from poetry.repositories.repository_pool import RepositoryPool
     from poetry.utils.env import Env
 
 
 class PipInstaller(BaseInstaller):
-    def __init__(self, env: Env, io: IO, pool: Pool) -> None:
+    def __init__(self, env: Env, io: IO, pool: RepositoryPool) -> None:
         self._env = env
         self._io = io
         self._pool = pool
@@ -45,12 +46,9 @@ class PipInstaller(BaseInstaller):
 
             return
 
-        args = ["install", "--no-deps"]
+        args = ["install", "--no-deps", "--no-input"]
 
-        if (
-            package.source_type not in {"git", "directory", "file", "url"}
-            and package.source_url
-        ):
+        if not package.is_direct_origin() and package.source_url:
             assert package.source_reference is not None
             repository = self._pool.repository(package.source_reference)
             parsed = urllib.parse.urlparse(package.source_url)
@@ -225,56 +223,49 @@ class PipInstaller(BaseInstaller):
 
         pyproject = PyProjectTOML(os.path.join(req, "pyproject.toml"))
 
+        package_poetry = None
         if pyproject.is_poetry_project():
+            with contextlib.suppress(RuntimeError):
+                package_poetry = Factory().create_poetry(pyproject.file.path.parent)
+
+        if package_poetry is not None:
             # Even if there is a build system specified
             # some versions of pip (< 19.0.0) don't understand it
             # so we need to check the version of pip to know
             # if we can rely on the build system
             legacy_pip = self._env.pip_version < Version.from_parts(19, 0, 0)
 
-            try:
-                package_poetry = Factory().create_poetry(pyproject.file.path.parent)
-            except RuntimeError:
-                package_poetry = None
+            builder: Builder
+            if package.develop and not package_poetry.package.build_script:
+                from poetry.masonry.builders.editable import EditableBuilder
 
-            if package_poetry is not None:
-                builder: Builder
-                if package.develop and not package_poetry.package.build_script:
-                    from poetry.masonry.builders.editable import EditableBuilder
+                # This is a Poetry package in editable mode
+                # we can use the EditableBuilder without going through pip
+                # to install it, unless it has a build script.
+                builder = EditableBuilder(package_poetry, self._env, NullIO())
+                builder.build()
 
-                    # This is a Poetry package in editable mode
-                    # we can use the EditableBuilder without going through pip
-                    # to install it, unless it has a build script.
-                    builder = EditableBuilder(package_poetry, self._env, NullIO())
-                    builder.build()
+                return 0
+            elif legacy_pip or package_poetry.package.build_script:
+                from poetry.core.masonry.builders.sdist import SdistBuilder
 
-                    return 0
-                elif legacy_pip or package_poetry.package.build_script:
-                    from poetry.core.masonry.builders.sdist import SdistBuilder
+                # We need to rely on creating a temporary setup.py
+                # file since the version of pip does not support
+                # build-systems
+                # We also need it for non-PEP-517 packages
+                builder = SdistBuilder(package_poetry)
 
-                    # We need to rely on creating a temporary setup.py
-                    # file since the version of pip does not support
-                    # build-systems
-                    # We also need it for non-PEP-517 packages
-                    builder = SdistBuilder(package_poetry)
+                with builder.setup_py():
+                    return pip_install(
+                        path=req,
+                        environment=self._env,
+                        upgrade=True,
+                        editable=package.develop,
+                    )
 
-                    with builder.setup_py():
-                        if package.develop:
-                            return pip_install(
-                                path=req,
-                                environment=self._env,
-                                upgrade=True,
-                                editable=True,
-                            )
-                        return pip_install(
-                            path=req, environment=self._env, deps=False, upgrade=True
-                        )
-
-        if package.develop:
-            return pip_install(
-                path=req, environment=self._env, upgrade=True, editable=True
-            )
-        return pip_install(path=req, environment=self._env, deps=False, upgrade=True)
+        return pip_install(
+            path=req, environment=self._env, upgrade=True, editable=package.develop
+        )
 
     def install_git(self, package: Package) -> None:
         from poetry.core.packages.package import Package

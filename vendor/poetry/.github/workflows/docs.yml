@@ -21,7 +21,7 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
     if: |
-      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'Documentation'))
+      (github.event_name == 'pull_request_target' && contains(github.event.pull_request.labels.*.name, 'impact/docs'))
       || (github.event_name != 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Checkout Website Source
@@ -51,7 +51,7 @@ jobs:
       - name: Fetch Documentation
         run: |
           python -m pip install poetry
-          poetry install --no-dev
+          poetry install --only main
           poetry run python bin/website build --local ./poetry
 
       - name: Install Hugo

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from cleo.io.null_io import NullIO
-from packaging.utils import NormalizedName
 from packaging.utils import canonicalize_name
 
 from poetry.installation.executor import Executor
@@ -11,8 +10,8 @@ from poetry.installation.operations import Install
 from poetry.installation.operations import Uninstall
 from poetry.installation.operations import Update
 from poetry.installation.pip_installer import PipInstaller
-from poetry.repositories import Pool
 from poetry.repositories import Repository
+from poetry.repositories import RepositoryPool
 from poetry.repositories.installed_repository import InstalledRepository
 from poetry.repositories.lockfile_repository import LockfileRepository
 from poetry.utils.extras import get_extra_package_names
@@ -21,9 +20,9 @@ from poetry.utils.helpers import pluralize
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from collections.abc import Sequence
 
     from cleo.io.io import IO
+    from packaging.utils import NormalizedName
     from poetry.core.packages.project_package import ProjectPackage
 
     from poetry.config.config import Config
@@ -40,7 +39,7 @@ class Installer:
         env: Env,
         package: ProjectPackage,
         locker: Locker,
-        pool: Pool,
+        pool: RepositoryPool,
         config: Config,
         installed: Repository | None = None,
         executor: Executor | None = None,
@@ -62,7 +61,7 @@ class Installer:
         self._execute_operations = True
         self._lock = False
 
-        self._whitelist: list[str] = []
+        self._whitelist: list[NormalizedName] = []
 
         self._extras: list[NormalizedName] = []
 
@@ -202,10 +201,16 @@ class Installer:
             self._io,
         )
 
+        # Always re-solve directory dependencies, otherwise we can't determine
+        # if anything has changed (and the lock file contains an invalid version).
+        use_latest = [
+            p.name for p in locked_repository.packages if p.source_type == "directory"
+        ]
+
         with solver.provider.use_source_root(
             source_root=self._env.path.joinpath("src")
         ):
-            ops = solver.solve(use_latest=[]).calculate_operations()
+            ops = solver.solve(use_latest=use_latest).calculate_operations()
 
         lockfile_repo = LockfileRepository()
         self._populate_lockfile_repo(lockfile_repo, ops)
@@ -295,7 +300,7 @@ class Installer:
             )
 
         # We resolve again by only using the lock file
-        pool = Pool(ignore_repository_names=True)
+        pool = RepositoryPool(ignore_repository_names=True)
 
         # Making a new repo containing the packages
         # newly resolved and the ones from the current lock file
@@ -473,7 +478,7 @@ class Installer:
         self._installer.remove(operation.package)
 
     def _populate_lockfile_repo(
-        self, repo: LockfileRepository, ops: Sequence[Operation]
+        self, repo: LockfileRepository, ops: Iterable[Operation]
     ) -> None:
         for op in ops:
             if isinstance(op, Uninstall):
@@ -517,7 +522,7 @@ class Installer:
 
         return ops
 
-    def _filter_operations(self, ops: Sequence[Operation], repo: Repository) -> None:
+    def _filter_operations(self, ops: Iterable[Operation], repo: Repository) -> None:
         extra_packages = self._get_extra_packages(repo)
         for op in ops:
             if isinstance(op, Update):
@@ -532,21 +537,12 @@ class Installer:
                 op.skip("Not needed for the current environment")
                 continue
 
-            if self._update:
-                extras = {}
-                for extra, dependencies in self._package.extras.items():
-                    extras[extra] = [dependency.name for dependency in dependencies]
-            else:
-                extras = {}
-                for extra, deps in self._locker.lock_data.get("extras", {}).items():
-                    extras[extra] = [dep.lower() for dep in deps]
-
             # If a package is optional and not requested
             # in any extra we skip it
             if package.optional and package.name not in extra_packages:
                 op.skip("Not required")
 
-    def _get_extra_packages(self, repo: Repository) -> list[str]:
+    def _get_extra_packages(self, repo: Repository) -> set[NormalizedName]:
         """
         Returns all package names required by extras.
 
@@ -564,7 +560,7 @@ class Installer:
                 for extra, dependencies in raw_extras.items()
             }
 
-        return list(get_extra_package_names(repo.packages, extras, self._extras))
+        return get_extra_package_names(repo.packages, extras, self._extras)
 
     def _get_installer(self) -> BaseInstaller:
         return PipInstaller(self._env, self._io, self._pool)

@@ -206,8 +206,10 @@ class PackageInfo:
             except ValueError:
                 # Likely unable to parse constraint so we skip it
                 logger.warning(
-                    f"Invalid constraint ({req}) found in"
-                    f" {package.name}-{package.version} dependencies, skipping",
+                    "Invalid constraint (%s) found in %s-%s dependencies, skipping",
+                    req,
+                    package.name,
+                    package.version,
                 )
                 continue
 
@@ -591,6 +593,7 @@ def get_pep517_metadata(path: Path) -> PackageInfo:
                 "install",
                 "--disable-pip-version-check",
                 "--ignore-installed",
+                "--no-input",
                 *PEP517_META_BUILD_DEPS,
             )
             venv.run(
