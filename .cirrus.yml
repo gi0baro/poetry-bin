@@ -1,18 +1,18 @@
 env:
   PYOXIDIZER_SYSTEM_RUST: "1"
 
-build_apple_arm_task:
-  only_if: $CIRRUS_BRANCH == 'master'
-  macos_instance:
-    image: ghcr.io/cirruslabs/macos-monterey-xcode:latest
-  setup_script:
-    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.65
-    - brew install python
-    - pip3 install pyoxidizer==0.23.0
-  build_script:
-    - source $HOME/.cargo/env
-    - make build_mac ARCH=aarch64-apple-darwin
-    - make verify_build_mac ARCH=aarch64-apple-darwin
+# build_apple_arm_task:
+#   only_if: $CIRRUS_BRANCH == 'master'
+#   macos_instance:
+#     image: ghcr.io/cirruslabs/macos-monterey-xcode:latest
+#   setup_script:
+#     - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.65
+#     - brew install python
+#     - pip3 install pyoxidizer==0.23.0
+#   build_script:
+#     - source $HOME/.cargo/env
+#     - make build_mac ARCH=aarch64-apple-darwin
+#     - make verify_build_mac ARCH=aarch64-apple-darwin
 
 release_apple_arm_task:
   only_if: $CIRRUS_TAG != ''
