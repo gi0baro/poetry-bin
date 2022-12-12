@@ -37,6 +37,17 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Build and push previous image
+      uses: docker/build-push-action@v2
+      with:
+        context: docker
+        file: docker/Gnu.fixedv.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.2
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          POETRY_VERSION=1.2.2-1
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
       with:
@@ -70,6 +81,17 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Build and push previous image
+      uses: docker/build-push-action@v2
+      with:
+        context: docker
+        file: docker/Alpine.fixedv.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.2
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          POETRY_VERSION=1.2.2-1
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
       with:
@@ -79,71 +101,3 @@ jobs:
         tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
-
-  build-and-push-prev-gnu-image:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    strategy:
-      matrix:
-        python_version: [3.7, 3.8, 3.9, '3.10', '3.11']
-        image_flavor: ['', '-slim']
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Log in to the Container registry
-      uses: docker/login-action@v1
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: docker
-        file: docker/Gnu.fixedv.Dockerfile
-        push: true
-        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.1
-        build-args: |
-          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
-          POETRY_VERSION=1.1.15-1
-
-  build-and-push-prev-musl-image:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
-
-    strategy:
-      matrix:
-        python_version: [3.7, 3.8, 3.9, '3.10', '3.11']
-        image_flavor: ['-alpine']
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Log in to the Container registry
-      uses: docker/login-action@v1
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: docker
-        file: docker/Alpine.fixedv.Dockerfile
-        push: true
-        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.1
-        build-args: |
-          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
-          POETRY_VERSION=1.1.15-1
