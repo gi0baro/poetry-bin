@@ -128,6 +128,29 @@ diff --git a/src/virtualenv/activation/python/activate_this.py b/src/virtualenv/
 similarity index 100%
 rename from src/virtualenv/activation/python/activate_this.py
 rename to src/virtualenv/activation/python/activate_this.py.template
+diff --git a/src/virtualenv/activation/via_template.py b/src/virtualenv/activation/via_template.py
+index f1eef53..7212cf9 100644
+--- a/src/virtualenv/activation/via_template.py
++++ b/src/virtualenv/activation/via_template.py
+@@ -4,17 +4,7 @@ from abc import ABCMeta, abstractmethod
+ 
+ from .activator import Activator
+ 
+-if sys.version_info >= (3, 10) or sys.version_info <= (3, 7):
+-    if sys.version_info >= (3, 10):
+-        from importlib.resources import files
+-    else:
+-        from importlib_resources import files
+-
+-    def read_binary(module_name: str, filename: str) -> bytes:
+-        return (files(module_name) / filename).read_bytes()
+-
+-else:
+-    from importlib.resources import read_binary
++from importlib.resources import read_binary
+ 
+ 
+ class ViaTemplateActivator(Activator, metaclass=ABCMeta):
 diff --git a/src/virtualenv/create/__init__.py b/src/virtualenv/create/__init__.py
 index e69de29..7e40c92 100644
 --- a/src/virtualenv/create/__init__.py
