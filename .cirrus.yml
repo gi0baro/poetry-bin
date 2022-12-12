@@ -18,8 +18,6 @@ release_apple_arm_task:
   only_if: $CIRRUS_TAG != ''
   macos_instance:
     image: ghcr.io/cirruslabs/macos-monterey-xcode:latest
-  build_artifacts:
-    path: "dist/*"
   setup_script:
     - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.65
     - brew install python
@@ -28,3 +26,5 @@ release_apple_arm_task:
     - source $HOME/.cargo/env
     - make build_mac ARCH=aarch64-apple-darwin
     - make pack_mac ARCH=aarch64-apple-darwin BUILD_VERSION=$CIRRUS_TAG
+  binary_artifacts:
+    path: "dist/*"
