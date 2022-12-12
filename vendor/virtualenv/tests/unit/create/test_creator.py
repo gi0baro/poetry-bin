@@ -666,6 +666,7 @@ def test_python_path(monkeypatch, tmp_path, python_path_on):
     ),
 )
 @pytest.mark.usefixtures("session_app_data")
+@pytest.mark.skip("no py2")
 def test_py_pyc_missing(tmp_path, mocker, py, pyc):
     """Ensure that creation can succeed if os.pyc exists (even if os.py has been deleted)"""
     previous = Python2.from_stdlib

@@ -518,6 +518,18 @@ index 0000000..a7a4f30
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
 +__version__ = "20.16.3"
+diff --git a/tests/unit/create/test_creator.py b/tests/unit/create/test_creator.py
+index db323cd..47bb813 100644
+--- a/tests/unit/create/test_creator.py
++++ b/tests/unit/create/test_creator.py
+@@ -666,6 +666,7 @@ def test_python_path(monkeypatch, tmp_path, python_path_on):
+     ),
+ )
+ @pytest.mark.usefixtures("session_app_data")
++@pytest.mark.skip("no py2")
+ def test_py_pyc_missing(tmp_path, mocker, py, pyc):
+     """Ensure that creation can succeed if os.pyc exists (even if os.py has been deleted)"""
+     previous = Python2.from_stdlib
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index 5d36b23..65d5308 100644
 --- a/tests/unit/create/test_interpreters.py
