@@ -96,7 +96,7 @@ def test_virtualenvs_with_spaces_in_their_path_work_as_expected(
     assert venv.run("python", "-V", shell=True).startswith("Python")
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="requires darwin")
+@pytest.mark.skip("no xattr on bin")
 def test_venv_backup_exclusion(tmp_dir: str, manager: EnvManager):
     import xattr
 

@@ -2424,9 +2424,18 @@ index 87dfe183..904a11cf 100644
      cleo = get_package_from_repository("cleo", repository)
      assert cleo is not None
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 8df2abb1..827ed4e0 100644
+index 8df2abb1..3bcb58a1 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
+@@ -96,7 +96,7 @@ def test_virtualenvs_with_spaces_in_their_path_work_as_expected(
+     assert venv.run("python", "-V", shell=True).startswith("Python")
+ 
+ 
+-@pytest.mark.skipif(sys.platform != "darwin", reason="requires darwin")
++@pytest.mark.skip("no xattr on bin")
+ def test_venv_backup_exclusion(tmp_dir: str, manager: EnvManager):
+     import xattr
+ 
 @@ -221,7 +221,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
      )
      mocker.patch(
