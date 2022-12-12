@@ -31,7 +31,6 @@ class Command(BaseCommand):
         from poetry.console.application import Application
 
         application = self.application
-        assert isinstance(application, Application)
         return application
 
     def reset_poetry(self) -> None:

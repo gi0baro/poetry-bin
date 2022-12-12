@@ -45,6 +45,18 @@ index 2dd42257..a3a4fb81 100644
      # Source commands
      "source add",
      "source remove",
+diff --git a/src/poetry/console/commands/command.py b/src/poetry/console/commands/command.py
+index 2aba4e6b..ddba654d 100644
+--- a/src/poetry/console/commands/command.py
++++ b/src/poetry/console/commands/command.py
+@@ -31,7 +31,6 @@ class Command(BaseCommand):
+         from poetry.console.application import Application
+ 
+         application = self.application
+-        assert isinstance(application, Application)
+         return application
+ 
+     def reset_poetry(self) -> None:
 diff --git a/src/poetry/console/commands/init.py b/src/poetry/console/commands/init.py
 index 329afc4d..91af0d43 100644
 --- a/src/poetry/console/commands/init.py
