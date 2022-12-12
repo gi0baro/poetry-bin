@@ -103,10 +103,34 @@ def _id_of(schema):
 
 def _store_schema_list():
     if not _VOCABULARIES:
-        package = _utils.resources.files(__package__)
-        for version in package.joinpath("schemas", "vocabularies").iterdir():
-            for path in version.iterdir():
-                vocabulary = json.loads(path.read_text())
+        from . import __name__
+        items = {
+            "2019-09": [
+                "applicator",
+                "content",
+                "core",
+                "meta-data",
+                "validation"
+            ],
+            "2020-12": [
+                "applicator",
+                "content",
+                "core",
+                "format",
+                "format-annotation",
+                "format-assertion",
+                "meta-data",
+                "unevaluated",
+                "validation"
+            ]
+        }
+        for version, vocabularies in items.items():
+            for vitem in vocabularies:
+                vocabulary = json.loads(
+                    _utils.resources.read_text(
+                        f"{__name__}.schemas.vocabularies.draft{version}", f"{vitem}"
+                    )
+                )
                 _VOCABULARIES.append((vocabulary["$id"], vocabulary))
     return [
         (id, validator.META_SCHEMA) for id, validator in _META_SCHEMAS.items()
