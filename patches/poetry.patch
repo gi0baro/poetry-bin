@@ -2394,7 +2394,7 @@ index 87dfe183..904a11cf 100644
      cleo = get_package_from_repository("cleo", repository)
      assert cleo is not None
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 8df2abb1..18a82484 100644
+index 8df2abb1..827ed4e0 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
 @@ -221,7 +221,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
@@ -2429,17 +2429,25 @@ index 8df2abb1..18a82484 100644
      mocker.patch(
          "subprocess.check_output",
 -        side_effect=check_output_wrapper(Version.parse("3.7.5")),
-+        side_effect=["3.7.5", "3.7.5", "2.7.16", "3.7.5"],
++        side_effect=["3.7.5", "3.7.5"],
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -1027,7 +1027,16 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
+@@ -1002,7 +1002,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
+ 
+     m.assert_called_with(
+         config_virtualenvs_path / f"{venv_name}-py3.7",
+-        executable="python3",
++        executable="python",
+         flags={
+             "always-copy": False,
+             "system-site-packages": False,
+@@ -1027,7 +1027,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
      poetry.package.python_versions = "^3.6"
  
      mocker.patch("sys.version_info", (2, 7, 16))
 -    mocker.patch("subprocess.check_output", side_effect=["3.5.3", "3.9.0"])
 +    mocker.patch("subprocess.check_output", side_effect=[
-+        "3.5.3",
 +        "3.5.3",
 +        "3.5.3",
 +        "3.5.3",
@@ -2451,7 +2459,7 @@ index 8df2abb1..18a82484 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -1035,15 +1044,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
+@@ -1035,15 +1043,15 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
      manager.create_venv()
  
      m.assert_called_with(
@@ -2470,7 +2478,7 @@ index 8df2abb1..18a82484 100644
      )
  
  
-@@ -1055,7 +1064,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
+@@ -1055,7 +1063,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
  
      poetry.package.python_versions = "^4.8"
  
@@ -2479,7 +2487,7 @@ index 8df2abb1..18a82484 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -1081,7 +1090,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
+@@ -1081,7 +1089,7 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
  
      poetry.package.python_versions = "^4.8"
  
@@ -2488,16 +2496,16 @@ index 8df2abb1..18a82484 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -1118,7 +1127,7 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
+@@ -1118,7 +1126,7 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
      mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
      check_output = mocker.patch(
          "subprocess.check_output",
 -        side_effect=check_output_wrapper(Version.parse("3.6.9")),
-+        side_effect=["2.7.16" for _ in range(3)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
++        side_effect=["2.7.16" for _ in range(4)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
      )
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -1126,10 +1135,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
+@@ -1126,10 +1134,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
  
      manager.create_venv()
  
@@ -2509,7 +2517,7 @@ index 8df2abb1..18a82484 100644
          flags={
              "always-copy": False,
              "system-site-packages": False,
-@@ -1232,7 +1240,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+@@ -1232,7 +1239,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
      )
      mocker.patch(
          "subprocess.Popen.communicate",
@@ -2518,7 +2526,7 @@ index 8df2abb1..18a82484 100644
      )
      m = mocker.patch("poetry.utils.env.EnvManager.build_venv")
  
-@@ -1255,7 +1263,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+@@ -1255,7 +1262,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
  
  
  def test_system_env_has_correct_paths():
@@ -2527,7 +2535,7 @@ index 8df2abb1..18a82484 100644
  
      paths = env.paths
  
-@@ -1265,18 +1273,6 @@ def test_system_env_has_correct_paths():
+@@ -1265,18 +1272,6 @@ def test_system_env_has_correct_paths():
      assert env.site_packages.path == Path(paths["purelib"])
  
  
@@ -2546,7 +2554,7 @@ index 8df2abb1..18a82484 100644
  def test_venv_has_correct_paths(tmp_venv: VirtualEnv):
      paths = tmp_venv.paths
  
-@@ -1527,7 +1523,7 @@ def test_build_environment_called_build_script_specified(
+@@ -1527,7 +1522,7 @@ def test_build_environment_called_build_script_specified(
          assert env == ephemeral_env
          assert env.executed == [
              [
@@ -2555,7 +2563,7 @@ index 8df2abb1..18a82484 100644
                  env.pip_embedded,
                  "install",
                  "--disable-pip-version-check",
-@@ -1582,7 +1578,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
+@@ -1582,7 +1577,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
  
      m.assert_called_with(
          config_virtualenvs_path / f"{venv_name}-py3.7",
