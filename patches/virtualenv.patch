@@ -13,13 +13,13 @@ index f8aceb2..837bb1c 100644
  
  *wheel-store*
 diff --git a/setup.cfg b/setup.cfg
-index 8836aba..9e559dc 100644
+index 2b75406..6a018e7 100644
 --- a/setup.cfg
 +++ b/setup.cfg
 @@ -1,5 +1,6 @@
  [metadata]
  name = virtualenv
-+version = 20.16.3
++version = 20.17.1
  description = Virtual Python Environment builder
  long_description = file: README.md
  long_description_content_type = text/markdown
@@ -102,15 +102,15 @@ index 0000000..56d7087
 +
 +setattr(_res_patch_target, "finder", finder)
 diff --git a/src/virtualenv/activation/python/__init__.py b/src/virtualenv/activation/python/__init__.py
-index ad38201..e54a7f6 100644
+index eb83504..27bdc27 100644
 --- a/src/virtualenv/activation/python/__init__.py
 +++ b/src/virtualenv/activation/python/__init__.py
-@@ -8,7 +8,17 @@ from ..via_template import ViaTemplateActivator
+@@ -7,7 +7,17 @@ from ..via_template import ViaTemplateActivator
  
  class PythonActivator(ViaTemplateActivator):
      def templates(self):
--        yield Path("activate_this.py")
-+        yield Path("activate_this.py.template")
+-        yield "activate_this.py"
++        yield "activate_this.py.template"
 +
 +    def _generate(self, replacements, templates, to_folder, creator):
 +        generated = []
@@ -142,7 +142,7 @@ index e69de29..7e40c92 100644
 +    Path(__path__[0])
 +)
 diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
-index a95b6e2..159c8ff 100644
+index 5ea6abe..997bea7 100644
 --- a/src/virtualenv/create/creator.py
 +++ b/src/virtualenv/create/creator.py
 @@ -8,15 +8,17 @@ from ast import literal_eval
@@ -493,7 +493,7 @@ index 1a51d2e..0837758 100644
          possible = self.options("virtualenv.seed")
          super().__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index b377ad2..e18e45c 100644
+index 4d3108e..8347caa 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -1,8 +1,13 @@
@@ -510,7 +510,7 @@ index b377ad2..e18e45c 100644
 +
  BUNDLE_SUPPORT = {
      "3.11": {
-         "pip": "pip-22.2.2-py3-none-any.whl",
+         "pip": "pip-22.3.1-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
 index 0000000..a7a4f30
@@ -529,10 +529,10 @@ index 5d36b23..65d5308 100644
 -    assert repr(context.value) == repr(RuntimeError(f"No virtualenv implementation for {PythonInfo.current_system()}"))
 +    assert repr(context.value).startswith('RuntimeError("No virtualenv implementation for')
 diff --git a/tests/unit/discovery/py_info/test_py_info.py b/tests/unit/discovery/py_info/test_py_info.py
-index 9d3d762..3a7d020 100644
+index 0c4b26a..0b50aa9 100644
 --- a/tests/unit/discovery/py_info/test_py_info.py
 +++ b/tests/unit/discovery/py_info/test_py_info.py
-@@ -35,20 +35,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):
+@@ -36,20 +36,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):
      assert exe in msg
  
  
@@ -568,11 +568,11 @@ index 9d3d762..3a7d020 100644
  
  @pytest.mark.parametrize(
 diff --git a/tests/unit/test_run.py b/tests/unit/test_run.py
-index 513a76e..d71d0a7 100644
+index 41223e2..62c4b39 100644
 --- a/tests/unit/test_run.py
 +++ b/tests/unit/test_run.py
-@@ -28,9 +28,6 @@ def test_version(capsys):
-     assert not extra
+@@ -25,9 +25,6 @@ def test_version(capsys):
+     assert not err
  
      assert __version__ in content
 -    import virtualenv

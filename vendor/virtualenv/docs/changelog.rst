@@ -5,6 +5,72 @@ Release History
 
 .. towncrier release notes start
 
+v20.17.1 (2022-12-05)
+---------------------
+
+Bugfixes - 20.17.1
+~~~~~~~~~~~~~~~~~~
+- A ``py`` or ``python`` spec means any Python rather than ``CPython`` - by :user:`gaborbernat`. (`#2460 <https://github.com/pypa/virtualenv/issues/2460>`_)
+- Make ``activate.nu`` respect ``VIRTUAL_ENV_DISABLE_PROMPT`` and not set the prompt if reqeusted - by :user:`m-lima`. (`#2461 <https://github.com/pypa/virtualenv/issues/2461>`_)
+
+
+v20.17.0 (2022-11-27)
+---------------------
+
+Features - 20.17.0
+~~~~~~~~~~~~~~~~~~
+- Change Nushell activation script to be a module meant to be activated as an overlay. (`#2422 <https://github.com/pypa/virtualenv/issues/2422>`_)
+- Update operator used in Nushell activation script to be compatible with future versions. (`#2450 <https://github.com/pypa/virtualenv/issues/2450>`_)
+
+Bugfixes - 20.17.0
+~~~~~~~~~~~~~~~~~~
+- Do not use deprecated API from ``importlib.resources`` on Python 3.10 or later - by :user:`gaborbernat`. (`#2448 <https://github.com/pypa/virtualenv/issues/2448>`_)
+- Upgrade embedded setuptools to ``65.6.3`` from ``65.5.1`` - by :user:`gaborbernat`. (`#2451 <https://github.com/pypa/virtualenv/issues/2451>`_)
+
+
+v20.16.7 (2022-11-12)
+---------------------
+
+Bugfixes - 20.16.7
+~~~~~~~~~~~~~~~~~~
+- Use parent directory of python executable for pyvenv.cfg "home" value per PEP 405 - by :user:`vfazio`. (`#2440 <https://github.com/pypa/virtualenv/issues/2440>`_)
+- In POSIX virtual environments, try alternate binary names if ``sys._base_executable`` does not exist - by :user:`vfazio`. (`#2442 <https://github.com/pypa/virtualenv/issues/2442>`_)
+- Upgrade embedded wheel to ``0.38.4`` and  pip to ``22.3.1`` from ``22.3`` and setuptools to ``65.5.1`` from
+  ``65.5.0`` - by :user:`gaborbernat`. (`#2443 <https://github.com/pypa/virtualenv/issues/2443>`_)
+
+
+v20.16.6 (2022-10-25)
+---------------------
+
+Features - 20.16.6
+~~~~~~~~~~~~~~~~~~
+- Drop unneeded shims for PyPy3 directory structure (`#2426 <https://github.com/pypa/virtualenv/issues/2426>`_)
+
+Bugfixes - 20.16.6
+~~~~~~~~~~~~~~~~~~
+- Fix selected scheme on debian derivatives for python 3.10 when ``python3-distutils`` is not installed or the ``venv`` scheme is not avaiable - by :user:`asottile`. (`#2350 <https://github.com/pypa/virtualenv/issues/2350>`_)
+- Allow the test suite to pass even with the original C shell (rather than ``tcsh``) - by :user:`kulikjak`. (`#2418 <https://github.com/pypa/virtualenv/issues/2418>`_)
+- Fix fallback handling of downloading wheels for bundled packages - by :user:`schaap`. (`#2429 <https://github.com/pypa/virtualenv/issues/2429>`_)
+- Upgrade embedded setuptools to ``65.5.0`` from ``65.3.0`` and pip to ``22.3`` from ``22.2.2`` - by :user:`gaborbernat`. (`#2434 <https://github.com/pypa/virtualenv/issues/2434>`_)
+
+
+v20.16.5 (2022-09-07)
+---------------------
+
+Bugfixes - 20.16.5
+~~~~~~~~~~~~~~~~~~
+- Do not turn echo off for subsequent commands in batch activators
+  (``activate.bat`` and ``deactivate.bat``) - by :user:`pawelszramowski`. (`#2411 <https://github.com/pypa/virtualenv/issues/2411>`_)
+
+
+v20.16.4 (2022-08-29)
+---------------------
+
+Bugfixes - 20.16.4
+~~~~~~~~~~~~~~~~~~
+- Bump embed setuptools to ``65.3`` - by :user:`gaborbernat`. (`#2405 <https://github.com/pypa/virtualenv/issues/2405>`_)
+
+
 v20.16.3 (2022-08-04)
 ---------------------
 
@@ -90,7 +156,7 @@ Bugfixes - 20.14.0
 v20.13.4 (2022-03-18)
 ---------------------
 
-Bugfixes - 20.14.0
+Bugfixes - 20.13.4
 ~~~~~~~~~~~~~~~~~~
 - Improve performance of python startup inside created virtualenvs - by :user:`asottile`. (`#2317 <https://github.com/pypa/virtualenv/issues/2317>`_)
 - Upgrade embedded setuptools to ``60.10.0`` from ``60.9.3`` - by :user:`gaborbernat`. (`#2320 <https://github.com/pypa/virtualenv/issues/2320>`_)

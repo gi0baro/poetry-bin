@@ -77,10 +77,23 @@ class PythonInfo(object):
         self.file_system_encoding = u(sys.getfilesystemencoding())
         self.stdout_encoding = u(getattr(sys.stdout, "encoding", None))
 
-        if "venv" in sysconfig.get_scheme_names():
+        scheme_names = sysconfig.get_scheme_names()
+
+        if "venv" in scheme_names:
             self.sysconfig_scheme = "venv"
             self.sysconfig_paths = {
-                u(i): u(sysconfig.get_path(i, expand=False, scheme="venv")) for i in sysconfig.get_path_names()
+                u(i): u(sysconfig.get_path(i, expand=False, scheme=self.sysconfig_scheme))
+                for i in sysconfig.get_path_names()
+            }
+            # we cannot use distutils at all if "venv" exists, distutils don't know it
+            self.distutils_install = {}
+        # debian / ubuntu python 3.10 without `python3-distutils` will report
+        # mangled `local/bin` / etc. names for the default prefix
+        # intentionally select `posix_prefix` which is the unaltered posix-like paths
+        elif sys.version_info[:2] == (3, 10) and "deb_system" in scheme_names:
+            self.sysconfig_scheme = "posix_prefix"
+            self.sysconfig_paths = {
+                i: sysconfig.get_path(i, expand=False, scheme=self.sysconfig_scheme) for i in sysconfig.get_path_names()
             }
             # we cannot use distutils at all if "venv" exists, distutils don't know it
             self.distutils_install = {}
@@ -125,7 +138,24 @@ class PythonInfo(object):
                 base_executable = getattr(sys, "_base_executable", None)  # some platforms may set this to help us
                 if base_executable is not None:  # use the saved system executable if present
                     if sys.executable != base_executable:  # we know we're in a virtual environment, cannot be us
-                        return base_executable
+                        if os.path.exists(base_executable):
+                            return base_executable
+                        # Python may return "python" because it was invoked from the POSIX virtual environment
+                        # however some installs/distributions do not provide a version-less "python" binary in
+                        # the system install location (see PEP 394) so try to fallback to a versioned binary.
+                        #
+                        # Gate this to Python 3.11 as `sys._base_executable` path resolution is now relative to
+                        # the 'home' key from pyvenv.cfg which often points to the system install location.
+                        major, minor = self.version_info.major, self.version_info.minor
+                        if self.os == "posix" and (major, minor) >= (3, 11):
+                            # search relative to the directory of sys._base_executable
+                            base_dir = os.path.dirname(base_executable)
+                            for base_executable in [
+                                os.path.join(base_dir, exe)
+                                for exe in ("python{}".format(major), "python{}.{}".format(major, minor))
+                            ]:
+                                if os.path.exists(base_executable):
+                                    return base_executable
             return None  # in this case we just can't tell easily without poking around FS and calling them, bail
         # if we're not in a virtual environment, this is already a system python, so return the original executable
         # note we must choose the original and not the pure executable as shim scripts might throw us off

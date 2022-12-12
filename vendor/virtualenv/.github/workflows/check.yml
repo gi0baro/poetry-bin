@@ -17,22 +17,22 @@ jobs:
       fail-fast: false
       matrix:
         py:
-          - "3.11.0-beta.5"
+          - "3.11"
           - "3.10"
           - "3.9"
           - "3.8"
           - "3.7"
           - "3.6"
-          - pypy-3.9-v7.3.9
-          - pypy-3.8-v7.3.9
-          - pypy-3.7-v7.3.9
-          - pypy-3.6-v7.3.3
+          - pypy-3.9
+          - pypy-3.8
+          - pypy-3.7
+          - pypy-3.6
         os:
           - ubuntu-20.04
           - macos-12
           - windows-2022
         exclude:
-          - { os: macos-12, py: "pypy-3.6-v7.3.3" } # PyPy 3.6 does not support macOS 11/12
+          - { os: macos-12, py: "pypy-3.6" } # PyPy 3.6 does not support macOS 11/12
         include:
           - { os: macos-12, py: "brew@3.9" }
           - { os: macos-12, py: "brew@3.8" }
@@ -46,7 +46,7 @@ jobs:
             ${{ runner.os == 'Linux' && 'nushell_url=$(curl -s https://api.github.com/repos/nushell/nushell/releases/latest | grep "browser_" | grep "x86_64" | grep "linux" | grep "gnu" | cut -d\" -f4 )' || true }} && \
             ${{ runner.os == 'Linux' && 'wget -O nushell.tar.gz $nushell_url' || true }} && \
             ${{ runner.os == 'Linux' && 'tar -zxf nushell.tar.gz' || true }} && \
-            ${{ runner.os == 'Linux' && 'sudo cp nu /usr/bin' || true }} && \
+            ${{ runner.os == 'Linux' && 'sudo cp nu-*-x86_64-unknown-linux-gnu/nu /usr/bin' || true }} && \
             ${{ runner.os == 'Windows' && 'choco install nushell' || true }} && \
             ${{ runner.os == 'macOS' && 'brew install fish tcsh nushell' || true }} && \
             exit 0 || true;
@@ -56,7 +56,7 @@ jobs:
       - name: Setup python for tox
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install Python 2 for cross test
         uses: actions/setup-python@v4
         with:
@@ -118,7 +118,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install tox
         run: python -m pip install tox
       - name: Setup coverage tool
@@ -162,10 +162,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - name: Setup Python "3.10"
+      - name: Setup Python "3.11"
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install tox
         run: python -m pip install tox
       - name: Run check for ${{ matrix.tox_env }}
@@ -181,7 +181,7 @@ jobs:
       - name: Setup python to build package
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install https://pypi.org/project/build
         run: python -m pip install build
       - uses: actions/checkout@v3
@@ -190,7 +190,7 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build -s -w . -o dist
       - name: Publish to PyPi
-        uses: pypa/gh-action-pypi-publish@v1.5.1
+        uses: pypa/gh-action-pypi-publish@v1.6.1
         with:
           skip_existing: true
           user: __token__
