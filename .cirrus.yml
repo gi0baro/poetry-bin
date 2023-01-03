@@ -4,7 +4,7 @@ env:
 # build_apple_arm_task:
 #   only_if: $CIRRUS_BRANCH == 'master'
 #   macos_instance:
-#     image: ghcr.io/cirruslabs/macos-monterey-xcode:latest
+#     image: ghcr.io/cirruslabs/macos-ventura-xcode:latest
 #   setup_script:
 #     - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.66
 #     - brew install python
@@ -17,7 +17,7 @@ env:
 release_apple_arm_task:
   only_if: $CIRRUS_TAG != ''
   macos_instance:
-    image: ghcr.io/cirruslabs/macos-monterey-xcode:latest
+    image: ghcr.io/cirruslabs/macos-ventura-xcode:latest
   setup_script:
     - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.66
     - brew install python
