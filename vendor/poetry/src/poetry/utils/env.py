@@ -503,7 +503,8 @@ class EnvManager:
         self._poetry = poetry
         self._io = io or NullIO()
 
-    def _full_python_path(self, python: str) -> str:
+    @staticmethod
+    def _full_python_path(python: str) -> str:
         try:
             executable = decode(
                 subprocess.check_output(
@@ -1031,6 +1032,9 @@ class EnvManager:
 
         if isinstance(executable, Path):
             executable = executable.resolve().as_posix()
+
+        if executable:
+            executable = cls._full_python_path(executable)
 
         args = [
             "--no-download",

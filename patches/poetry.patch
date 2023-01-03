@@ -203,7 +203,7 @@ index 1a37ad13..0acc552e 100644
      # compatibility for python <3.8
      from backports.cached_property import cached_property
 diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
-index 74f1ed61..ce4caba7 100644
+index 74f1ed61..13276284 100644
 --- a/src/poetry/utils/env.py
 +++ b/src/poetry/utils/env.py
 @@ -16,6 +16,7 @@ import warnings
@@ -262,7 +262,17 @@ index 74f1ed61..ce4caba7 100644
  
  
  GET_ENVIRONMENT_INFO = """\
-@@ -688,7 +670,10 @@ class EnvManager:
+@@ -521,7 +503,8 @@ class EnvManager:
+         self._poetry = poetry
+         self._io = io or NullIO()
+ 
+-    def _full_python_path(self, python: str) -> str:
++    @staticmethod
++    def _full_python_path(python: str) -> str:
+         try:
+             executable = decode(
+                 subprocess.check_output(
+@@ -688,7 +671,10 @@ class EnvManager:
          if self._env is not None and not reload:
              return self._env
  
@@ -274,7 +284,7 @@ index 74f1ed61..ce4caba7 100644
  
          venv_path = self._poetry.config.virtualenvs_path
  
-@@ -919,8 +904,7 @@ class EnvManager:
+@@ -919,8 +905,7 @@ class EnvManager:
              name = self._poetry.package.name
          assert name is not None
  
@@ -284,7 +294,7 @@ index 74f1ed61..ce4caba7 100644
          if executable:
              python_patch = decode(
                  subprocess.check_output(
-@@ -933,7 +917,10 @@ class EnvManager:
+@@ -933,7 +918,10 @@ class EnvManager:
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -296,7 +306,7 @@ index 74f1ed61..ce4caba7 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -945,55 +932,7 @@ class EnvManager:
+@@ -945,55 +933,7 @@ class EnvManager:
                      self._poetry.package.python_versions, python_patch
                  )
  
@@ -353,7 +363,7 @@ index 74f1ed61..ce4caba7 100644
  
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -1052,22 +991,6 @@ class EnvManager:
+@@ -1052,22 +992,6 @@ class EnvManager:
                  prompt=venv_prompt,
              )
  
@@ -376,7 +386,7 @@ index 74f1ed61..ce4caba7 100644
          return VirtualEnv(venv)
  
      @classmethod
-@@ -1083,7 +1006,8 @@ class EnvManager:
+@@ -1083,7 +1007,8 @@ class EnvManager:
      ) -> virtualenv.run.session.Session:
          if WINDOWS:
              path = get_real_windows_path(path)
@@ -386,7 +396,14 @@ index 74f1ed61..ce4caba7 100644
  
          flags = flags or {}
  
-@@ -1112,7 +1036,7 @@ class EnvManager:
+@@ -1108,11 +1033,14 @@ class EnvManager:
+         if isinstance(executable, Path):
+             executable = executable.resolve().as_posix()
+ 
++        if executable:
++            executable = cls._full_python_path(executable)
++
+         args = [
              "--no-download",
              "--no-periodic-update",
              "--python",
@@ -395,7 +412,7 @@ index 74f1ed61..ce4caba7 100644
          ]
  
          if prompt is not None:
-@@ -1126,17 +1050,6 @@ class EnvManager:
+@@ -1126,17 +1054,6 @@ class EnvManager:
  
          cli_result = virtualenv.cli_run(args)
  
@@ -413,7 +430,7 @@ index 74f1ed61..ce4caba7 100644
          return cli_result
  
      @classmethod
-@@ -1176,9 +1089,13 @@ class EnvManager:
+@@ -1176,9 +1093,13 @@ class EnvManager:
          want to retrieve Poetry's custom virtual environment
          (e.g. plugin installation or self update).
          """
@@ -430,7 +447,7 @@ index 74f1ed61..ce4caba7 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1609,92 +1526,47 @@ class SystemEnv(Env):
+@@ -1609,92 +1530,47 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -552,7 +569,7 @@ index 74f1ed61..ce4caba7 100644
  
      def is_venv(self) -> bool:
          return self._path != self._base
-@@ -1907,11 +1779,101 @@ class NullEnv(SystemEnv):
+@@ -1907,11 +1783,101 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -655,7 +672,7 @@ index 74f1ed61..ce4caba7 100644
      def _run(self, cmd: list[str], **kwargs: Any) -> int | str:
          self.executed.append(cmd)
  
-@@ -2069,3 +2031,61 @@ class MockEnv(NullEnv):
+@@ -2069,3 +2035,61 @@ class MockEnv(NullEnv):
  
      def is_venv(self) -> bool:
          return self._is_venv
