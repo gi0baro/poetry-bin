@@ -992,7 +992,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
     mocker.patch("sys.version_info", (2, 7, 16))
     mocker.patch(
         "subprocess.check_output",
-        side_effect=["3.7.5", "3.7.5"],
+        side_effect=["3.7.5", "3.7.5", "2.7.16", "3.7.5"],
     )
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
@@ -1002,7 +1002,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
 
     m.assert_called_with(
         config_virtualenvs_path / f"{venv_name}-py3.7",
-        executable="python",
+        executable="python3",
         flags={
             "always-copy": False,
             "system-site-packages": False,
@@ -1028,6 +1028,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
 
     mocker.patch("sys.version_info", (2, 7, 16))
     mocker.patch("subprocess.check_output", side_effect=[
+        "3.5.3",
         "3.5.3",
         "3.5.3",
         "3.5.3",
@@ -1126,7 +1127,7 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
     mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
     check_output = mocker.patch(
         "subprocess.check_output",
-        side_effect=["2.7.16" for _ in range(4)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
+        side_effect=["2.7.16" for _ in range(3)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
     )
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""

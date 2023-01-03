@@ -670,7 +670,10 @@ class EnvManager:
         if self._env is not None and not reload:
             return self._env
 
-        python_minor = ".".join([str(v) for v in self._get_python_version()[:2]])
+        python_minor = (
+            InterpreterLookup.find()[1] or
+            ".".join([str(v) for v in self._get_python_version()[:2]])
+        )
 
         venv_path = self._poetry.config.virtualenvs_path
 
