@@ -2,8 +2,10 @@ ARG PYTHON_IMAGE
 
 FROM alpine:3.14 as fetcher
 
+ARG GITHUB_TOKEN
+
 RUN apk add --no-cache curl
-RUN curl -sSL https://api.github.com/repos/gi0baro/poetry-bin/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' > .poetry-bin_version
+RUN curl -sSL -H 'Authorization: Bearer ${GITHUB_TOKEN}' https://api.github.com/repos/gi0baro/poetry-bin/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' > .poetry-bin_version
 RUN curl -sSL https://github.com/gi0baro/poetry-bin/releases/download/$(cat .poetry-bin_version)/poetry-bin-$(cat .poetry-bin_version)-x86_64-unknown-linux-gnu.tar.gz > poetry-bin.tar.gz
 RUN mkdir -p /opt/poetry_bin && tar xzf poetry-bin.tar.gz --directory /opt/poetry_bin
 

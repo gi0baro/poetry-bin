@@ -57,6 +57,7 @@ jobs:
         tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
   build-and-push-musl-image:
     runs-on: ubuntu-latest
@@ -101,3 +102,4 @@ jobs:
         tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
