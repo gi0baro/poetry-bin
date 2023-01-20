@@ -67,6 +67,7 @@ jobs:
       packages: write
 
     strategy:
+      fail-fast: false
       matrix:
         python_version: [3.7, 3.8, 3.9, '3.10', '3.11']
         image_flavor: ['-alpine']
