@@ -1,10 +1,10 @@
 diff --git a/jsonschema/__version__.py b/jsonschema/__version__.py
 new file mode 100644
-index 0000000..4afe96e
+index 0000000..10b26df
 --- /dev/null
 +++ b/jsonschema/__version__.py
 @@ -0,0 +1 @@
-+__version__ = "4.17.1"
++__version__ = "4.17.3"
 diff --git a/jsonschema/_utils.py b/jsonschema/_utils.py
 index 418348c..9a8776f 100644
 --- a/jsonschema/_utils.py
@@ -48,7 +48,7 @@ diff --git a/jsonschema/schemas/vocabularies/draft2020-12/__init__.py b/jsonsche
 new file mode 100644
 index 0000000..e69de29
 diff --git a/jsonschema/validators.py b/jsonschema/validators.py
-index 6ceb75f..20ee785 100644
+index 66e803e..8d594bd 100644
 --- a/jsonschema/validators.py
 +++ b/jsonschema/validators.py
 @@ -103,10 +103,34 @@ def _id_of(schema):
