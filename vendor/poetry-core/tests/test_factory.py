@@ -17,6 +17,8 @@ from poetry.core.version.markers import SingleMarker
 
 
 if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
+
     from poetry.core.packages.dependency import Dependency
     from poetry.core.packages.vcs_dependency import VCSDependency
 
@@ -233,6 +235,14 @@ def test_validate_strict_fails_strict_and_non_strict() -> None:
             "'description' is a required property",
             "'authors' is a required property",
             (
+                'Cannot find dependency "missing_extra" for extra "some-extras" in '
+                "main dependencies."
+            ),
+            (
+                'Cannot find dependency "another_missing_extra" for extra '
+                '"some-extras" in main dependencies.'
+            ),
+            (
                 'Script "a_script_with_unknown_extra" requires extra "foo" which is not'
                 " defined."
             ),
@@ -298,16 +308,19 @@ def test_create_poetry_omits_dev_dependencies_iff_with_dev_is_false() -> None:
     assert any("dev" in r.groups for r in poetry.package.all_requires)
 
 
-def test_create_poetry_fails_with_invalid_dev_dependencies_iff_with_dev_is_true() -> (
-    None
-):
-    with pytest.raises(ValueError) as err:
-        Factory().create_poetry(fixtures_dir / "project_with_invalid_dev_deps")
-    assert "does not exist" in str(err.value)
-
-    Factory().create_poetry(
+def test_create_poetry_with_invalid_dev_dependencies(caplog: LogCaptureFixture) -> None:
+    poetry = Factory().create_poetry(
         fixtures_dir / "project_with_invalid_dev_deps", with_groups=False
     )
+    assert not any("dev" in r.groups for r in poetry.package.all_requires)
+
+    assert not caplog.records
+    poetry = Factory().create_poetry(fixtures_dir / "project_with_invalid_dev_deps")
+    assert len(caplog.records) == 1
+    record = caplog.records[0]
+    assert record.levelname == "WARNING"
+    assert "does not exist" in record.message
+    assert any("dev" in r.groups for r in poetry.package.all_requires)
 
 
 def test_create_poetry_with_groups_and_legacy_dev() -> None:

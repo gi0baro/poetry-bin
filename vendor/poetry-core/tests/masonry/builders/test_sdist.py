@@ -175,22 +175,36 @@ def test_find_files_to_add() -> None:
     poetry = Factory().create_poetry(project("complete"))
 
     builder = SdistBuilder(poetry)
-    result = [f.relative_to_source_root() for f in builder.find_files_to_add()]
+    result = {f.relative_to_source_root() for f in builder.find_files_to_add()}
 
-    assert sorted(result) == sorted(
-        [
-            Path("LICENSE"),
-            Path("README.rst"),
-            Path("bin/script.sh"),
-            Path("my_package/__init__.py"),
-            Path("my_package/data1/test.json"),
-            Path("my_package/sub_pkg1/__init__.py"),
-            Path("my_package/sub_pkg2/__init__.py"),
-            Path("my_package/sub_pkg2/data2/data.json"),
-            Path("my_package/sub_pkg3/foo.py"),
-            Path("pyproject.toml"),
-        ]
+    assert result == {
+        Path("LICENSE"),
+        Path("README.rst"),
+        Path("bin/script.sh"),
+        Path("my_package/__init__.py"),
+        Path("my_package/data1/test.json"),
+        Path("my_package/sub_pkg1/__init__.py"),
+        Path("my_package/sub_pkg2/__init__.py"),
+        Path("my_package/sub_pkg2/data2/data.json"),
+        Path("my_package/sub_pkg3/foo.py"),
+        Path("pyproject.toml"),
+    }
+
+
+def test_find_files_to_add_with_multiple_readme_files() -> None:
+    poetry = Factory().create_poetry(
+        Path(__file__).parent.parent.parent / "fixtures" / "with_readme_files"
     )
+
+    builder = SdistBuilder(poetry)
+    result = {f.relative_to_source_root() for f in builder.find_files_to_add()}
+
+    assert result == {
+        Path("README-1.rst"),
+        Path("README-2.rst"),
+        Path("my_package/__init__.py"),
+        Path("pyproject.toml"),
+    }
 
 
 def test_make_pkg_info_multi_constraints_dependency() -> None:
@@ -478,7 +492,6 @@ def test_default_with_excluded_data(mocker: MockerFixture) -> None:
         assert "my_package-1.2.3/my_package/__init__.py" in names
         assert "my_package-1.2.3/my_package/data/data1.txt" in names
         assert "my_package-1.2.3/pyproject.toml" in names
-        assert "my_package-1.2.3/setup.py" in names
         assert "my_package-1.2.3/PKG-INFO" in names
         # all last modified times should be set to a valid timestamp
         for tarinfo in tar.getmembers():
@@ -509,7 +522,6 @@ def test_src_excluded_nested_data() -> None:
         assert "my_package-1.2.3/LICENSE" in names
         assert "my_package-1.2.3/README.rst" in names
         assert "my_package-1.2.3/pyproject.toml" in names
-        assert "my_package-1.2.3/setup.py" in names
         assert "my_package-1.2.3/PKG-INFO" in names
         assert "my_package-1.2.3/my_package/__init__.py" in names
         assert "my_package-1.2.3/my_package/data/sub_data/data2.txt" not in names

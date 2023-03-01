@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from poetry.core.constraints.generic import AnyConstraint
+from poetry.core.constraints.generic import EmptyConstraint
 from poetry.core.constraints.generic.base_constraint import BaseConstraint
 from poetry.core.constraints.generic.constraint import Constraint
 
@@ -62,13 +64,34 @@ class MultiConstraint(BaseConstraint):
 
     def intersect(self, other: BaseConstraint) -> BaseConstraint:
         if not isinstance(other, Constraint):
-            raise ValueError("Unimplemented constraint intersection")
+            return other.intersect(self)
 
-        constraints = self._constraints
-        if other not in constraints:
-            constraints += (other,)
-        else:
-            constraints = (other,)
+        if other in self._constraints:
+            return self
+
+        if other.value in (c.value for c in self._constraints):
+            # same value but different operator, e.g. '== "linux"' and '!= "linux"'
+            return EmptyConstraint()
+
+        if other.operator == "==":
+            return other
+
+        return MultiConstraint(*self._constraints, other)
+
+    def union(self, other: BaseConstraint) -> BaseConstraint:
+        if not isinstance(other, Constraint):
+            return other.union(self)
+
+        if other in self._constraints:
+            return other
+
+        if other.value not in (c.value for c in self._constraints):
+            if other.operator == "!=":
+                return AnyConstraint()
+
+            return self
+
+        constraints = [c for c in self._constraints if c.value != other.value]
 
         if len(constraints) == 1:
             return constraints[0]

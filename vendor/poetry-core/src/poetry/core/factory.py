@@ -72,7 +72,7 @@ class Factory:
     def get_package(cls, name: str, version: str) -> ProjectPackage:
         from poetry.core.packages.project_package import ProjectPackage
 
-        return ProjectPackage(name, version, version)
+        return ProjectPackage(name, version)
 
     @classmethod
     def _add_package_group_dependencies(
@@ -151,9 +151,6 @@ class Factory:
                 package.readmes = (root / config["readme"],)
             else:
                 package.readmes = tuple(root / readme for readme in config["readme"])
-
-        if "platform" in config:
-            package.platform = config["platform"]
 
         if "dependencies" in config:
             cls._add_package_group_dependencies(
@@ -408,6 +405,22 @@ class Factory:
                             'the "allows-prereleases" property, which is deprecated. '
                             'Use "allow-prereleases" instead.'
                         )
+
+            if "extras" in config:
+                for extra_name, requirements in config["extras"].items():
+                    extra_name = canonicalize_name(extra_name)
+
+                    for req in requirements:
+                        req_name = canonicalize_name(req)
+                        for dependency in config.get("dependencies", {}).keys():
+                            dep_name = canonicalize_name(dependency)
+                            if req_name == dep_name:
+                                break
+                        else:
+                            result["errors"].append(
+                                f'Cannot find dependency "{req}" for extra '
+                                f'"{extra_name}" in main dependencies.'
+                            )
 
             # Checking for scripts with extras
             if "scripts" in config:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ast
 import os
 import platform
 import re
@@ -12,7 +11,6 @@ import zipfile
 
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Any
 from typing import Iterator
 
 import pytest
@@ -223,10 +221,10 @@ def test_complete() -> None:
 
     try:
         assert "my_package/sub_pgk1/extra_file.xml" not in zip.namelist()
-        assert "my-package-1.2.3.data/scripts/script.sh" in zip.namelist()
+        assert "my_package-1.2.3.data/scripts/script.sh" in zip.namelist()
         assert (
             "Hello World"
-            in zip.read("my-package-1.2.3.data/scripts/script.sh").decode()
+            in zip.read("my_package-1.2.3.data/scripts/script.sh").decode()
         )
 
         entry_points = zip.read("my_package-1.2.3.dist-info/entry_points.txt")
@@ -342,7 +340,7 @@ def test_complete_no_vcs() -> None:
         "my_package/sub_pkg1/__init__.py",
         "my_package/sub_pkg2/__init__.py",
         "my_package/sub_pkg2/data2/data.json",
-        "my-package-1.2.3.data/scripts/script.sh",
+        "my_package-1.2.3.data/scripts/script.sh",
         "my_package/sub_pkg3/foo.py",
         "my_package-1.2.3.dist-info/entry_points.txt",
         "my_package-1.2.3.dist-info/LICENSE",
@@ -540,29 +538,9 @@ def test_package_with_include(mocker: MockerFixture) -> None:
         assert "with_include-1.2.3/package_with_include/__init__.py" in names
         assert "with_include-1.2.3/tests/__init__.py" in names
         assert "with_include-1.2.3/pyproject.toml" in names
-        assert "with_include-1.2.3/setup.py" in names
         assert "with_include-1.2.3/PKG-INFO" in names
         assert "with_include-1.2.3/for_wheel_only/__init__.py" not in names
         assert "with_include-1.2.3/src/src_package/__init__.py" in names
-
-        file = tar.extractfile("with_include-1.2.3/setup.py")
-        assert file
-        setup = file.read()
-        setup_ast = ast.parse(setup)
-
-        setup_ast.body = [n for n in setup_ast.body if isinstance(n, ast.Assign)]
-        ns: dict[str, Any] = {}
-        exec(compile(setup_ast, filename="setup.py", mode="exec"), ns)
-        assert ns["package_dir"] == {"": "src"}
-        assert ns["packages"] == [
-            "extra_dir",
-            "extra_dir.sub_pkg",
-            "package_with_include",
-            "src_package",
-            "tests",
-        ]
-        assert ns["package_data"] == {"": ["*"]}
-        assert ns["modules"] == ["my_module"]
 
     whl = module_path / "dist" / "with_include-1.2.3-py3-none-any.whl"
 
@@ -612,7 +590,6 @@ def test_respect_format_for_explicit_included_files() -> None:
             in names
         )
         assert "exclude_whl_include_sdist-0.1.0/pyproject.toml" in names
-        assert "exclude_whl_include_sdist-0.1.0/setup.py" in names
         assert "exclude_whl_include_sdist-0.1.0/PKG-INFO" in names
 
     whl = module_path / "dist" / "exclude_whl_include_sdist-0.1.0-py3-none-any.whl"
@@ -625,5 +602,3 @@ def test_respect_format_for_explicit_included_files() -> None:
         assert "exclude_whl_include_sdist/compiled/source.c" not in names
         assert "exclude_whl_include_sdist/compiled/source.h" not in names
         assert "exclude_whl_include_sdist/cython_code.pyx" not in names
-
-    pass

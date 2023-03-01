@@ -7,6 +7,7 @@ import zipfile
 
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Iterator
 
 import pytest
@@ -16,6 +17,10 @@ from poetry.core.masonry import api
 from poetry.core.utils.helpers import temporary_directory
 from tests.testutils import validate_sdist_contents
 from tests.testutils import validate_wheel_contents
+
+
+if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
 
 
 @contextmanager
@@ -72,12 +77,15 @@ def test_build_wheel_with_bad_path_dev_dep_succeeds() -> None:
         api.build_wheel(tmp_dir)
 
 
-def test_build_wheel_with_bad_path_dep_fails() -> None:
-    with pytest.raises(ValueError) as err, temporary_directory() as tmp_dir, cwd(
+def test_build_wheel_with_bad_path_dep_succeeds(caplog: LogCaptureFixture) -> None:
+    with temporary_directory() as tmp_dir, cwd(
         os.path.join(fixtures, "with_bad_path_dep")
     ):
         api.build_wheel(tmp_dir)
-    assert "does not exist" in str(err.value)
+    assert len(caplog.records) == 1
+    record = caplog.records[0]
+    assert record.levelname == "WARNING"
+    assert "does not exist" in record.message
 
 
 @pytest.mark.skipif(
@@ -123,12 +131,15 @@ def test_build_sdist_with_bad_path_dev_dep_succeeds() -> None:
         api.build_sdist(tmp_dir)
 
 
-def test_build_sdist_with_bad_path_dep_fails() -> None:
-    with pytest.raises(ValueError) as err, temporary_directory() as tmp_dir, cwd(
+def test_build_sdist_with_bad_path_dep_succeeds(caplog: LogCaptureFixture) -> None:
+    with temporary_directory() as tmp_dir, cwd(
         os.path.join(fixtures, "with_bad_path_dep")
     ):
         api.build_sdist(tmp_dir)
-    assert "does not exist" in str(err.value)
+    assert len(caplog.records) == 1
+    record = caplog.records[0]
+    assert record.levelname == "WARNING"
+    assert "does not exist" in record.message
 
 
 def test_prepare_metadata_for_build_wheel() -> None:
@@ -209,12 +220,17 @@ def test_prepare_metadata_for_build_wheel_with_bad_path_dev_dep_succeeds() -> No
         api.prepare_metadata_for_build_wheel(tmp_dir)
 
 
-def test_prepare_metadata_for_build_wheel_with_bad_path_dep_succeeds() -> None:
-    with pytest.raises(ValueError) as err, temporary_directory() as tmp_dir, cwd(
+def test_prepare_metadata_for_build_wheel_with_bad_path_dep_succeeds(
+    caplog: LogCaptureFixture,
+) -> None:
+    with temporary_directory() as tmp_dir, cwd(
         os.path.join(fixtures, "with_bad_path_dep")
     ):
         api.prepare_metadata_for_build_wheel(tmp_dir)
-    assert "does not exist" in str(err.value)
+    assert len(caplog.records) == 1
+    record = caplog.records[0]
+    assert record.levelname == "WARNING"
+    assert "does not exist" in record.message
 
 
 def test_build_editable_wheel() -> None:
@@ -238,19 +254,56 @@ def test_build_editable_wheel() -> None:
 
 
 def test_build_wheel_with_metadata_directory() -> None:
-    with temporary_directory() as metadata_tmp_dir, cwd(
-        os.path.join(fixtures, "complete")
-    ):
+    pkg_dir = Path(fixtures) / "complete"
+
+    with temporary_directory() as metadata_tmp_dir, cwd(pkg_dir):
         metadata_directory = api.prepare_metadata_for_build_wheel(metadata_tmp_dir)
 
         with temporary_directory() as wheel_tmp_dir:
             dist_info_path = Path(metadata_tmp_dir) / metadata_directory
+            open(dist_info_path / "CUSTOM", "w").close()  # noqa: SIM115
             filename = api.build_wheel(
                 wheel_tmp_dir, metadata_directory=str(dist_info_path)
             )
+            wheel_pth = Path(wheel_tmp_dir) / filename
+
             validate_wheel_contents(
                 name="my_package",
                 version="1.2.3",
-                path=str(os.path.join(wheel_tmp_dir, filename)),
+                path=str(wheel_pth),
                 files=["entry_points.txt"],
             )
+
+            with zipfile.ZipFile(wheel_pth) as z:
+                namelist = z.namelist()
+
+                assert f"{metadata_directory}/CUSTOM" in namelist
+
+
+def test_build_editable_wheel_with_metadata_directory() -> None:
+    pkg_dir = Path(fixtures) / "complete"
+
+    with temporary_directory() as metadata_tmp_dir, cwd(pkg_dir):
+        metadata_directory = api.prepare_metadata_for_build_editable(metadata_tmp_dir)
+
+        with temporary_directory() as wheel_tmp_dir:
+            dist_info_path = Path(metadata_tmp_dir) / metadata_directory
+            open(dist_info_path / "CUSTOM", "w").close()  # noqa: SIM115
+            filename = api.build_editable(
+                wheel_tmp_dir, metadata_directory=str(dist_info_path)
+            )
+            wheel_pth = Path(wheel_tmp_dir) / filename
+
+            validate_wheel_contents(
+                name="my_package",
+                version="1.2.3",
+                path=str(wheel_pth),
+                files=["entry_points.txt"],
+            )
+
+            with zipfile.ZipFile(wheel_pth) as z:
+                namelist = z.namelist()
+
+                assert "my_package.pth" in namelist
+                assert pkg_dir.as_posix() == z.read("my_package.pth").decode().strip()
+                assert f"{metadata_directory}/CUSTOM" in namelist

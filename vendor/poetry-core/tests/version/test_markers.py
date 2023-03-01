@@ -11,8 +11,11 @@ from poetry.core.version.markers import EmptyMarker
 from poetry.core.version.markers import MarkerUnion
 from poetry.core.version.markers import MultiMarker
 from poetry.core.version.markers import SingleMarker
+from poetry.core.version.markers import cnf
 from poetry.core.version.markers import dnf
+from poetry.core.version.markers import intersection
 from poetry.core.version.markers import parse_marker
+from poetry.core.version.markers import union
 
 
 if TYPE_CHECKING:
@@ -373,6 +376,14 @@ def test_multi_complex_multi_marker_is_empty() -> None:
     assert m.is_empty()
 
 
+def test_multi_marker_is_any() -> None:
+    m1 = parse_marker('python_version != "3.6" or python_version == "3.6"')
+    m2 = parse_marker('python_version != "3.7" or python_version == "3.7"')
+
+    assert m1.intersect(m2).is_any()
+    assert m2.intersect(m1).is_any()
+
+
 def test_multi_marker_intersect_multi() -> None:
     m = parse_marker('sys_platform == "darwin" and implementation_name == "cpython"')
 
@@ -511,16 +522,16 @@ def test_multi_marker_union_multi_is_multi(
             'python_full_version >= "3.6.2" and python_version < "3.7"',
             'python_version >= "3.6" and python_version < "3.7"',
         ),
-        # Ranges with same end.  Ideally the union would give the lower version first.
+        # Ranges with same end.
         (
             'python_version >= "3.6" and python_version < "3.7"',
             'python_full_version >= "3.6.2" and python_version < "3.7"',
-            'python_version < "3.7" and python_version >= "3.6"',
+            'python_version >= "3.6" and python_version < "3.7"',
         ),
         (
             'python_version >= "3.6" and python_version <= "3.7"',
             'python_full_version >= "3.6.2" and python_version <= "3.7"',
-            'python_version <= "3.7" and python_version >= "3.6"',
+            'python_version >= "3.6" and python_version <= "3.7"',
         ),
         # A range covers an exact marker.
         (
@@ -565,14 +576,21 @@ def test_version_ranges_collapse_on_union(
 
 
 def test_multi_marker_union_with_union() -> None:
-    m = parse_marker('sys_platform == "darwin" and implementation_name == "cpython"')
+    m1 = parse_marker('sys_platform == "darwin" and implementation_name == "cpython"')
+    m2 = parse_marker('python_version >= "3.6" or os_name == "Windows"')
 
-    union = m.union(parse_marker('python_version >= "3.6" or os_name == "Windows"'))
-    assert (
-        str(union)
-        == 'python_version >= "3.6" or os_name == "Windows"'
-        ' or sys_platform == "darwin" and implementation_name == "cpython"'
+    # Union isn't _quite_ symmetrical.
+    expected1 = (
+        'sys_platform == "darwin" and implementation_name == "cpython" or'
+        ' python_version >= "3.6" or os_name == "Windows"'
     )
+    assert str(m1.union(m2)) == expected1
+
+    expected2 = (
+        'python_version >= "3.6" or os_name == "Windows" or'
+        ' sys_platform == "darwin" and implementation_name == "cpython"'
+    )
+    assert str(m2.union(m1)) == expected2
 
 
 def test_multi_marker_union_with_multi_union_is_single_marker() -> None:
@@ -676,17 +694,24 @@ def test_marker_union_intersect_multi_marker() -> None:
     m1 = parse_marker('sys_platform == "darwin" or python_version < "3.4"')
     m2 = parse_marker('implementation_name == "cpython" and os_name == "Windows"')
 
-    expected = (
+    # Intersection isn't _quite_ symmetrical.
+    expected1 = (
+        'sys_platform == "darwin" and implementation_name == "cpython" and os_name =='
+        ' "Windows" or python_version < "3.4" and implementation_name == "cpython" and'
+        ' os_name == "Windows"'
+    )
+
+    intersection = m1.intersect(m2)
+    assert str(intersection) == expected1
+
+    expected2 = (
         'implementation_name == "cpython" and os_name == "Windows" and sys_platform'
         ' == "darwin" or implementation_name == "cpython" and os_name == "Windows"'
         ' and python_version < "3.4"'
     )
 
-    intersection = m1.intersect(m2)
-    assert str(intersection) == expected
-
     intersection = m2.intersect(m1)
-    assert str(intersection) == expected
+    assert str(intersection) == expected2
 
 
 def test_marker_union_union_with_union() -> None:
@@ -933,6 +958,7 @@ def test_without_extras(marker: str, expected: str) -> None:
     [
         ('python_version >= "3.6"', "implementation_name", 'python_version >= "3.6"'),
         ('python_version >= "3.6"', "python_version", "*"),
+        ('python_version >= "3.6" and python_version < "3.11"', "python_version", "*"),
         (
             'python_version >= "3.6" and extra == "foo"',
             "extra",
@@ -993,6 +1019,9 @@ def test_exclude(marker: str, excluded: str, expected: str) -> None:
             ["python_version"],
             'python_version >= "3.6"',
         ),
+        ('python_version >= "3.6" and extra == "foo"', ["sys_platform"], ""),
+        ('python_version >= "3.6" or extra == "foo"', ["sys_platform"], ""),
+        ('python_version >= "3.6" or extra == "foo"', ["python_version"], ""),
         (
             'python_version >= "3.6" and (extra == "foo" or extra == "bar")',
             ["extra"],
@@ -1004,31 +1033,31 @@ def test_exclude(marker: str, excluded: str, expected: str) -> None:
                 ' implementation_name == "pypy"'
             ),
             ["implementation_name"],
-            'implementation_name == "pypy"',
+            "",
+        ),
+        (
+            (
+                'python_version >= "3.6" and (extra == "foo" or extra == "bar") or'
+                ' implementation_name == "pypy"'
+            ),
+            ["implementation_name", "extra"],
+            'extra == "foo" or extra == "bar" or implementation_name == "pypy"',
+        ),
+        (
+            (
+                'python_version >= "3.6" and (extra == "foo" or extra == "bar") or'
+                ' implementation_name == "pypy"'
+            ),
+            ["implementation_name", "python_version"],
+            'python_version >= "3.6" or implementation_name == "pypy"',
         ),
         (
             (
                 'python_version >= "3.6" and extra == "foo" or implementation_name =='
                 ' "pypy" and extra == "bar"'
             ),
-            ["implementation_name"],
-            'implementation_name == "pypy"',
-        ),
-        (
-            (
-                'python_version >= "3.6" or extra == "foo" and implementation_name =='
-                ' "pypy" or extra == "bar"'
-            ),
-            ["implementation_name"],
-            'implementation_name == "pypy"',
-        ),
-        (
-            (
-                'python_version >= "3.6" or extra == "foo" and implementation_name =='
-                ' "pypy" or extra == "bar"'
-            ),
-            ["implementation_name", "python_version"],
-            'python_version >= "3.6" or implementation_name == "pypy"',
+            ["implementation_name", "extra"],
+            'extra == "foo" or implementation_name == "pypy" and extra == "bar"',
         ),
     ],
 )
@@ -1106,6 +1135,173 @@ def test_union_should_drop_markers_if_their_complement_is_present(
     m = parse_marker(marker)
 
     assert parse_marker(expected) == m
+
+
+@pytest.mark.parametrize(
+    "scheme, marker, expected",
+    [
+        ("empty", EmptyMarker(), EmptyMarker()),
+        ("any", AnyMarker(), AnyMarker()),
+        (
+            "A_",
+            SingleMarker("python_version", ">=3.7"),
+            SingleMarker("python_version", ">=3.7"),
+        ),
+        (
+            "AB_",
+            MultiMarker(
+                SingleMarker("python_version", ">=3.7"),
+                SingleMarker("python_version", "<3.9"),
+            ),
+            MultiMarker(
+                SingleMarker("python_version", ">=3.7"),
+                SingleMarker("python_version", "<3.9"),
+            ),
+        ),
+        (
+            "A+B_",
+            MarkerUnion(
+                SingleMarker("python_version", "<3.7"),
+                SingleMarker("python_version", ">=3.9"),
+            ),
+            MarkerUnion(
+                SingleMarker("python_version", "<3.7"),
+                SingleMarker("python_version", ">=3.9"),
+            ),
+        ),
+        (
+            "(A+B)(C+D)_",
+            MultiMarker(
+                MarkerUnion(
+                    SingleMarker("python_version", ">=3.7"),
+                    SingleMarker("sys_platform", "win32"),
+                ),
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.9"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+            MultiMarker(
+                MarkerUnion(
+                    SingleMarker("python_version", ">=3.7"),
+                    SingleMarker("sys_platform", "win32"),
+                ),
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.9"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+        ),
+        (
+            "AB+AC_A(B+C)",
+            MarkerUnion(
+                MultiMarker(
+                    SingleMarker("python_version", ">=3.7"),
+                    SingleMarker("python_version", "<3.9"),
+                ),
+                MultiMarker(
+                    SingleMarker("python_version", ">=3.7"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+            MultiMarker(
+                SingleMarker("python_version", ">=3.7"),
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.9"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+        ),
+        (
+            "A+BC_(A+B)(A+C)",
+            MarkerUnion(
+                SingleMarker("python_version", "<3.7"),
+                MultiMarker(
+                    SingleMarker("python_version", ">=3.9"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+            MultiMarker(
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.7"),
+                    SingleMarker("python_version", ">=3.9"),
+                ),
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.7"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+        ),
+        (
+            "(A+B(C+D))(E+F)_(A+B)(A+C+D)(E+F)",
+            MultiMarker(
+                MarkerUnion(
+                    SingleMarker("python_version", ">=3.9"),
+                    MultiMarker(
+                        SingleMarker("implementation_name", "cpython"),
+                        MarkerUnion(
+                            SingleMarker("python_version", "<3.7"),
+                            SingleMarker("python_version", ">=3.8"),
+                        ),
+                    ),
+                ),
+                MarkerUnion(
+                    SingleMarker("sys_platform", "win32"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+            MultiMarker(
+                MarkerUnion(
+                    SingleMarker("python_version", ">=3.9"),
+                    SingleMarker("implementation_name", "cpython"),
+                ),
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.7"),
+                    SingleMarker("python_version", ">=3.8"),
+                ),
+                MarkerUnion(
+                    SingleMarker("sys_platform", "win32"),
+                    SingleMarker("sys_platform", "linux"),
+                ),
+            ),
+        ),
+        (
+            "A(B+C)+(D+E)(F+G)_(A+D+E)(B+C+D+E)(A+F+G)(B+C+F+G)",
+            MarkerUnion(
+                MultiMarker(
+                    SingleMarker("sys_platform", "!=win32"),
+                    MarkerUnion(
+                        SingleMarker("python_version", "<3.7"),
+                        SingleMarker("python_version", ">=3.9"),
+                    ),
+                ),
+                MultiMarker(
+                    MarkerUnion(
+                        SingleMarker("python_version", "<3.8"),
+                        SingleMarker("python_version", ">=3.9"),
+                    ),
+                    MarkerUnion(
+                        SingleMarker("sys_platform", "!=linux"),
+                        SingleMarker("python_version", ">=3.9"),
+                    ),
+                ),
+            ),
+            MultiMarker(
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.8"),
+                    SingleMarker("python_version", ">=3.9"),
+                ),
+                MarkerUnion(
+                    SingleMarker("python_version", "<3.7"),
+                    SingleMarker("sys_platform", "!=linux"),
+                    SingleMarker("python_version", ">=3.9"),
+                ),
+            ),
+        ),
+    ],
+)
+def test_cnf(scheme: str, marker: BaseMarker, expected: BaseMarker) -> None:
+    assert cnf(marker) == expected
 
 
 @pytest.mark.parametrize(
@@ -1308,6 +1504,114 @@ def test_single_markers_are_found_in_complex_intersection() -> None:
     assert (
         str(intersection)
         == 'implementation_name == "cpython" and python_version == "3.6"'
+    )
+
+
+@pytest.mark.parametrize(
+    "marker1, marker2",
+    [
+        (
+            (
+                '(platform_system != "Windows" or platform_machine != "x86") and'
+                ' python_version == "3.8"'
+            ),
+            'platform_system == "Windows" and platform_machine == "x86"',
+        ),
+        # Following example via
+        # https://github.com/python-poetry/poetry-plugin-export/issues/163
+        (
+            (
+                'python_version >= "3.8" and python_version < "3.11" and'
+                ' (python_version > "3.9" or platform_system != "Windows" or'
+                ' platform_machine != "x86") or python_version >= "3.11" and'
+                ' python_version < "3.12"'
+            ),
+            (
+                'python_version == "3.8" and platform_system == "Windows" and'
+                ' platform_machine == "x86" or python_version == "3.9" and'
+                ' platform_system == "Windows" and platform_machine == "x86"'
+            ),
+        ),
+    ],
+)
+def test_empty_marker_is_found_in_complex_intersection(
+    marker1: str, marker2: str
+) -> None:
+    m1 = parse_marker(marker1)
+    m2 = parse_marker(marker2)
+    assert m1.intersect(m2).is_empty()
+    assert m2.intersect(m1).is_empty()
+
+
+def test_empty_marker_is_found_in_complex_parse() -> None:
+    marker = parse_marker(
+        '(python_implementation != "pypy" or python_version != "3.6") and '
+        '((python_implementation != "pypy" and python_version != "3.6") or'
+        ' (python_implementation == "pypy" and python_version == "3.6")) and '
+        '(python_implementation == "pypy" or python_version == "3.6")'
+    )
+    assert marker.is_empty()
+
+
+def test_complex_union() -> None:
+    # real world example on the way to get mutually exclusive markers
+    # for numpy(>=1.21.2) of https://pypi.org/project/opencv-python/4.6.0.66/
+    markers = [
+        parse_marker(m)
+        for m in [
+            (
+                'python_version < "3.7" and python_version >= "3.6"'
+                ' and platform_system == "Darwin" and platform_machine == "arm64"'
+            ),
+            (
+                'python_version >= "3.10" or python_version >= "3.9"'
+                ' and platform_system == "Darwin" and platform_machine == "arm64"'
+            ),
+            (
+                'python_version >= "3.8" and platform_system == "Darwin"'
+                ' and platform_machine == "arm64" and python_version < "3.9"'
+            ),
+            (
+                'python_version >= "3.7" and platform_system == "Darwin"'
+                ' and platform_machine == "arm64" and python_version < "3.8"'
+            ),
+        ]
+    ]
+    assert (
+        str(union(*markers))
+        == 'platform_system == "Darwin" and platform_machine == "arm64"'
+        ' and python_version >= "3.6" or python_version >= "3.10"'
+    )
+
+
+def test_complex_intersection() -> None:
+    # inverse of real world example on the way to get mutually exclusive markers
+    # for numpy(>=1.21.2) of https://pypi.org/project/opencv-python/4.6.0.66/
+    markers = [
+        parse_marker(m).invert()
+        for m in [
+            (
+                'python_version < "3.7" and python_version >= "3.6"'
+                ' and platform_system == "Darwin" and platform_machine == "arm64"'
+            ),
+            (
+                'python_version >= "3.10" or python_version >= "3.9"'
+                ' and platform_system == "Darwin" and platform_machine == "arm64"'
+            ),
+            (
+                'python_version >= "3.8" and platform_system == "Darwin"'
+                ' and platform_machine == "arm64" and python_version < "3.9"'
+            ),
+            (
+                'python_version >= "3.7" and platform_system == "Darwin"'
+                ' and platform_machine == "arm64" and python_version < "3.8"'
+            ),
+        ]
+    ]
+    assert (
+        str(dnf(intersection(*markers).invert()))
+        == 'platform_system == "Darwin" and platform_machine == "arm64"'
+        ' and python_version >= "3.6" or python_version >= "3.10"'
     )
 
 
