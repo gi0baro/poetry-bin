@@ -12,6 +12,7 @@ concurrency:
 jobs:
   test:
     name: test ${{ matrix.py }} - ${{ matrix.os }}
+    if: github.event_name != 'schedule' || github.repository_owner == 'pypa'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -22,34 +23,29 @@ jobs:
           - "3.9"
           - "3.8"
           - "3.7"
-          - "3.6"
           - pypy-3.9
           - pypy-3.8
           - pypy-3.7
-          - pypy-3.6
         os:
           - ubuntu-20.04
           - macos-12
           - windows-2022
-        exclude:
-          - { os: macos-12, py: "pypy-3.6" } # PyPy 3.6 does not support macOS 11/12
         include:
           - { os: macos-12, py: "brew@3.9" }
           - { os: macos-12, py: "brew@3.8" }
     steps:
+      - uses: taiki-e/install-action@cargo-binstall
       - name: Install OS dependencies
         run: |
+          set -x
           for i in 1 2 3; do
             echo "try $i" && \
             ${{ runner.os == 'Linux' && 'sudo apt-get update -y && sudo apt-get install snapd fish csh -y' || true }} && \
-            ${{ runner.os == 'Linux' && 'sudo apt-get install curl wget -y' || true }} && \
-            ${{ runner.os == 'Linux' && 'nushell_url=$(curl -s https://api.github.com/repos/nushell/nushell/releases/latest | grep "browser_" | grep "x86_64" | grep "linux" | grep "gnu" | cut -d\" -f4 )' || true }} && \
-            ${{ runner.os == 'Linux' && 'wget -O nushell.tar.gz $nushell_url' || true }} && \
-            ${{ runner.os == 'Linux' && 'tar -zxf nushell.tar.gz' || true }} && \
-            ${{ runner.os == 'Linux' && 'sudo cp nu-*-x86_64-unknown-linux-gnu/nu /usr/bin' || true }} && \
-            ${{ runner.os == 'Windows' && 'choco install nushell' || true }} && \
+            ${{ runner.os == 'Linux' && 'cargo binstall -y nu' || true }} && \
             ${{ runner.os == 'macOS' && 'brew install fish tcsh nushell' || true }} && \
+            ${{ runner.os == 'Windows' && 'choco install nushell' || true }} && \
             exit 0 || true;
+            sleep 1
           done
           exit 1
         shell: bash
@@ -57,6 +53,13 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+      - name: Install tox
+        run: python -m pip install tox pip -U
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Use local virtualenv for tox
+        run: python -m pip install .
       - name: Install Python 2 for cross test
         uses: actions/setup-python@v4
         with:
@@ -82,13 +85,6 @@ jobs:
           with Path(os.environ["GITHUB_ENV"]).open("ta") as file_handler:
               file_handler.write(env)
         shell: python
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Install tox
-        run: python -m pip install tox
-      - name: Use local virtualenv for tox
-        run: python -m pip install .
       - name: Setup test suite
         run: tox -vv --notest
       - name: Run test suite
@@ -97,51 +93,10 @@ jobs:
           PYTEST_ADDOPTS: "-vv --durations=20"
           CI_RUN: "yes"
           DIFF_AGAINST: HEAD
-      - name: Rename coverage report file
-        run: |
-          import os; import sys
-          os.rename(f".tox/.coverage.{os.environ['TOXENV']}", f".tox/.coverage.{os.environ['TOXENV']}-{sys.platform}")
-        shell: python
-      - name: Upload coverage data
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-data
-          path: ".tox/.coverage.*"
-
-  coverage:
-    name: Combine coverage
-    runs-on: ubuntu-22.04
-    needs: test
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - name: Install tox
-        run: python -m pip install tox
-      - name: Setup coverage tool
-        run: tox -e coverage --notest
-      - name: Install package builder
-        run: python -m pip install build
-      - name: Build package
-        run: pyproject-build --wheel .
-      - name: Download coverage data
-        uses: actions/download-artifact@v3
-        with:
-          name: coverage-data
-          path: .tox
-      - name: Combine and report coverage
-        run: tox -e coverage
-      - name: Upload HTML report
-        uses: actions/upload-artifact@v3
-        with:
-          name: html-report
-          path: .tox/htmlcov
 
   check:
     name: ${{ matrix.tox_env }} - ${{ matrix.os }}
+    if: github.event_name != 'schedule' || github.repository_owner == 'pypa'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -174,8 +129,7 @@ jobs:
           UPGRADE_ADVISORY: "yes"
 
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-    needs: [check, coverage]
+    needs: [check]
     runs-on: ubuntu-22.04
     steps:
       - name: Setup python to build package
@@ -190,7 +144,8 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build -s -w . -o dist
       - name: Publish to PyPi
-        uses: pypa/gh-action-pypi-publish@v1.6.1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && github.repository_owner == 'pypa'
+        uses: pypa/gh-action-pypi-publish@v1.6.4
         with:
           skip_existing: true
           user: __token__

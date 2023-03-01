@@ -1,52 +1,36 @@
-diff --git a/.gitignore b/.gitignore
-index f8aceb2..837bb1c 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -20,9 +20,7 @@ dist
+diff --git a/pyproject.toml b/pyproject.toml
+index 5169e4d..c84f918 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,7 +1,6 @@
+ [build-system]
+ build-backend = "hatchling.build"
+ requires = [
+-  "hatch-vcs>=0.3",
+   "hatchling>=1.12.2",
+ ]
  
- /docs/_draft.rst
- /pip-wheel-metadata
--/src/virtualenv/version.py
- /src/virtualenv/out
--venv*
- .python-version
+@@ -32,9 +31,7 @@ classifiers = [
+   "Topic :: Software Development :: Testing",
+   "Topic :: Utilities",
+ ]
+-dynamic = [
+-  "version",
+-]
++version = "20.19.0"
+ dependencies = [
+   "distlib<1,>=0.3.6",
+   "filelock<4,>=3.4.1",
+@@ -99,9 +96,7 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
+ pip = "virtualenv.seed.embed.pip_invoke:PipInvoke"
  
- *wheel-store*
-diff --git a/setup.cfg b/setup.cfg
-index 2b75406..6a018e7 100644
---- a/setup.cfg
-+++ b/setup.cfg
-@@ -1,5 +1,6 @@
- [metadata]
- name = virtualenv
-+version = 20.17.1
- description = Virtual Python Environment builder
- long_description = file: README.md
- long_description_content_type = text/markdown
-@@ -103,6 +104,7 @@ virtualenv.activation.fish = *.fish
- virtualenv.activation.nushell = *.nu
- virtualenv.activation.powershell = *.ps1
- virtualenv.seed.wheels.embed = *.whl
-+* = *.template
+ [tool.hatch]
+-build.hooks.vcs.version-file = "src/virtualenv/version.py"
+ build.targets.sdist.include = ["/src", "/tests"]
+-version.source = "vcs"
  
- [sdist]
- formats = gztar
-diff --git a/setup.py b/setup.py
-index cddd1d3..1b5dbe4 100644
---- a/setup.py
-+++ b/setup.py
-@@ -3,10 +3,4 @@ from setuptools import __version__, setup
- if int(__version__.split(".")[0]) < 41:
-     raise RuntimeError("setuptools >= 41 required to build")
- 
--setup(
--    use_scm_version={
--        "write_to": "src/virtualenv/version.py",
--        "write_to_template": 'from __future__ import  unicode_literals\n\n__version__ = "{version}"\n',
--    },
--    setup_requires=["setuptools_scm >= 2"],
--)
-+setup()
+ [tool.coverage]
+ html.show_contexts = true
 diff --git a/src/virtualenv/__init__.py b/src/virtualenv/__init__.py
 index e40e8b7..619ddf3 100644
 --- a/src/virtualenv/__init__.py
@@ -129,18 +113,15 @@ similarity index 100%
 rename from src/virtualenv/activation/python/activate_this.py
 rename to src/virtualenv/activation/python/activate_this.py.template
 diff --git a/src/virtualenv/activation/via_template.py b/src/virtualenv/activation/via_template.py
-index f1eef53..7212cf9 100644
+index 069d52e..7212cf9 100644
 --- a/src/virtualenv/activation/via_template.py
 +++ b/src/virtualenv/activation/via_template.py
-@@ -4,17 +4,7 @@ from abc import ABCMeta, abstractmethod
+@@ -4,14 +4,7 @@ from abc import ABCMeta, abstractmethod
  
  from .activator import Activator
  
--if sys.version_info >= (3, 10) or sys.version_info <= (3, 7):
--    if sys.version_info >= (3, 10):
--        from importlib.resources import files
--    else:
--        from importlib_resources import files
+-if sys.version_info >= (3, 10):
+-    from importlib.resources import files
 -
 -    def read_binary(module_name: str, filename: str) -> bytes:
 -        return (files(module_name) / filename).read_bytes()
@@ -165,7 +146,7 @@ index e69de29..7e40c92 100644
 +    Path(__path__[0])
 +)
 diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
-index 5ea6abe..997bea7 100644
+index a973264..7f8b56e 100644
 --- a/src/virtualenv/create/creator.py
 +++ b/src/virtualenv/create/creator.py
 @@ -8,15 +8,17 @@ from ast import literal_eval
@@ -516,7 +497,7 @@ index 1a51d2e..0837758 100644
          possible = self.options("virtualenv.seed")
          super().__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index 4d3108e..8347caa 100644
+index f779e07..cbd51f2 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -1,8 +1,13 @@
@@ -532,17 +513,10 @@ index 4d3108e..8347caa 100644
 +    BUNDLE_FOLDER = Path(__file__).absolute().parent
 +
  BUNDLE_SUPPORT = {
-     "3.11": {
-         "pip": "pip-22.3.1-py3-none-any.whl",
-diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
-new file mode 100644
-index 0000000..a7a4f30
---- /dev/null
-+++ b/src/virtualenv/version.py
-@@ -0,0 +1 @@
-+__version__ = "20.16.3"
+     "3.12": {
+         "pip": "pip-23.0-py3-none-any.whl",
 diff --git a/tests/unit/create/test_creator.py b/tests/unit/create/test_creator.py
-index db323cd..47bb813 100644
+index 33c8ee1..c7f28a3 100644
 --- a/tests/unit/create/test_creator.py
 +++ b/tests/unit/create/test_creator.py
 @@ -666,6 +666,7 @@ def test_python_path(monkeypatch, tmp_path, python_path_on):
