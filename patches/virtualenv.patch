@@ -1,3 +1,15 @@
+diff --git a/.gitignore b/.gitignore
+index b799ed2..837bb1c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -20,7 +20,6 @@ dist
+ 
+ /docs/_draft.rst
+ /pip-wheel-metadata
+-/src/virtualenv/version.py
+ /src/virtualenv/out
+ .python-version
+ 
 diff --git a/pyproject.toml b/pyproject.toml
 index 5169e4d..c84f918 100644
 --- a/pyproject.toml
@@ -515,6 +527,13 @@ index f779e07..cbd51f2 100644
  BUNDLE_SUPPORT = {
      "3.12": {
          "pip": "pip-23.0-py3-none-any.whl",
+diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
+new file mode 100644
+index 0000000..a268928
+--- /dev/null
++++ b/src/virtualenv/version.py
+@@ -0,0 +1 @@
++__version__ = "20.19.0"
 diff --git a/tests/unit/create/test_creator.py b/tests/unit/create/test_creator.py
 index 33c8ee1..c7f28a3 100644
 --- a/tests/unit/create/test_creator.py

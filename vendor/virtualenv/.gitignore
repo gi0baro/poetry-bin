@@ -20,7 +20,6 @@ dist
 
 /docs/_draft.rst
 /pip-wheel-metadata
-/src/virtualenv/version.py
 /src/virtualenv/out
 .python-version
 
