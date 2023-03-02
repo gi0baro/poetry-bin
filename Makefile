@@ -63,7 +63,7 @@ tests:
 		rm -r .venv
 	@cd vendor/virtualenv && \
 		python -m venv .venv && \
-		.venv/bin/pip install .[testing] && \
+		.venv/bin/pip install .[test] && \
 		.venv/bin/pytest && \
 		rm -r .venv
 	@cd vendor/poetry-core && \
