@@ -2,18 +2,31 @@
 # 2.0, and the BSD License. See the LICENSE file in the root of this repository
 # for complete details.
 
+import collections
+import contextlib
+import enum
+import functools
 import json
 import logging
+import os
 import platform
+import re
+import struct
+import subprocess
 import sys
 import sysconfig
+import warnings
+
 from importlib.machinery import EXTENSION_SUFFIXES
 from typing import (
     Dict,
     FrozenSet,
+    Generator,
     Iterable,
     Iterator,
+    IO,
     List,
+    NamedTuple,
     Optional,
     Sequence,
     Tuple,
@@ -21,127 +34,145 @@ from typing import (
     cast,
 )
 
-import collections
-import contextlib
-import functools
-import operator
-import os
-import re
-import struct
-import subprocess
-import sys
-import warnings
-from typing import IO, Dict, Iterator, NamedTuple, Optional, Tuple
+
+class ELFInvalid(ValueError):
+    pass
 
 
-# Python does not provide platform information at sufficient granularity to
-# identify the architecture of the running executable in some cases, so we
-# determine it dynamically by reading the information from the running
-# process. This only applies on Linux, which uses the ELF format.
-class _ELFFileHeader:
-    # https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#File_header
-    class _InvalidELFFileHeader(ValueError):
+class EIClass(enum.IntEnum):
+    C32 = 1
+    C64 = 2
+
+
+class EIData(enum.IntEnum):
+    Lsb = 1
+    Msb = 2
+
+
+class EMachine(enum.IntEnum):
+    I386 = 3
+    S390 = 22
+    Arm = 40
+    X8664 = 62
+    AArc64 = 183
+
+
+class ELFFile:
+    """
+    Representation of an ELF executable.
+    """
+
+    def __init__(self, f: IO[bytes]) -> None:
+        self._f = f
+
+        try:
+            ident = self._read("16B")
+        except struct.error:
+            raise ELFInvalid("unable to parse identification")
+        magic = bytes(ident[:4])
+        if magic != b"\x7fELF":
+            raise ELFInvalid(f"invalid magic: {magic!r}")
+
+        self.capacity = ident[4]  # Format for program header (bitness).
+        self.encoding = ident[5]  # Data structure encoding (endianness).
+
+        try:
+            # e_fmt: Format for program header.
+            # p_fmt: Format for section header.
+            # p_idx: Indexes to find p_type, p_offset, and p_filesz.
+            e_fmt, self._p_fmt, self._p_idx = {
+                (1, 1): ("<HHIIIIIHHH", "<IIIIIIII", (0, 1, 4)),  # 32-bit LSB.
+                (1, 2): (">HHIIIIIHHH", ">IIIIIIII", (0, 1, 4)),  # 32-bit MSB.
+                (2, 1): ("<HHIQQQIHHH", "<IIQQQQQQ", (0, 2, 5)),  # 64-bit LSB.
+                (2, 2): (">HHIQQQIHHH", ">IIQQQQQQ", (0, 2, 5)),  # 64-bit MSB.
+            }[(self.capacity, self.encoding)]
+        except KeyError:
+            raise ELFInvalid(
+                f"unrecognized capacity ({self.capacity}) or "
+                f"encoding ({self.encoding})"
+            )
+
+        try:
+            (
+                _,
+                self.machine,  # Architecture type.
+                _,
+                _,
+                self._e_phoff,  # Offset of program header.
+                _,
+                self.flags,  # Processor-specific flags.
+                _,
+                self._e_phentsize,  # Size of section.
+                self._e_phnum,  # Number of sections.
+            ) = self._read(e_fmt)
+        except struct.error as e:
+            raise ELFInvalid("unable to parse machine and section information") from e
+
+    def _read(self, fmt: str) -> Tuple[int, ...]:
+        return struct.unpack(fmt, self._f.read(struct.calcsize(fmt)))
+
+    @property
+    def interpreter(self) -> Optional[str]:
         """
-        An invalid ELF file header was found.
+        The path recorded in the ``PT_INTERP`` section header.
         """
-
-    ELF_MAGIC_NUMBER = 0x7F454C46
-    ELFCLASS32 = 1
-    ELFCLASS64 = 2
-    ELFDATA2LSB = 1
-    ELFDATA2MSB = 2
-    EM_386 = 3
-    EM_S390 = 22
-    EM_ARM = 40
-    EM_X86_64 = 62
-    EF_ARM_ABIMASK = 0xFF000000
-    EF_ARM_ABI_VER5 = 0x05000000
-    EF_ARM_ABI_FLOAT_HARD = 0x00000400
-
-    def __init__(self, file: IO[bytes]) -> None:
-        def unpack(fmt: str) -> int:
+        for index in range(self._e_phnum):
+            self._f.seek(self._e_phoff + self._e_phentsize * index)
             try:
-                data = file.read(struct.calcsize(fmt))
-                result: Tuple[int, ...] = struct.unpack(fmt, data)
+                data = self._read(self._p_fmt)
             except struct.error:
-                raise _ELFFileHeader._InvalidELFFileHeader()
-            return result[0]
-
-        self.e_ident_magic = unpack(">I")
-        if self.e_ident_magic != self.ELF_MAGIC_NUMBER:
-            raise _ELFFileHeader._InvalidELFFileHeader()
-        self.e_ident_class = unpack("B")
-        if self.e_ident_class not in {self.ELFCLASS32, self.ELFCLASS64}:
-            raise _ELFFileHeader._InvalidELFFileHeader()
-        self.e_ident_data = unpack("B")
-        if self.e_ident_data not in {self.ELFDATA2LSB, self.ELFDATA2MSB}:
-            raise _ELFFileHeader._InvalidELFFileHeader()
-        self.e_ident_version = unpack("B")
-        self.e_ident_osabi = unpack("B")
-        self.e_ident_abiversion = unpack("B")
-        self.e_ident_pad = file.read(7)
-        format_h = "<H" if self.e_ident_data == self.ELFDATA2LSB else ">H"
-        format_i = "<I" if self.e_ident_data == self.ELFDATA2LSB else ">I"
-        format_q = "<Q" if self.e_ident_data == self.ELFDATA2LSB else ">Q"
-        format_p = format_i if self.e_ident_class == self.ELFCLASS32 else format_q
-        self.e_type = unpack(format_h)
-        self.e_machine = unpack(format_h)
-        self.e_version = unpack(format_i)
-        self.e_entry = unpack(format_p)
-        self.e_phoff = unpack(format_p)
-        self.e_shoff = unpack(format_p)
-        self.e_flags = unpack(format_i)
-        self.e_ehsize = unpack(format_h)
-        self.e_phentsize = unpack(format_h)
-        self.e_phnum = unpack(format_h)
-        self.e_shentsize = unpack(format_h)
-        self.e_shnum = unpack(format_h)
-        self.e_shstrndx = unpack(format_h)
-
-
-def _get_elf_header() -> Optional[_ELFFileHeader]:
-    try:
-        with open(sys.executable, "rb") as f:
-            elf_header = _ELFFileHeader(f)
-    except (OSError, TypeError, _ELFFileHeader._InvalidELFFileHeader):
+                continue
+            if data[self._p_idx[0]] != 3:  # Not PT_INTERP.
+                continue
+            self._f.seek(data[self._p_idx[1]])
+            return os.fsdecode(self._f.read(data[self._p_idx[2]])).strip("\0")
         return None
-    return elf_header
 
 
-def _is_linux_armhf() -> bool:
+EF_ARM_ABIMASK = 0xFF000000
+EF_ARM_ABI_VER5 = 0x05000000
+EF_ARM_ABI_FLOAT_HARD = 0x00000400
+
+
+@contextlib.contextmanager
+def _parse_elf(path: str) -> Generator[Optional[ELFFile], None, None]:
+    try:
+        with open(path, "rb") as f:
+            yield ELFFile(f)
+    except (OSError, TypeError, ValueError):
+        yield None
+
+
+def _is_linux_armhf(executable: str) -> bool:
     # hard-float ABI can be detected from the ELF header of the running
     # process
     # https://static.docs.arm.com/ihi0044/g/aaelf32.pdf
-    elf_header = _get_elf_header()
-    if elf_header is None:
-        return False
-    result = elf_header.e_ident_class == elf_header.ELFCLASS32
-    result &= elf_header.e_ident_data == elf_header.ELFDATA2LSB
-    result &= elf_header.e_machine == elf_header.EM_ARM
-    result &= (
-        elf_header.e_flags & elf_header.EF_ARM_ABIMASK
-    ) == elf_header.EF_ARM_ABI_VER5
-    result &= (
-        elf_header.e_flags & elf_header.EF_ARM_ABI_FLOAT_HARD
-    ) == elf_header.EF_ARM_ABI_FLOAT_HARD
-    return result
+    with _parse_elf(executable) as f:
+        return (
+            f is not None
+            and f.capacity == EIClass.C32
+            and f.encoding == EIData.Lsb
+            and f.machine == EMachine.Arm
+            and f.flags & EF_ARM_ABIMASK == EF_ARM_ABI_VER5
+            and f.flags & EF_ARM_ABI_FLOAT_HARD == EF_ARM_ABI_FLOAT_HARD
+        )
 
 
-def _is_linux_i686() -> bool:
-    elf_header = _get_elf_header()
-    if elf_header is None:
-        return False
-    result = elf_header.e_ident_class == elf_header.ELFCLASS32
-    result &= elf_header.e_ident_data == elf_header.ELFDATA2LSB
-    result &= elf_header.e_machine == elf_header.EM_386
-    return result
+def _is_linux_i686(executable: str) -> bool:
+    with _parse_elf(executable) as f:
+        return (
+            f is not None
+            and f.capacity == EIClass.C32
+            and f.encoding == EIData.Lsb
+            and f.machine == EMachine.I386
+        )
 
 
-def _have_compatible_abi(arch: str) -> bool:
+def _have_compatible_abi(executable: str, arch: str) -> bool:
     if arch == "armv7l":
-        return _is_linux_armhf()
+        return _is_linux_armhf(executable)
     if arch == "i686":
-        return _is_linux_i686()
+        return _is_linux_i686(executable)
     return arch in {"x86_64", "aarch64", "ppc64", "ppc64le", "s390x"}
 
 
@@ -167,10 +198,10 @@ def _glibc_version_string_confstr() -> Optional[str]:
     # platform module.
     # https://github.com/python/cpython/blob/fcf1d003bf4f0100c/Lib/platform.py#L175-L183
     try:
-        # os.confstr("CS_GNU_LIBC_VERSION") returns a string like "glibc 2.17".
-        version_string = os.confstr("CS_GNU_LIBC_VERSION")
+        # Should be a string like "glibc 2.17".
+        version_string: str = getattr(os, "confstr")("CS_GNU_LIBC_VERSION")
         assert version_string is not None
-        _, version = version_string.split()
+        _, version = version_string.rsplit()
     except (AssertionError, AttributeError, OSError, ValueError):
         # os.confstr() or CS_GNU_LIBC_VERSION not available (or a bad value)...
         return None
@@ -237,8 +268,8 @@ def _parse_glibc_version(version_str: str) -> Tuple[int, int]:
     m = re.match(r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)", version_str)
     if not m:
         warnings.warn(
-            "Expected glibc version with 2 components major.minor,"
-            " got: %s" % version_str,
+            f"Expected glibc version with 2 components major.minor,"
+            f" got: {version_str}",
             RuntimeWarning,
         )
         return -1, -1
@@ -291,7 +322,7 @@ _LEGACY_MANYLINUX_MAP = {
 
 
 def _manylinux_platform_tags(linux: str, arch: str) -> Iterator[str]:
-    if not _have_compatible_abi(arch):
+    if not _have_compatible_abi(sys.executable, arch):
         return
     # Oldest glibc to be supported regardless of architecture is (2, 17).
     too_old_glibc2 = _GLibCVersion(2, 16)
@@ -327,59 +358,6 @@ def _manylinux_platform_tags(linux: str, arch: str) -> Iterator[str]:
                     yield linux.replace("linux", legacy_tag)
 
 
-def _read_unpacked(f: IO[bytes], fmt: str) -> Tuple[int, ...]:
-    return struct.unpack(fmt, f.read(struct.calcsize(fmt)))
-
-
-def _parse_ld_musl_from_elf(f: IO[bytes]) -> Optional[str]:
-    """Detect musl libc location by parsing the Python executable.
-
-    Based on: https://gist.github.com/lyssdod/f51579ae8d93c8657a5564aefc2ffbca
-    ELF header: https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html
-    """
-    f.seek(0)
-    try:
-        ident = _read_unpacked(f, "16B")
-    except struct.error:
-        return None
-    if ident[:4] != tuple(b"\x7fELF"):  # Invalid magic, not ELF.
-        return None
-    f.seek(struct.calcsize("HHI"), 1)  # Skip file type, machine, and version.
-
-    try:
-        # e_fmt: Format for program header.
-        # p_fmt: Format for section header.
-        # p_idx: Indexes to find p_type, p_offset, and p_filesz.
-        e_fmt, p_fmt, p_idx = {
-            1: ("IIIIHHH", "IIIIIIII", (0, 1, 4)),  # 32-bit.
-            2: ("QQQIHHH", "IIQQQQQQ", (0, 2, 5)),  # 64-bit.
-        }[ident[4]]
-    except KeyError:
-        return None
-    else:
-        p_get = operator.itemgetter(*p_idx)
-
-    # Find the interpreter section and return its content.
-    try:
-        _, e_phoff, _, _, _, e_phentsize, e_phnum = _read_unpacked(f, e_fmt)
-    except struct.error:
-        return None
-    for i in range(e_phnum + 1):
-        f.seek(e_phoff + e_phentsize * i)
-        try:
-            p_type, p_offset, p_filesz = p_get(_read_unpacked(f, p_fmt))
-        except struct.error:
-            return None
-        if p_type != 3:  # Not PT_INTERP.
-            continue
-        f.seek(p_offset)
-        interpreter = os.fsdecode(f.read(p_filesz)).strip("\0")
-        if "musl" not in interpreter:
-            return None
-        return interpreter
-    return None
-
-
 class _MuslVersion(NamedTuple):
     major: int
     minor: int
@@ -398,22 +376,19 @@ def _parse_musl_version(output: str) -> Optional[_MuslVersion]:
 @functools.lru_cache()
 def _get_musl_version(executable: str) -> Optional[_MuslVersion]:
     """Detect currently-running musl runtime version.
-
     This is done by checking the specified executable's dynamic linking
     information, and invoking the loader to parse its output for a version
     string. If the loader is musl, the output would be something like::
-
         musl libc (x86_64)
         Version 1.2.2
         Dynamic Program Loader
     """
-    with contextlib.ExitStack() as stack:
-        try:
-            f = stack.enter_context(open(executable, "rb"))
-        except OSError:
-            return None
-        ld = _parse_ld_musl_from_elf(f)
-    if not ld:
+    try:
+        with open(executable, "rb") as f:
+            ld = ELFFile(f).interpreter
+    except (OSError, TypeError, ValueError):
+        return None
+    if ld is None or "musl" not in ld:
         return None
     proc = subprocess.run([ld], stderr=subprocess.PIPE, universal_newlines=True)
     return _parse_musl_version(proc.stderr)
@@ -421,11 +396,9 @@ def _get_musl_version(executable: str) -> Optional[_MuslVersion]:
 
 def _musllinux_platform_tags(arch: str) -> Iterator[str]:
     """Generate musllinux tags compatible to the current platform.
-
     :param arch: Should be the part of platform tag after the ``linux_``
         prefix, e.g. ``x86_64``. The ``linux_`` prefix is assumed as a
         prerequisite for the current platform to be musllinux-compatible.
-
     :returns: An iterator of compatible musllinux tags.
     """
     sys_musl = _get_musl_version(sys.executable)
@@ -449,7 +422,7 @@ INTERPRETER_SHORT_NAMES: Dict[str, str] = {
 }
 
 
-_32_BIT_INTERPRETER = sys.maxsize <= 2 ** 32
+_32_BIT_INTERPRETER = sys.maxsize <= 2**32
 
 
 class Tag:
@@ -637,10 +610,45 @@ def cpython_tags(
                 yield Tag(interpreter, "abi3", platform_)
 
 
-def _generic_abi() -> Iterator[str]:
-    abi = sysconfig.get_config_var("SOABI")
-    if abi:
-        yield _normalize_string(abi)
+def _generic_abi() -> List[str]:
+    """
+    Return the ABI tag based on EXT_SUFFIX.
+    """
+    # The following are examples of `EXT_SUFFIX`.
+    # We want to keep the parts which are related to the ABI and remove the
+    # parts which are related to the platform:
+    # - linux:   '.cpython-310-x86_64-linux-gnu.so' => cp310
+    # - mac:     '.cpython-310-darwin.so'           => cp310
+    # - win:     '.cp310-win_amd64.pyd'             => cp310
+    # - win:     '.pyd'                             => cp37 (uses _cpython_abis())
+    # - pypy:    '.pypy38-pp73-x86_64-linux-gnu.so' => pypy38_pp73
+    # - graalpy: '.graalpy-38-native-x86_64-darwin.dylib'
+    #                                               => graalpy_38_native
+
+    ext_suffix = _get_config_var("EXT_SUFFIX", warn=True)
+    if not isinstance(ext_suffix, str) or ext_suffix[0] != ".":
+        raise SystemError("invalid sysconfig.get_config_var('EXT_SUFFIX')")
+    parts = ext_suffix.split(".")
+    if len(parts) < 3:
+        # CPython3.7 and earlier uses ".pyd" on Windows.
+        return _cpython_abis(sys.version_info[:2])
+    soabi = parts[1]
+    if soabi.startswith("cpython"):
+        # non-windows
+        abi = "cp" + soabi.split("-")[1]
+    elif soabi.startswith("cp"):
+        # windows
+        abi = soabi.split("-")[0]
+    elif soabi.startswith("pypy"):
+        abi = "-".join(soabi.split("-")[:2])
+    elif soabi.startswith("graalpy"):
+        abi = "-".join(soabi.split("-")[:3])
+    elif soabi:
+        # pyston, ironpython, others?
+        abi = soabi
+    else:
+        return []
+    return [_normalize_string(abi)]
 
 
 def generic_tags(
@@ -664,8 +672,9 @@ def generic_tags(
         interpreter = "".join([interp_name, interp_version])
     if abis is None:
         abis = _generic_abi()
+    else:
+        abis = list(abis)
     platforms = list(platforms or platform_tags())
-    abis = list(abis)
     if "none" not in abis:
         abis.append("none")
     for abi in abis:
@@ -769,6 +778,22 @@ def mac_platforms(
     version_str, _, cpu_arch = platform.mac_ver()
     if version is None:
         version = cast("MacVersion", tuple(map(int, version_str.split(".")[:2])))
+        if version == (10, 16):
+            # When built against an older macOS SDK, Python will report macOS 10.16
+            # instead of the real version.
+            version_str = subprocess.run(
+                [
+                    sys.executable,
+                    "-sS",
+                    "-c",
+                    "import platform; print(platform.mac_ver()[0])",
+                ],
+                check=True,
+                env={"SYSTEM_VERSION_COMPAT": "0"},
+                stdout=subprocess.PIPE,
+                universal_newlines=True,
+            ).stdout
+            version = cast("MacVersion", tuple(map(int, version_str.split(".")[:2])))
     else:
         version = version
     if arch is None:
@@ -859,6 +884,9 @@ def platform_tags() -> Iterator[str]:
 def interpreter_name() -> str:
     """
     Returns the name of the running interpreter.
+
+    Some implementations have a reserved, two-letter abbreviation which will
+    be returned when appropriate.
     """
     name = sys.implementation.name
     return INTERPRETER_SHORT_NAMES.get(name) or name
@@ -895,9 +923,12 @@ def sys_tags(*, warn: bool = False) -> Iterator[Tag]:
         yield from generic_tags()
 
     if interp_name == "pp":
-        yield from compatible_tags(interpreter="pp3")
+        interp = "pp3"
+    elif interp_name == "cp":
+        interp = "cp" + interpreter_version(warn=warn)
     else:
-        yield from compatible_tags()
+        interp = None
+    yield from compatible_tags(interpreter=interp)
 
 
 print(

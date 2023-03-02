@@ -179,15 +179,16 @@ def test_command_new_with_readme(fmt: str | None, tester: CommandTester, tmp_dir
 
 
 @pytest.mark.parametrize(
-    ["prefer_active", "python"],
+    ["prefer_active", "python", "pyver"],
     [
-        (True, "1.1"),
-        (False, f"{sys.version_info[0]}.{sys.version_info[1]}"),
+        (True, "1.1", "1.1.1"),
+        (False, f"{sys.version_info[0]}.{sys.version_info[1]}", f"{sys.version_info[0]}.{sys.version_info[1]}.0"),
     ],
 )
 def test_respect_prefer_active_on_new(
     prefer_active: bool,
     python: str,
+    pyver: str,
     config: Config,
     mocker: MockerFixture,
     tester: CommandTester,
@@ -199,7 +200,7 @@ def test_respect_prefer_active_on_new(
 
     def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
         if GET_PYTHON_VERSION_ONELINER in cmd:
-            return "1.1.1"
+            return pyver
 
         return orig_check_output(cmd, *_, **__)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -49,6 +50,7 @@ def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
     return command_tester_factory("env use")
 
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
 def test_activate_activates_non_existing_virtualenv_no_envs_file(
     mocker: MockerFixture,
     tester: CommandTester,

@@ -561,7 +561,9 @@ class EnvManager:
 
         if not version:
             _, _, version = InterpreterLookup.find()
-            version = version or "3.10.0"
+            version = ".".join(
+                (version or "3.10.0").split(".")[:precision]
+            )
 
         return Version.parse(version)
 
@@ -1008,8 +1010,7 @@ class EnvManager:
     ) -> virtualenv.run.session.Session:
         if WINDOWS:
             path = get_real_windows_path(path)
-            if isinstance(executable, Path):
-                executable = get_real_windows_path(executable) if executable else None
+            executable = get_real_windows_path(executable) if executable else None
 
         flags = flags or {}
 
@@ -1033,9 +1034,6 @@ class EnvManager:
 
         if isinstance(executable, Path):
             executable = executable.resolve().as_posix()
-
-        if executable:
-            executable = cls._full_python_path(executable)
 
         args = [
             "--no-download",
@@ -2052,7 +2050,7 @@ class InterpreterLookup:
             python_patch = decode(
                 subprocess.check_output(
                     [executable, "-c", GET_PYTHON_VERSION_ONELINER],
-                    shell=True
+                    stderr=subprocess.STDOUT
                 ).strip()
             )
         except CalledProcessError:
@@ -2079,7 +2077,7 @@ class InterpreterLookup:
                 guess = f"{guess}.exe"
             match, minor, patch = cls._version_check(guess, constraint)
             if match:
-                return guess, minor, patch
+                return EnvManager._full_python_path(guess), minor, patch
 
         for python_to_try in sorted(
             Package.AVAILABLE_PYTHONS,
@@ -2095,7 +2093,7 @@ class InterpreterLookup:
                 guess = f"{guess}.exe"
             match, minor, patch = cls._version_check(guess, constraint)
             if match:
-                executable = guess
+                executable = EnvManager._full_python_path(guess)
                 break
 
         return executable, minor, patch

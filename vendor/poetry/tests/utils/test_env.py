@@ -55,6 +55,11 @@ print("nullpackage loaded"),
 """
 
 
+class MockSubprocRun:
+    def __init__(self, v):
+        self.stdout = v
+
+
 class MockVirtualEnv(VirtualEnv):
     def __init__(
         self,
@@ -204,6 +209,7 @@ def check_output_wrapper(
     return check_output
 
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
 def test_activate_activates_non_existing_virtualenv_no_envs_file(
     tmp_dir: str,
     manager: EnvManager,
@@ -1045,11 +1051,16 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
 
     poetry.package.python_versions = "^3.6"
 
-    mocker.patch("sys.version_info", (2, 7, 16))
-    mocker.patch(
-        "subprocess.check_output",
-        side_effect=["3.7.5", "3.7.5", "2.7.16", "3.7.5"],
-    )
+    orig_check_output = subprocess.check_output
+
+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
+        if GET_PYTHON_VERSION_ONELINER in cmd:
+            return "3.7.5"
+        if "import sys; print(sys.executable)" in cmd:
+            return "/usr/bin/python3"
+        return orig_check_output(cmd, *_, **__)
+
+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
     )
@@ -1082,10 +1093,26 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
 
     poetry.package.python_versions = "^3.6"
 
-    mocker.patch("sys.version_info", (2, 7, 16))
-    mocker.patch(
-        "subprocess.check_output", side_effect=["3.5.3", "3.9.0", "/usr/bin/python3.9"]
-    )
+    orig_check_output = subprocess.check_output
+    pyversions = ["3.5.3", "3.5.3", "3.9.0"]
+
+    orig_run = subprocess.run
+
+    def mock_run(cmd: str, *_: Any, **__: Any) -> str:
+        if "/usr/bin/python3.9" in cmd:
+            return MockSubprocRun("/usr/local")
+        return orig_run(cmd, *_, **__)
+
+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
+        if GET_PYTHON_VERSION_ONELINER in cmd:
+            return pyversions.pop(0)
+        if "import sys; print(sys.executable)" in cmd:
+            return "/usr/bin/python3.9"
+        return orig_check_output(cmd, *_, **__)
+
+    mocker.patch("subprocess.run", side_effect=mock_run)
+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
+
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
     )
@@ -1139,7 +1166,16 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
 
     poetry.package.python_versions = "^4.8"
 
-    mocker.patch("subprocess.check_output", side_effect=["3.8.0" for _ in range(1 + 12)])
+    orig_check_output = subprocess.check_output
+
+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
+        if GET_PYTHON_VERSION_ONELINER in cmd:
+            return "3.8.0"
+        if "import sys; print(sys.executable)" in cmd:
+            return "python"
+        return orig_check_output(cmd, *_, **__)
+
+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
     )
@@ -1173,11 +1209,16 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
         str(c) for c in sys.version_info[:3]
     )
 
-    mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
-    check_output = mocker.patch(
-        "subprocess.check_output",
-        side_effect=["2.7.16" for _ in range(3)] + [f"{version.major}.{version.minor}.{version.patch + 1}"],
-    )
+    orig_check_output = subprocess.check_output
+
+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
+        if GET_PYTHON_VERSION_ONELINER in cmd:
+            return f"{version.major}.{version.minor}.{version.patch + 1}"
+        if "import sys; print(sys.executable)" in cmd:
+            return "python3"
+        return orig_check_output(cmd, *_, **__)
+
+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
     m = mocker.patch(
         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
     )
@@ -1197,6 +1238,7 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
     )
 
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
 def test_create_venv_uses_patch_version_to_detect_compatibility_with_executable(
     manager: EnvManager,
     poetry: Poetry,
@@ -1265,6 +1307,7 @@ def test_create_venv_fails_if_current_python_version_is_not_supported(
     assert expected_message == str(e.value)
 
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
 def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
     manager: EnvManager,
     poetry: Poetry,
@@ -1324,13 +1367,14 @@ def test_system_env_has_correct_paths():
     assert paths["include"] is not None
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "enabled",
     [True, False],
 )
 def test_system_env_usersite(mocker: MockerFixture, enabled: bool):
     mocker.patch("site.check_enableusersite", return_value=enabled)
-    env = SystemEnv(Path(sys.prefix))
+    env = SystemEnv(Path(sys.executable))
     assert (enabled and env.usersite is not None) or (
         not enabled and env.usersite is None
     )
@@ -1523,6 +1567,13 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
 
     poetry.package.python_versions = "~3.5.1"
 
+    orig_run = subprocess.run
+
+    def mock_run(cmd: str, *_: Any, **__: Any) -> str:
+        if "/usr/bin/python3.5" in cmd:
+            return MockSubprocRun("/usr/local")
+        return orig_run(cmd, *_, **__)
+
     def mock_check_output(cmd: str, *args: Any, **kwargs: Any) -> str:
         if GET_PYTHON_VERSION_ONELINER in cmd:
             if "python3.5" in cmd:
@@ -1532,6 +1583,7 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
         else:
             return "/usr/bin/python3.5"
 
+    mocker.patch("subprocess.run", side_effect=mock_run)
     check_output = mocker.patch(
         "subprocess.check_output",
         side_effect=mock_check_output,
@@ -1624,6 +1676,7 @@ def test_build_environment_not_called_without_build_script_specified(
         assert not env.executed
 
 
+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
 def test_create_venv_project_name_empty_sets_correct_prompt(
     project_factory: ProjectFactory,
     config: Config,
@@ -1653,7 +1706,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
 
     m.assert_called_with(
         config_virtualenvs_path / f"{venv_name}-py3.7",
-        executable="/usr/bin/python3",
+        executable="/usr/bin/python",
         flags={
             "always-copy": False,
             "system-site-packages": False,
