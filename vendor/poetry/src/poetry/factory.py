@@ -23,15 +23,16 @@ from poetry.poetry import Poetry
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
 
     from cleo.io.io import IO
     from poetry.core.packages.package import Package
     from tomlkit.toml_document import TOMLDocument
 
+    from poetry.repositories import RepositoryPool
     from poetry.repositories.legacy_repository import LegacyRepository
     from poetry.utils.dependency_specification import DependencySpec
-
 
 logger = logging.getLogger(__name__)
 
@@ -89,13 +90,13 @@ class Factory(BaseFactory):
             disable_cache,
         )
 
-        # Configuring sources
-        self.configure_sources(
-            poetry,
-            poetry.local_config.get("source", []),
-            config,
-            io,
-            disable_cache=disable_cache,
+        poetry.set_pool(
+            self.create_pool(
+                config,
+                poetry.local_config.get("source", []),
+                io,
+                disable_cache=disable_cache,
+            )
         )
 
         plugin_manager = PluginManager(Plugin.group, disable_plugins=disable_plugins)
@@ -107,26 +108,32 @@ class Factory(BaseFactory):
 
     @classmethod
     def get_package(cls, name: str, version: str) -> ProjectPackage:
-        return ProjectPackage(name, version, version)
+        return ProjectPackage(name, version)
 
     @classmethod
-    def configure_sources(
+    def create_pool(
         cls,
-        poetry: Poetry,
-        sources: list[dict[str, str]],
-        config: Config,
-        io: IO,
+        auth_config: Config,
+        sources: Iterable[dict[str, Any]] = (),
+        io: IO | None = None,
         disable_cache: bool = False,
-    ) -> None:
+    ) -> RepositoryPool:
+        from poetry.repositories import RepositoryPool
+
+        if io is None:
+            io = NullIO()
+
         if disable_cache:
             logger.debug("Disabling source caches")
 
+        pool = RepositoryPool()
+
         for source in sources:
             repository = cls.create_package_source(
-                source, config, disable_cache=disable_cache
+                source, auth_config, disable_cache=disable_cache
             )
-            is_default = bool(source.get("default", False))
-            is_secondary = bool(source.get("secondary", False))
+            is_default = source.get("default", False)
+            is_secondary = source.get("secondary", False)
             if io.is_debug():
                 message = f"Adding repository {repository.name} ({repository.url})"
                 if is_default:
@@ -136,21 +143,23 @@ class Factory(BaseFactory):
 
                 io.write_line(message)
 
-            poetry.pool.add_repository(repository, is_default, secondary=is_secondary)
+            pool.add_repository(repository, is_default, secondary=is_secondary)
 
         # Put PyPI last to prefer private repositories
         # unless we have no default source AND no primary sources
         # (default = false, secondary = false)
-        if poetry.pool.has_default():
+        if pool.has_default():
             if io.is_debug():
                 io.write_line("Deactivating the PyPI repository")
         else:
             from poetry.repositories.pypi_repository import PyPiRepository
 
-            default = not poetry.pool.has_primary_repositories()
-            poetry.pool.add_repository(
+            default = not pool.has_primary_repositories()
+            pool.add_repository(
                 PyPiRepository(disable_cache=disable_cache), default, not default
             )
+
+        return pool
 
     @classmethod
     def create_package_source(

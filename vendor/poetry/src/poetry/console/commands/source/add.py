@@ -25,16 +25,17 @@ class SourceAddCommand(Command):
         option(
             "default",
             "d",
-            "Set this source as the default (disable PyPI). A "
-            "default source will also be the fallback source if "
-            "you add other sources.",
+            (
+                "Set this source as the default (disable PyPI). A "
+                "default source will also be the fallback source if "
+                "you add other sources."
+            ),
         ),
         option("secondary", "s", "Set this source as secondary."),
     ]
 
     def handle(self) -> int:
         from poetry.factory import Factory
-        from poetry.repositories import RepositoryPool
         from poetry.utils.source import source_to_table
 
         name = self.argument("name")
@@ -83,12 +84,9 @@ class SourceAddCommand(Command):
             sources.append(source_to_table(new_source))
 
         # ensure new source is valid. eg: invalid name etc.
-        self.poetry._pool = RepositoryPool()
         try:
-            Factory.configure_sources(
-                self.poetry, sources, self.poetry.config, NullIO()
-            )
-            self.poetry.pool.repository(name)
+            pool = Factory.create_pool(self.poetry.config, sources, NullIO())
+            pool.repository(name)
         except ValueError as e:
             self.line_error(
                 f"<error>Failed to validate addition of <c1>{name}</c1>: {e}</error>"

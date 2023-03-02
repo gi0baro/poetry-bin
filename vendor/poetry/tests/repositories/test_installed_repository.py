@@ -22,14 +22,12 @@ ENV_DIR = (FIXTURES_DIR / "installed").resolve()
 SITE_PURELIB = ENV_DIR / "lib" / "python3.7" / "site-packages"
 SITE_PLATLIB = ENV_DIR / "lib64" / "python3.7" / "site-packages"
 SRC = ENV_DIR / "src"
-VENDOR_DIR = ENV_DIR / "vendor" / "py3.7"
 INSTALLED_RESULTS = [
     metadata.PathDistribution(SITE_PURELIB / "cleo-0.7.6.dist-info"),
     metadata.PathDistribution(SRC / "pendulum" / "pendulum.egg-info"),
     metadata.PathDistribution(
         zipfile.Path(str(SITE_PURELIB / "foo-0.1.0-py3.8.egg"), "EGG-INFO")
     ),
-    metadata.PathDistribution(VENDOR_DIR / "attrs-19.3.0.dist-info"),
     metadata.PathDistribution(SITE_PURELIB / "standard-1.2.3.dist-info"),
     metadata.PathDistribution(SITE_PURELIB / "editable-2.3.4.dist-info"),
     metadata.PathDistribution(SITE_PURELIB / "editable-with-import-2.3.4.dist-info"),
@@ -113,9 +111,7 @@ def test_load_successful_with_invalid_distribution(
     )
     repository_with_invalid_distribution = InstalledRepository.load(env)
 
-    assert (
-        len(repository_with_invalid_distribution.packages) == len(INSTALLED_RESULTS)
-    )
+    assert len(repository_with_invalid_distribution.packages) == len(INSTALLED_RESULTS)
     assert len(caplog.messages) == 1
 
     message = caplog.messages[0]

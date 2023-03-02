@@ -32,16 +32,12 @@ def validate_object(obj: dict[str, Any]) -> list[str]:
         errors.append(message)
 
     core_schema = json.loads(
-        resources.read_text(f"poetry.core.json.schemas", "poetry-schema.json")
+        resources.read_text("poetry.core.json.schemas", "poetry-schema.json")
     )
 
-    if core_schema["additionalProperties"]:
-        # TODO: make this un-conditional once core update to >1.1.0b2
-        properties = {*schema["properties"].keys(), *core_schema["properties"].keys()}
-        additional_properties = set(obj.keys()) - properties
-        for key in additional_properties:
-            errors.append(
-                f"Additional properties are not allowed ('{key}' was unexpected)"
-            )
+    properties = {*schema["properties"].keys(), *core_schema["properties"].keys()}
+    additional_properties = set(obj.keys()) - properties
+    for key in additional_properties:
+        errors.append(f"Additional properties are not allowed ('{key}' was unexpected)")
 
     return errors
