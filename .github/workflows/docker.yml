@@ -43,10 +43,10 @@ jobs:
         context: docker
         file: docker/Gnu.fixedv.Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.2
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.3
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
-          POETRY_VERSION=1.2.2-1
+          POETRY_VERSION=1.3.2-1
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
@@ -89,10 +89,10 @@ jobs:
         context: docker
         file: docker/Alpine.fixedv.Dockerfile
         push: true
-        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.2
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.3
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
-          POETRY_VERSION=1.2.2-1
+          POETRY_VERSION=1.3.2-1
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
