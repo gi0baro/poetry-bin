@@ -129,7 +129,7 @@ index 5887436e..9feedf2b 100644
      # compatibility for python <3.8
      from backports.cached_property import cached_property
 diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
-index 8d897fd2..473d5136 100644
+index 8d897fd2..eca1fe3e 100644
 --- a/src/poetry/utils/env.py
 +++ b/src/poetry/utils/env.py
 @@ -16,6 +16,7 @@ import warnings
@@ -594,7 +594,7 @@ index 8d897fd2..473d5136 100644
 +                    stderr=subprocess.STDOUT
 +                ).strip()
 +            )
-+        except CalledProcessError:
++        except (CalledProcessError, FileNotFoundError):
 +            return False, None, None
 +
 +        if not python_patch:

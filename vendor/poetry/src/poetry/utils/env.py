@@ -2053,7 +2053,7 @@ class InterpreterLookup:
                     stderr=subprocess.STDOUT
                 ).strip()
             )
-        except CalledProcessError:
+        except (CalledProcessError, FileNotFoundError):
             return False, None, None
 
         if not python_patch:
