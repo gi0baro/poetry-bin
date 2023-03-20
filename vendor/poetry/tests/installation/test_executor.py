@@ -22,6 +22,7 @@ from cleo.io.buffered_io import BufferedIO
 from cleo.io.outputs.output import Verbosity
 from poetry.core.packages.package import Package
 from poetry.core.packages.utils.link import Link
+from poetry.core.packages.utils.utils import path_to_url
 
 from poetry.factory import Factory
 from poetry.installation.chef import Chef as BaseChef
@@ -139,9 +140,14 @@ def mock_file_downloads(http: type[httpretty.httpretty]) -> None:
         )
 
         if not fixture.exists():
-            fixture = Path(__file__).parent.parent.joinpath(
-                "fixtures/distributions/demo-0.1.0-py2.py3-none-any.whl"
-            )
+            if name == "demo-0.1.0.tar.gz":
+                fixture = Path(__file__).parent.parent.joinpath(
+                    "fixtures/distributions/demo-0.1.0.tar.gz"
+                )
+            else:
+                fixture = Path(__file__).parent.parent.joinpath(
+                    "fixtures/distributions/demo-0.1.0-py2.py3-none-any.whl"
+                )
 
         return [200, headers, fixture.read_bytes()]
 
@@ -533,7 +539,7 @@ def test_executor_should_delete_incomplete_downloads(
     )
     mocker.patch(
         "poetry.installation.chef.Chef.get_cached_archive_for_link",
-        side_effect=lambda link: None,
+        side_effect=lambda link, strict: None,
     )
     mocker.patch(
         "poetry.installation.chef.Chef.get_cache_directory_for_link",
@@ -601,6 +607,12 @@ def test_executor_should_not_write_pep610_url_references_for_cached_package(
     io: BufferedIO,
 ):
     link_cached = fixture_dir("distributions") / "demo-0.1.0-py2.py3-none-any.whl"
+    package.files = [
+        {
+            "file": "demo-0.1.0-py2.py3-none-any.whl",
+            "hash": "sha256:70e704135718fffbcbf61ed1fc45933cfd86951a744b681000eaaa75da31f17a",  # noqa: E501
+        }
+    ]
 
     mocker.patch(
         "poetry.installation.executor.Executor._download", return_value=link_cached
@@ -611,7 +623,7 @@ def test_executor_should_not_write_pep610_url_references_for_cached_package(
     verify_installed_distribution(tmp_venv, package)
 
 
-def test_executor_should_write_pep610_url_references_for_files(
+def test_executor_should_write_pep610_url_references_for_wheel_files(
     tmp_venv: VirtualEnv, pool: RepositoryPool, config: Config, io: BufferedIO
 ):
     url = (
@@ -637,6 +649,38 @@ def test_executor_should_write_pep610_url_references_for_files(
             "hashes": {
                 "sha256": (
                     "70e704135718fffbcbf61ed1fc45933cfd86951a744b681000eaaa75da31f17a"
+                )
+            },
+        },
+        "url": url.as_uri(),
+    }
+    verify_installed_distribution(tmp_venv, package, expected_url_reference)
+
+
+def test_executor_should_write_pep610_url_references_for_non_wheel_files(
+    tmp_venv: VirtualEnv, pool: RepositoryPool, config: Config, io: BufferedIO
+):
+    url = (
+        Path(__file__)
+        .parent.parent.joinpath("fixtures/distributions/demo-0.1.0.tar.gz")
+        .resolve()
+    )
+    package = Package("demo", "0.1.0", source_type="file", source_url=url.as_posix())
+    # Set package.files so the executor will attempt to hash the package
+    package.files = [
+        {
+            "file": "demo-0.1.0.tar.gz",
+            "hash": "sha256:9fa123ad707a5c6c944743bf3e11a0e80d86cb518d3cf25320866ca3ef43e2ad",  # noqa: E501
+        }
+    ]
+
+    executor = Executor(tmp_venv, pool, config, io)
+    executor.execute([Install(package)])
+    expected_url_reference = {
+        "archive_info": {
+            "hashes": {
+                "sha256": (
+                    "9fa123ad707a5c6c944743bf3e11a0e80d86cb518d3cf25320866ca3ef43e2ad"
                 )
             },
         },
@@ -703,13 +747,25 @@ def test_executor_should_write_pep610_url_references_for_editable_directories(
     )
 
 
-def test_executor_should_write_pep610_url_references_for_urls(
+@pytest.mark.parametrize("is_artifact_cached", [False, True])
+def test_executor_should_write_pep610_url_references_for_wheel_urls(
     tmp_venv: VirtualEnv,
     pool: RepositoryPool,
     config: Config,
     io: BufferedIO,
     mock_file_downloads: None,
+    mocker: MockerFixture,
+    fixture_dir: FixtureDirGetter,
+    is_artifact_cached: bool,
 ):
+    if is_artifact_cached:
+        link_cached = fixture_dir("distributions") / "demo-0.1.0-py2.py3-none-any.whl"
+        mocker.patch(
+            "poetry.installation.chef.Chef.get_cached_archive_for_link",
+            return_value=link_cached,
+        )
+    download_spy = mocker.spy(Executor, "_download_archive")
+
     package = Package(
         "demo",
         "0.1.0",
@@ -725,7 +781,8 @@ def test_executor_should_write_pep610_url_references_for_urls(
     ]
 
     executor = Executor(tmp_venv, pool, config, io)
-    executor.execute([Install(package)])
+    operation = Install(package)
+    executor.execute([operation])
     expected_url_reference = {
         "archive_info": {
             "hashes": {
@@ -737,6 +794,104 @@ def test_executor_should_write_pep610_url_references_for_urls(
         "url": package.source_url,
     }
     verify_installed_distribution(tmp_venv, package, expected_url_reference)
+    if is_artifact_cached:
+        download_spy.assert_not_called()
+    else:
+        download_spy.assert_called_once_with(
+            mocker.ANY, operation, Link(package.source_url)
+        )
+
+
+@pytest.mark.parametrize(
+    (
+        "is_sdist_cached",
+        "is_wheel_cached",
+        "expect_artifact_building",
+        "expect_artifact_download",
+    ),
+    [
+        (True, False, True, False),
+        (True, True, False, False),
+        (False, False, True, True),
+        (False, True, False, True),
+    ],
+)
+def test_executor_should_write_pep610_url_references_for_non_wheel_urls(
+    tmp_venv: VirtualEnv,
+    pool: RepositoryPool,
+    config: Config,
+    io: BufferedIO,
+    mock_file_downloads: None,
+    mocker: MockerFixture,
+    fixture_dir: FixtureDirGetter,
+    is_sdist_cached: bool,
+    is_wheel_cached: bool,
+    expect_artifact_building: bool,
+    expect_artifact_download: bool,
+):
+    built_wheel = fixture_dir("distributions") / "demo-0.1.0-py2.py3-none-any.whl"
+    mock_prepare = mocker.patch(
+        "poetry.installation.chef.Chef._prepare",
+        return_value=built_wheel,
+    )
+    download_spy = mocker.spy(Executor, "_download_archive")
+
+    if is_sdist_cached | is_wheel_cached:
+        cached_sdist = fixture_dir("distributions") / "demo-0.1.0.tar.gz"
+        cached_wheel = fixture_dir("distributions") / "demo-0.1.0-py2.py3-none-any.whl"
+
+        def mock_get_cached_archive_for_link_func(_: Link, strict: bool):
+            if is_wheel_cached and not strict:
+                return cached_wheel
+            if is_sdist_cached:
+                return cached_sdist
+            return None
+
+        mocker.patch(
+            "poetry.installation.chef.Chef.get_cached_archive_for_link",
+            side_effect=mock_get_cached_archive_for_link_func,
+        )
+
+    package = Package(
+        "demo",
+        "0.1.0",
+        source_type="url",
+        source_url="https://files.pythonhosted.org/demo-0.1.0.tar.gz",
+    )
+    # Set package.files so the executor will attempt to hash the package
+    package.files = [
+        {
+            "file": "demo-0.1.0.tar.gz",
+            "hash": "sha256:9fa123ad707a5c6c944743bf3e11a0e80d86cb518d3cf25320866ca3ef43e2ad",  # noqa: E501
+        }
+    ]
+
+    executor = Executor(tmp_venv, pool, config, io)
+    operation = Install(package)
+    executor.execute([operation])
+    expected_url_reference = {
+        "archive_info": {
+            "hashes": {
+                "sha256": (
+                    "9fa123ad707a5c6c944743bf3e11a0e80d86cb518d3cf25320866ca3ef43e2ad"
+                )
+            },
+        },
+        "url": package.source_url,
+    }
+    verify_installed_distribution(tmp_venv, package, expected_url_reference)
+
+    if expect_artifact_building:
+        mock_prepare.assert_called_once()
+    else:
+        mock_prepare.assert_not_called()
+
+    if expect_artifact_download:
+        download_spy.assert_called_once_with(
+            mocker.ANY, operation, Link(package.source_url)
+        )
+    else:
+        download_spy.assert_not_called()
 
 
 def test_executor_should_write_pep610_url_references_for_git(
@@ -776,6 +931,37 @@ def test_executor_should_write_pep610_url_references_for_git(
     )
 
 
+def test_executor_should_append_subdirectory_for_git(
+    mocker: MockerFixture,
+    tmp_venv: VirtualEnv,
+    pool: RepositoryPool,
+    config: Config,
+    io: BufferedIO,
+    mock_file_downloads: None,
+    wheel: Path,
+) -> None:
+    package = Package(
+        "demo",
+        "0.1.2",
+        source_type="git",
+        source_reference="master",
+        source_resolved_reference="123456",
+        source_url="https://github.com/demo/subdirectories.git",
+        source_subdirectory="two",
+    )
+
+    chef = Chef(config, tmp_venv, Factory.create_pool(config))
+    chef.set_directory_wheel(wheel)
+    spy = mocker.spy(chef, "prepare")
+
+    executor = Executor(tmp_venv, pool, config, io)
+    executor._chef = chef
+    executor.execute([Install(package)])
+
+    archive_arg = spy.call_args[0][0]
+    assert archive_arg == tmp_venv.path / "src/demo/subdirectories/two"
+
+
 def test_executor_should_write_pep610_url_references_for_git_with_subdirectories(
     tmp_venv: VirtualEnv,
     pool: RepositoryPool,
@@ -813,38 +999,6 @@ def test_executor_should_write_pep610_url_references_for_git_with_subdirectories
             "subdirectory": package.source_subdirectory,
         },
     )
-
-
-def test_executor_should_use_cached_link_and_hash(
-    tmp_venv: VirtualEnv,
-    pool: RepositoryPool,
-    config: Config,
-    io: BufferedIO,
-    mocker: MockerFixture,
-    fixture_dir: FixtureDirGetter,
-):
-    link_cached = fixture_dir("distributions") / "demo-0.1.0-py2.py3-none-any.whl"
-
-    mocker.patch(
-        "poetry.installation.chef.Chef.get_cached_archive_for_link",
-        return_value=link_cached,
-    )
-
-    package = Package("demo", "0.1.0")
-    # Set package.files so the executor will attempt to hash the package
-    package.files = [
-        {
-            "file": "demo-0.1.0-py2.py3-none-any.whl",
-            "hash": "sha256:70e704135718fffbcbf61ed1fc45933cfd86951a744b681000eaaa75da31f17a",  # noqa: E501
-        }
-    ]
-
-    executor = Executor(tmp_venv, pool, config, io)
-    archive = executor._download_link(
-        Install(package),
-        Link("https://example.com/demo-0.1.0-py2.py3-none-any.whl"),
-    )
-    assert archive == link_cached
 
 
 @pytest.mark.parametrize(
@@ -940,8 +1094,10 @@ Package operations: 1 install, 0 updates, 0 removals
 
 
 @pytest.mark.parametrize("failing_method", ["build", "get_requires_for_build"])
+@pytest.mark.parametrize("editable", [False, True])
 def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess(
     failing_method: str,
+    editable: bool,
     mocker: MockerFixture,
     config: Config,
     pool: RepositoryPool,
@@ -949,7 +1105,7 @@ def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess(
     tmp_dir: str,
     mock_file_downloads: None,
     env: MockEnv,
-):
+) -> None:
     error = BuildBackendException(
         CalledProcessError(1, ["pip"], output=b"Error on stdout")
     )
@@ -968,7 +1124,10 @@ def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess(
         .parent.parent.joinpath("fixtures/simple_project")
         .resolve()
         .as_posix(),
+        develop=editable,
     )
+    # must not be included in the error message
+    directory_package.python_versions = ">=3.7"
 
     return_code = executor.execute(
         [
@@ -992,14 +1151,70 @@ Package operations: 1 install, 0 updates, 0 removals
   Error on stdout
 """
 
-    requirement = directory_package.to_dependency().to_pep_508()
+    if editable:
+        pip_command = "pip wheel --use-pep517 --editable"
+        requirement = directory_package.source_url
+        assert Path(requirement).exists()
+    else:
+        pip_command = "pip wheel --use-pep517"
+        requirement = f"{package_name} @ {path_to_url(directory_package.source_url)}"
     expected_end = f"""
 Note: This error originates from the build backend, and is likely not a problem with \
 poetry but with {package_name} ({package_version} {package_url}) not supporting \
-PEP 517 builds. You can verify this by running 'pip wheel --use-pep517 "{requirement}"'.
+PEP 517 builds. You can verify this by running '{pip_command} "{requirement}"'.
 
 """
 
     output = io.fetch_output()
+    assert output.startswith(expected_start)
+    assert output.endswith(expected_end)
+
+
+def test_build_system_requires_not_available(
+    config: Config,
+    pool: RepositoryPool,
+    io: BufferedIO,
+    tmp_dir: str,
+    mock_file_downloads: None,
+    env: MockEnv,
+    fixture_dir: FixtureDirGetter,
+) -> None:
+    io.set_verbosity(Verbosity.NORMAL)
+
+    executor = Executor(env, pool, config, io)
+
+    package_name = "simple-project"
+    package_version = "1.2.3"
+    directory_package = Package(
+        package_name,
+        package_version,
+        source_type="directory",
+        source_url=fixture_dir("build_system_requires_not_available")
+        .resolve()
+        .as_posix(),
+    )
+
+    return_code = executor.execute(
+        [
+            Install(directory_package),
+        ]
+    )
+
+    assert return_code == 1
+
+    package_url = directory_package.source_url
+    expected_start = f"""\
+Package operations: 1 install, 0 updates, 0 removals
+
+  • Installing {package_name} ({package_version} {package_url})
+
+  SolveFailure
+
+  Because -root- depends on poetry-core (0.999) which doesn't match any versions,\
+ version solving failed.
+"""
+    expected_end = "Cannot resolve build-system.requires for simple-project."
+
+    output = io.fetch_output().strip()
     assert output.startswith(expected_start)
     assert output.endswith(expected_end)

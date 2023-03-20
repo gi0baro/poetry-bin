@@ -1,5 +1,5 @@
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..3e8d9f94 100644
+index 13fa08fc..bf256159 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -19,7 +19,7 @@ index 13fa08fc..3e8d9f94 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.4.0"
++__version__ = "1.4.1"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
 index 8c246b36..6b38fb8f 100644
 --- a/src/poetry/console/application.py
@@ -129,7 +129,7 @@ index 5887436e..9feedf2b 100644
      # compatibility for python <3.8
      from backports.cached_property import cached_property
 diff --git a/src/poetry/utils/env.py b/src/poetry/utils/env.py
-index 8d897fd2..eca1fe3e 100644
+index d5755d15..f1d73499 100644
 --- a/src/poetry/utils/env.py
 +++ b/src/poetry/utils/env.py
 @@ -16,6 +16,7 @@ import warnings
@@ -353,7 +353,7 @@ index 8d897fd2..eca1fe3e 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -1614,92 +1536,47 @@ class SystemEnv(Env):
+@@ -1615,92 +1537,47 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -475,7 +475,7 @@ index 8d897fd2..eca1fe3e 100644
  
      def is_venv(self) -> bool:
          return self._path != self._base
-@@ -1912,11 +1789,101 @@ class NullEnv(SystemEnv):
+@@ -1913,11 +1790,101 @@ class NullEnv(SystemEnv):
          if path is None:
              path = Path(sys.prefix)
  
@@ -578,7 +578,7 @@ index 8d897fd2..eca1fe3e 100644
      @property
      def paths(self) -> dict[str, str]:
          if self._paths is None:
-@@ -2074,3 +2041,59 @@ class MockEnv(NullEnv):
+@@ -2075,3 +2042,59 @@ class MockEnv(NullEnv):
  
      def is_venv(self) -> bool:
          return self._is_venv
@@ -2378,10 +2378,10 @@ index 09c3a21b..00000000
 -
 -    assert tester.io.fetch_output() == expected_output
 diff --git a/tests/console/commands/test_init.py b/tests/console/commands/test_init.py
-index c4d0171f..c3d42117 100644
+index 90b50b5f..3282a0c8 100644
 --- a/tests/console/commands/test_init.py
 +++ b/tests/console/commands/test_init.py
-@@ -1067,15 +1067,16 @@ def test_package_include(
+@@ -1063,15 +1063,16 @@ def test_package_include(
  
  
  @pytest.mark.parametrize(
@@ -2401,7 +2401,7 @@ index c4d0171f..c3d42117 100644
      config: Config,
      mocker: MockerFixture,
      tester: CommandTester,
-@@ -1087,7 +1088,7 @@ def test_respect_prefer_active_on_init(
+@@ -1083,7 +1084,7 @@ def test_respect_prefer_active_on_init(
  
      def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
          if GET_PYTHON_VERSION_ONELINER in cmd:

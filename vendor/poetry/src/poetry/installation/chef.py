@@ -101,7 +101,6 @@ class Chef:
 
         if archive.is_dir():
             tmp_dir = tempfile.mkdtemp(prefix="poetry-chef-")
-
             return self._prepare(archive, Path(tmp_dir), editable=editable)
 
         return self._prepare_sdist(archive, destination=output_dir)
@@ -125,13 +124,14 @@ class Chef:
             error: Exception | None = None
             try:
                 with redirect_stdout(stdout):
+                    dist_format = "wheel" if not editable else "editable"
                     env.install(
                         builder.build_system_requires
-                        | builder.get_requires_for_build("wheel")
+                        | builder.get_requires_for_build(dist_format)
                     )
                     path = Path(
                         builder.build(
-                            "wheel" if not editable else "editable",
+                            dist_format,
                             destination.as_posix(),
                         )
                     )
@@ -197,13 +197,19 @@ class Chef:
     def _is_wheel(cls, archive: Path) -> bool:
         return archive.suffix == ".whl"
 
-    def get_cached_archive_for_link(self, link: Link) -> Path | None:
+    def get_cached_archive_for_link(self, link: Link, *, strict: bool) -> Path | None:
         archives = self.get_cached_archives_for_link(link)
         if not archives:
             return None
 
         candidates: list[tuple[float | None, Path]] = []
         for archive in archives:
+            if strict:
+                # in strict mode return the original cached archive instead of the
+                # prioritized archive type.
+                if link.filename == archive.name:
+                    return archive
+                continue
             if archive.suffix != ".whl":
                 candidates.append((float("inf"), archive))
                 continue

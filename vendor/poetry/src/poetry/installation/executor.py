@@ -24,6 +24,7 @@ from poetry.installation.operations import Install
 from poetry.installation.operations import Uninstall
 from poetry.installation.operations import Update
 from poetry.installation.wheel_installer import WheelInstaller
+from poetry.puzzle.exceptions import SolverProblemError
 from poetry.utils._compat import decode
 from poetry.utils.authenticator import Authenticator
 from poetry.utils.env import EnvCommandError
@@ -301,7 +302,14 @@ class Executor:
                     trace.render(io)
                     if isinstance(e, ChefBuildError):
                         pkg = operation.package
-                        requirement = pkg.to_dependency().to_pep_508()
+                        pip_command = "pip wheel --use-pep517"
+                        if pkg.develop:
+                            requirement = pkg.source_url
+                            pip_command += " --editable"
+                        else:
+                            requirement = (
+                                pkg.to_dependency().to_pep_508().split(";")[0].strip()
+                            )
                         io.write_line("")
                         io.write_line(
                             "<info>"
@@ -309,8 +317,17 @@ class Executor:
                             " and is likely not a problem with poetry"
                             f" but with {pkg.pretty_name} ({pkg.full_pretty_version})"
                             " not supporting PEP 517 builds. You can verify this by"
-                            f" running 'pip wheel --use-pep517 \"{requirement}\"'."
+                            f" running '{pip_command} \"{requirement}\"'."
                             "</info>"
+                        )
+                    elif isinstance(e, SolverProblemError):
+                        pkg = operation.package
+                        io.write_line("")
+                        io.write_line(
+                            "<error>"
+                            "Cannot resolve build-system.requires"
+                            f" for {pkg.pretty_name}."
+                            "</error>"
                         )
                     io.write_line("")
             finally:
@@ -506,7 +523,7 @@ class Executor:
         elif package.source_type == "file":
             archive = self._prepare_archive(operation)
         elif package.source_type == "directory":
-            archive = self._prepare_directory_archive(operation)
+            archive = self._prepare_archive(operation)
             cleanup_archive = True
         elif package.source_type == "url":
             assert package.source_url is not None
@@ -569,33 +586,14 @@ class Executor:
 
         assert package.source_url is not None
         archive = Path(package.source_url)
+        if package.source_subdirectory:
+            archive = archive / package.source_subdirectory
         if not Path(package.source_url).is_absolute() and package.root_dir:
             archive = package.root_dir / archive
 
         self._populate_hashes_dict(archive, package)
 
         return self._chef.prepare(archive, editable=package.develop)
-
-    def _prepare_directory_archive(self, operation: Install | Update) -> Path:
-        package = operation.package
-        operation_message = self.get_operation_message(operation)
-
-        message = (
-            f"  <fg=blue;options=bold>•</> {operation_message}:"
-            " <info>Building...</info>"
-        )
-        self._write(operation, message)
-
-        assert package.source_url is not None
-        if package.root_dir:
-            req = package.root_dir / package.source_url
-        else:
-            req = Path(package.source_url).resolve(strict=False)
-
-        if package.source_subdirectory:
-            req /= package.source_subdirectory
-
-        return self._prepare_archive(operation)
 
     def _prepare_git_archive(self, operation: Install | Update) -> Path:
         from poetry.vcs.git import Git
@@ -619,7 +617,7 @@ class Executor:
         original_url = package.source_url
         package._source_url = str(source.path)
 
-        archive = self._prepare_directory_archive(operation)
+        archive = self._prepare_archive(operation)
 
         package._source_url = original_url
 
@@ -712,11 +710,12 @@ class Executor:
         package = operation.package
 
         output_dir = self._chef.get_cache_directory_for_link(link)
-        archive = self._chef.get_cached_archive_for_link(link)
-        if archive is None:
-            # No cached distributions was found, so we download and prepare it
+        # Try to get cached original package for the link provided
+        original_archive = self._chef.get_cached_archive_for_link(link, strict=True)
+        if original_archive is None:
+            # No cached original distributions was found, so we download and prepare it
             try:
-                archive = self._download_archive(operation, link)
+                original_archive = self._download_archive(operation, link)
             except BaseException:
                 cache_directory = self._chef.get_cache_directory_for_link(link)
                 cached_file = cache_directory.joinpath(link.filename)
@@ -727,6 +726,13 @@ class Executor:
 
                 raise
 
+        # Get potential higher prioritized cached archive, otherwise it will fall back
+        # to the original archive.
+        archive = self._chef.get_cached_archive_for_link(link, strict=False)
+        # 'archive' can at this point never be None. Since we previously downloaded
+        # an archive, we now should have something cached that we can use here
+        assert archive is not None
+
         if archive.suffix != ".whl":
             message = (
                 f"  <fg=blue;options=bold>•</> {self.get_operation_message(operation)}:"
@@ -736,7 +742,8 @@ class Executor:
 
             archive = self._chef.prepare(archive, output_dir=output_dir)
 
-        self._populate_hashes_dict(archive, package)
+        # Use the original archive to provide the correct hash.
+        self._populate_hashes_dict(original_archive, package)
 
         return archive
 
@@ -748,7 +755,7 @@ class Executor:
     @staticmethod
     def _validate_archive_hash(archive: Path, package: Package) -> str:
         archive_hash: str = "sha256:" + get_file_hash(archive)
-        known_hashes = {f["hash"] for f in package.files}
+        known_hashes = {f["hash"] for f in package.files if f["file"] == archive.name}
 
         if archive_hash not in known_hashes:
             raise RuntimeError(
