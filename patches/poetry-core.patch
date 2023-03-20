@@ -1,5 +1,5 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index 49319c2..12fc96d 100644
+index b75bf38..1c93933 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -38,9 +38,6 @@ generate-setup-file = false
@@ -10,8 +10,8 @@ index 49319c2..12fc96d 100644
 -importlib-metadata = {version = ">=1.7.0", python = "<3.8"}
 -
  [tool.poetry.dev-dependencies]
- pre-commit = "^2.15.0"
- pyrsistent = "^0.18.0"
+ pre-commit = ">=2.15.0"
+ pyrsistent = ">=0.18.0"
 @@ -117,6 +114,5 @@ drop = [
  pyrsistent = "https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENSE.mit"
  
@@ -21,13 +21,13 @@ index 49319c2..12fc96d 100644
  build-backend = "poetry.core.masonry.api"
 -backend-path = ["src"]
 diff --git a/src/poetry/core/__init__.py b/src/poetry/core/__init__.py
-index c1073fa..7016f95 100644
+index 857c0af..4208a40 100644
 --- a/src/poetry/core/__init__.py
 +++ b/src/poetry/core/__init__.py
 @@ -8,8 +8,3 @@ from pathlib import Path
  # this cannot presently be replaced with importlib.metadata.version as when building
  # itself, poetry-core is not available as an installed distribution.
- __version__ = "1.5.1"
+ __version__ = "1.5.2"
 -
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 -
@@ -39207,18 +39207,19 @@ index e8922ba..0000000
 -tomlkit==0.11.6 ; python_version >= "3.7" and python_version < "4.0"
 -typing-extensions==4.4.0 ; python_version >= "3.7" and python_version < "4.0"
 diff --git a/src/poetry/core/json/__init__.py b/src/poetry/core/json/__init__.py
-index c46a8d2..84ec3c8 100644
+index f620de1..b20054c 100644
 --- a/src/poetry/core/json/__init__.py
 +++ b/src/poetry/core/json/__init__.py
-@@ -3,25 +3,22 @@ from __future__ import annotations
- import json
- import os
+@@ -2,26 +2,22 @@ from __future__ import annotations
  
+ import json
+ 
+-from pathlib import Path
 +from importlib import resources
  from typing import Any
  
  
--SCHEMA_DIR = os.path.join(os.path.dirname(__file__), "schemas")
+-SCHEMA_DIR = Path(__file__).parent / "schemas"
 -
 -
  class ValidationError(ValueError):
@@ -39226,9 +39227,9 @@ index c46a8d2..84ec3c8 100644
  
  
  def validate_object(obj: dict[str, Any], schema_name: str) -> list[str]:
--    schema_file = os.path.join(SCHEMA_DIR, f"{schema_name}.json")
+-    schema_file = SCHEMA_DIR / f"{schema_name}.json"
 -
--    if not os.path.exists(schema_file):
+-    if not schema_file.exists():
 +    try:
 +        schema = json.loads(
 +            resources.read_text(f"{__name__}.schemas", f"{schema_name}.json")
@@ -39236,7 +39237,7 @@ index c46a8d2..84ec3c8 100644
 +    except Exception:
          raise ValueError(f"Schema {schema_name} does not exist.")
  
--    with open(schema_file, encoding="utf-8") as f:
+-    with schema_file.open(encoding="utf-8") as f:
 -        schema = json.loads(f.read())
 -
      from jsonschema import Draft7Validator

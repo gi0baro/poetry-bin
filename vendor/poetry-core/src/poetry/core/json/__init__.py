@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 
 from importlib import resources
 from typing import Any
