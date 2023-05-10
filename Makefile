@@ -1,7 +1,8 @@
 .PHONY: _path_build _path_lib _path_assets _build_posix _build_win assets pack patches sign tests
 
-ARCH_LINUX := x86_64-unknown-linux-gnu
-ARCH_MAC_INTEL := x86_64-apple-darwin
+ARCH_LINUX_X86 := x86_64-unknown-linux-gnu
+ARCH_LINUX_ARM := aarch64-unknown-linux-gnu
+ARCH_MAC_X86 := x86_64-apple-darwin
 ARCH_MAC_ARM := aarch64-apple-darwin
 ARCH_WIN := x86_64-pc-windows-msvc
 TARGET := install
@@ -82,10 +83,10 @@ tests:
 		.venv/bin/pytest && \
 		rm -r .venv
 
-build_linux: ARCH := ${ARCH_LINUX}
+build_linux: ARCH := ${ARCH_LINUX_X86}
 build_linux: _build_posix assets
 
-build_mac: ARCH := ${ARCH_MAC_INTEL}
+build_mac: ARCH := ${ARCH_MAC_X86}
 build_mac: _build_posix assets sign
 
 build_win: ARCH := ${ARCH_WIN}
@@ -113,10 +114,10 @@ sign: _path_build _path_lib
 	@codesign -s - ${BUILDPATH}/poetry
 	@find ${LIBPATH} -name '*.so' -type f | xargs -I $$ codesign -s - $$
 
-verify_build_linux: ARCH := ${ARCH_LINUX}
+verify_build_linux: ARCH := ${ARCH_LINUX_X86}
 verify_build_linux: _verify_build
 
-verify_build_mac: ARCH := ${ARCH_MAC_INTEL}
+verify_build_mac: ARCH := ${ARCH_MAC_X86}
 verify_build_mac: _verify_build
 
 verify_build_win: ARCH := ${ARCH_WIN}
@@ -128,10 +129,10 @@ _verify_build: _path_build
 	@cd tests && ../${BUILDPATH}/poetry install -vvv
 	@rm -rf tests/.venv
 
-pack_linux: ARCH := ${ARCH_LINUX}
+pack_linux: ARCH := ${ARCH_LINUX_X86}
 pack_linux: pack
 
-pack_mac: ARCH := ${ARCH_MAC_INTEL}
+pack_mac: ARCH := ${ARCH_MAC_X86}
 pack_mac: pack
 
 pack_win: ARCH := ${ARCH_WIN}
