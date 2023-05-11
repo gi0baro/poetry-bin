@@ -24,7 +24,7 @@ or you might want to use [Homebrew](https://brew.sh/):
 
 or you can manually download the packages from the [releases page](https://github.com/gi0baro/poetry-bin/releases).
 
-> **Note:** only x86 builds for Linux, MacOS and Windows are currently available.
+> **Note:** x86 builds are available for Linux, MacOS and Windows platforms, arm64 builds are available for Linux and MacOS platforms.
 
 ## Docker images
 
