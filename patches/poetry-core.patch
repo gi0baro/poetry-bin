@@ -35745,9 +35745,9 @@ index caf504b..971104e 100644
  
 diff --git a/vendors/deps.txt b/vendors/deps.txt
 new file mode 100644
-index 0000000..21cb4c3
+index 0000000..07e7b73
 --- /dev/null
 +++ b/vendors/deps.txt
 @@ -0,0 +1,2 @@
-+packaging==23.0
-+tomlkit==0.11.6
++packaging==23.1
++tomli==2.0.1

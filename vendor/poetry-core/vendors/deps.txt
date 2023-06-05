@@ -1,2 +1,2 @@
-packaging==23.0
-tomlkit==0.11.6
+packaging==23.1
+tomli==2.0.1

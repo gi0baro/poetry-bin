@@ -71,7 +71,7 @@ tests:
 		python -m venv .venv && \
 		.venv/bin/pip install -r vendors/deps.txt && \
 		.venv/bin/pip install ../jsonschema ../lark ../virtualenv . && \
-		.venv/bin/pip install build pytest pytest-mock && \
+		.venv/bin/pip install build pytest pytest-mock tomli-w && \
 		.venv/bin/pytest && \
 		rm -r .venv
 	@cd vendor/poetry && \
