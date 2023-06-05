@@ -17,7 +17,7 @@ from poetry.core.version.exceptions import InvalidVersion
 from poetry.repositories.exceptions import PackageNotFound
 from poetry.repositories.http_repository import HTTPRepository
 from poetry.repositories.link_sources.json import SimpleJsonPage
-from poetry.utils._compat import to_str
+from poetry.utils._compat import decode
 from poetry.utils.constants import REQUESTS_TIMEOUT
 
 
@@ -82,7 +82,7 @@ class PyPiRepository(HTTPRepository):
 
             try:
                 package = Package(name, version)
-                package.description = to_str(description.strip())
+                package.description = decode(description.strip())
                 results.append(package)
             except InvalidVersion:
                 self._log(
@@ -147,7 +147,7 @@ class PyPiRepository(HTTPRepository):
 
     def _get_release_info(
         self, name: NormalizedName, version: Version
-    ) -> dict[str, str | list[str] | None]:
+    ) -> dict[str, Any]:
         from poetry.inspection.info import PackageInfo
 
         self._log(f"Getting info for {name} ({version}) from PyPI", "debug")
@@ -246,5 +246,5 @@ class PyPiRepository(HTTPRepository):
     @staticmethod
     def _get_yanked(json_data: dict[str, Any]) -> str | bool:
         if json_data.get("yanked", False):
-            return json_data.get("yanked_reason") or True  # noqa: SIM222
+            return json_data.get("yanked_reason") or True
         return False

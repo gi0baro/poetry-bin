@@ -31,6 +31,16 @@ class InstallCommand(InstallerCommand):
             "no-root", None, "Do not install the root package (the current project)."
         ),
         option(
+            "no-directory",
+            None,
+            (
+                "Do not install any directory path dependencies; useful to install"
+                " dependencies without source code, e.g. for caching of Docker layers)"
+            ),
+            flag=True,
+            multiple=False,
+        ),
+        option(
             "dry-run",
             None,
             (
@@ -95,11 +105,6 @@ dependencies and not including the current project, run the command with the
 
         from poetry.masonry.builders.editable import EditableBuilder
 
-        use_executor = self.poetry.config.get("experimental.new-installer", False)
-        if not use_executor:
-            # only set if false because the method is deprecated
-            self.installer.use_executor(False)
-
         if self.option("extras") and self.option("all-extras"):
             self.line_error(
                 "<error>You cannot specify explicit"
@@ -148,6 +153,7 @@ dependencies and not including the current project, run the command with the
             with_synchronization = True
 
         self.installer.only_groups(self.activated_groups)
+        self.installer.skip_directory(self.option("no-directory"))
         self.installer.dry_run(self.option("dry-run"))
         self.installer.requires_synchronization(with_synchronization)
         self.installer.executor.enable_bytecode_compilation(self.option("compile"))

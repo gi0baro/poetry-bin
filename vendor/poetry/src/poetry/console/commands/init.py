@@ -13,7 +13,7 @@ from tomlkit import inline_table
 
 from poetry.console.commands.command import Command
 from poetry.console.commands.env_command import EnvCommand
-from poetry.utils.dependency_specification import parse_dependency_specification
+from poetry.utils.dependency_specification import RequirementsParser
 
 
 if TYPE_CHECKING:
@@ -73,11 +73,11 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
     def handle(self) -> int:
         from pathlib import Path
 
-        from poetry.core.pyproject.toml import PyProjectTOML
         from poetry.core.vcs.git import GitConfig
 
         from poetry.config.config import Config
         from poetry.layouts import layout
+        from poetry.pyproject.toml import PyProjectTOML
         from poetry.utils.env import EnvManager
 
         project_path = Path.cwd()
@@ -149,10 +149,7 @@ The <c1>init</c1> command creates a basic <comment>pyproject.toml</> file in the
         question.set_validator(lambda v: self._validate_author(v, author))
         author = self.ask(question)
 
-        if not author:
-            authors = []
-        else:
-            authors = [author]
+        authors = [author] if author else []
 
         license = self.option("license")
         if not license:
@@ -436,18 +433,18 @@ You can specify a package in the following forms:
         from poetry.core.pyproject.exceptions import PyProjectException
 
         try:
-            cwd = self.poetry.file.parent
+            cwd = self.poetry.file.path.parent
+            artifact_cache = self.poetry.pool.artifact_cache
         except (PyProjectException, RuntimeError):
             cwd = Path.cwd()
+            artifact_cache = self._get_pool().artifact_cache
 
-        return [
-            parse_dependency_specification(
-                requirement=requirement,
-                env=self.env if isinstance(self, EnvCommand) else None,
-                cwd=cwd,
-            )
-            for requirement in requirements
-        ]
+        parser = RequirementsParser(
+            artifact_cache=artifact_cache,
+            env=self.env if isinstance(self, EnvCommand) else None,
+            cwd=cwd,
+        )
+        return [parser.parse(requirement) for requirement in requirements]
 
     def _format_requirements(self, requirements: list[dict[str, str]]) -> Requirements:
         requires: Requirements = {}

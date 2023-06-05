@@ -27,7 +27,10 @@ def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
 
 
 def verify_project_directory(
-    path: Path, package_name: str, package_path: str, include_from: str | None = None
+    path: Path,
+    package_name: str,
+    package_path: str | Path,
+    include_from: str | None = None,
 ) -> Poetry:
     package_path = Path(package_path)
     assert path.is_dir()
@@ -155,18 +158,20 @@ def test_command_new(
     package_path: str,
     include_from: str | None,
     tester: CommandTester,
-    tmp_dir: str,
-):
-    path = Path(tmp_dir) / directory
-    options.append(path.as_posix())
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / directory
+    options.append(str(path))
     tester.execute(" ".join(options))
     verify_project_directory(path, package_name, package_path, include_from)
 
 
 @pytest.mark.parametrize(("fmt",), [(None,), ("md",), ("rst",), ("adoc",), ("creole",)])
-def test_command_new_with_readme(fmt: str | None, tester: CommandTester, tmp_dir: str):
+def test_command_new_with_readme(
+    fmt: str | None, tester: CommandTester, tmp_path: Path
+) -> None:
     package = "package"
-    path = Path(tmp_dir) / package
+    path = tmp_path / package
     options = [path.as_posix()]
 
     if fmt:
@@ -192,8 +197,8 @@ def test_respect_prefer_active_on_new(
     config: Config,
     mocker: MockerFixture,
     tester: CommandTester,
-    tmp_dir: str,
-):
+    tmp_path: Path,
+) -> None:
     from poetry.utils.env import GET_PYTHON_VERSION_ONELINER
 
     orig_check_output = subprocess.check_output
@@ -202,15 +207,16 @@ def test_respect_prefer_active_on_new(
         if GET_PYTHON_VERSION_ONELINER in cmd:
             return pyver
 
-        return orig_check_output(cmd, *_, **__)
+        output: str = orig_check_output(cmd, *_, **__)
+        return output
 
     mocker.patch("subprocess.check_output", side_effect=mock_check_output)
 
     config.config["virtualenvs"]["prefer-active-python"] = prefer_active
 
     package = "package"
-    path = Path(tmp_dir) / package
-    options = [path.as_posix()]
+    path = tmp_path / package
+    options = [str(path)]
     tester.execute(" ".join(options))
 
     pyproject_file = path / "pyproject.toml"

@@ -11,12 +11,12 @@ from typing import TYPE_CHECKING
 from typing import Any
 
 from packaging.utils import canonicalize_name
-from poetry.core.toml import TOMLFile
 
 from poetry.config.dict_config_source import DictConfigSource
 from poetry.config.file_config_source import FileConfigSource
 from poetry.locations import CONFIG_DIR
 from poetry.locations import DEFAULT_CACHE_DIR
+from poetry.toml import TOMLFile
 
 
 if TYPE_CHECKING:
@@ -124,7 +124,6 @@ class Config:
             "prompt": "{project_name}-py{python_version}",
         },
         "experimental": {
-            "new-installer": True,
             "system-git-client": False,
         },
         "installer": {
@@ -199,7 +198,7 @@ class Config:
         repositories = {}
         pattern = re.compile(r"POETRY_REPOSITORIES_(?P<name>[A-Z_]+)_URL")
 
-        for env_key in os.environ.keys():
+        for env_key in os.environ:
             match = pattern.match(env_key)
             if match:
                 repositories[match.group("name").lower().replace("_", "-")] = {
@@ -210,7 +209,11 @@ class Config:
 
     @property
     def repository_cache_directory(self) -> Path:
-        return Path(self.get("cache-dir")) / "cache" / "repositories"
+        return Path(self.get("cache-dir")).expanduser() / "cache" / "repositories"
+
+    @property
+    def artifacts_cache_directory(self) -> Path:
+        return Path(self.get("cache-dir")).expanduser() / "artifacts"
 
     @property
     def virtualenvs_path(self) -> Path:
@@ -272,7 +275,6 @@ class Config:
             "virtualenvs.options.always-copy",
             "virtualenvs.options.system-site-packages",
             "virtualenvs.options.prefer-active-python",
-            "experimental.new-installer",
             "experimental.system-git-client",
             "installer.modern-installation",
             "installer.parallel",

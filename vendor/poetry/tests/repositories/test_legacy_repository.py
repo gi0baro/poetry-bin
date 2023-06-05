@@ -13,6 +13,7 @@ import requests
 from packaging.utils import canonicalize_name
 from poetry.core.constraints.version import Version
 from poetry.core.packages.dependency import Dependency
+from poetry.core.packages.utils.link import Link
 
 from poetry.factory import Factory
 from poetry.repositories.exceptions import PackageNotFound
@@ -20,11 +21,6 @@ from poetry.repositories.exceptions import RepositoryError
 from poetry.repositories.legacy_repository import LegacyRepository
 from poetry.repositories.link_sources.html import SimpleRepositoryPage
 
-
-try:
-    import urllib.parse as urlparse
-except ImportError:
-    import urlparse
 
 if TYPE_CHECKING:
     import httpretty
@@ -55,7 +51,7 @@ class MockRepository(LegacyRepository):
             return SimpleRepositoryPage(self._url + f"/{name}/", f.read())
 
     def _download(self, url: str, dest: Path) -> None:
-        filename = urlparse.urlparse(url).path.rsplit("/")[-1]
+        filename = Link(url).filename
         filepath = self.FIXTURES.parent / "pypi.org" / "dists" / filename
 
         shutil.copyfile(str(filepath), dest)
@@ -176,7 +172,7 @@ def test_get_package_information_skips_dependencies_with_invalid_constraints() -
         Dependency("python-jsonrpc-server", "*"),
     ]
 
-    all_extra = package.extras["all"]
+    all_extra = package.extras[canonicalize_name("all")]
 
     # rope>-0.10.5 should be discarded
     assert sorted(all_extra, key=lambda r: r.name) == [
@@ -430,7 +426,7 @@ def test_package_yanked(
     assert package.yanked_reason == yanked_reason
 
 
-def test_package_partial_yank():
+def test_package_partial_yank() -> None:
     class SpecialMockRepository(MockRepository):
         def _get_page(self, name: NormalizedName) -> SimpleRepositoryPage:
             return super()._get_page(canonicalize_name(f"{name}-partial-yank"))
@@ -466,9 +462,17 @@ def test_find_links_for_package_yanked(
         assert link.yanked_reason == yanked_reason
 
 
+def test_cached_or_downloaded_file_supports_trailing_slash() -> None:
+    repo = MockRepository()
+    with repo._cached_or_downloaded_file(
+        Link("https://foo.bar/pytest-3.5.0-py2.py3-none-any.whl/")
+    ) as filepath:
+        assert filepath.name == "pytest-3.5.0-py2.py3-none-any.whl"
+
+
 class MockHttpRepository(LegacyRepository):
     def __init__(
-        self, endpoint_responses: dict, http: type[httpretty.httpretty]
+        self, endpoint_responses: dict[str, int], http: type[httpretty.httpretty]
     ) -> None:
         base_url = "http://legacy.foo.bar"
         super().__init__("legacy", url=base_url, disable_cache=True)
@@ -481,7 +485,7 @@ class MockHttpRepository(LegacyRepository):
 def test_get_200_returns_page(http: type[httpretty.httpretty]) -> None:
     repo = MockHttpRepository({"/foo/": 200}, http)
 
-    assert repo.get_page("foo")
+    _ = repo.get_page("foo")
 
 
 @pytest.mark.parametrize("status_code", [401, 403, 404])

@@ -247,9 +247,7 @@ class InstalledRepository(Repository):
                 continue
 
             for distribution in sorted(
-                metadata.distributions(  # type: ignore[no-untyped-call]
-                    path=[entry],
-                ),
+                metadata.distributions(path=[entry]),
                 key=lambda d: str(d._path),  # type: ignore[attr-defined]
             ):
                 path = Path(str(distribution._path))  # type: ignore[attr-defined]
@@ -257,9 +255,8 @@ class InstalledRepository(Repository):
                 if path in skipped:
                     continue
 
-                try:
-                    name = canonicalize_name(distribution.metadata["name"])
-                except TypeError:
+                name = distribution.metadata.get("name")  # type: ignore[attr-defined]
+                if name is None:
                     logger.warning(
                         (
                             "Project environment contains an invalid distribution"
@@ -270,6 +267,8 @@ class InstalledRepository(Repository):
                     )
                     skipped.add(path)
                     continue
+
+                name = canonicalize_name(name)
 
                 if name in seen:
                     continue

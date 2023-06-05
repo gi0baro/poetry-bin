@@ -21,6 +21,7 @@ from urllib3 import util
 
 from poetry.__version__ import __version__
 from poetry.utils.constants import REQUESTS_TIMEOUT
+from poetry.utils.constants import STATUS_FORCELIST
 from poetry.utils.patterns import wheel_file_re
 
 
@@ -68,14 +69,15 @@ class Uploader:
             connect=5,
             total=10,
             allowed_methods=["GET"],
-            status_forcelist=[500, 501, 502, 503],
+            respect_retry_after_header=True,
+            status_forcelist=STATUS_FORCELIST,
         )
 
         return adapters.HTTPAdapter(max_retries=retry)
 
     @property
     def files(self) -> list[Path]:
-        dist = self._poetry.file.parent / "dist"
+        dist = self._poetry.file.path.parent / "dist"
         version = self._package.version.to_string()
         escaped_name = distribution_name(self._package.name)
 
@@ -299,7 +301,7 @@ class Uploader:
         """
         Register a package to a repository.
         """
-        dist = self._poetry.file.parent / "dist"
+        dist = self._poetry.file.path.parent / "dist"
         escaped_name = distribution_name(self._package.name)
         file = dist / f"{escaped_name}-{self._package.version.to_string()}.tar.gz"
 
