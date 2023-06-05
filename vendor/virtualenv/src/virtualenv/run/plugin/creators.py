@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import OrderedDict, defaultdict, namedtuple
 from importlib.metadata import EntryPoint
 
@@ -20,12 +22,7 @@ class CreatorSelector(ComponentBuilder):
                 ("venv", "venv:Venv"),
                 ("cpython3-posix", "builtin.cpython.cpython3:CPython3Posix"),
                 ("cpython3-win", "builtin.cpython.cpython3:CPython3Windows"),
-                ("cpython2-posix", "builtin.cpython.cpython2:CPython2Posix"),
-                ("cpython2-mac-framework", "builtin.cpython.mac_os:CPython2macOsFramework"),
                 ("cpython3-mac-framework", "builtin.cpython.mac_os:CPython3macOsFramework"),
-                ("cpython2-win", "builtin.cpython.cpython2:CPython2Windows"),
-                ("pypy2-posix", "builtin.pypy.pypy2:PyPy2Posix"),
-                ("pypy2-win", "builtin.pypy.pypy2:Pypy2Windows"),
                 ("pypy3-posix", "builtin.pypy.pypy3:PyPy3Posix"),
                 ("pypy3-win", "builtin.pypy.pypy3:Pypy3Windows")
             ]

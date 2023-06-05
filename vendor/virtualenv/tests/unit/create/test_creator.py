@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ast
 import difflib
 import gc
@@ -22,9 +24,7 @@ import pytest
 from virtualenv.__main__ import run, run_with_catch
 from virtualenv.create.creator import DEBUG_SCRIPT, Creator, get_env_debug_info
 from virtualenv.create.pyenv_cfg import PyEnvCfg
-from virtualenv.create.via_global_ref.builtin.cpython.cpython2 import CPython2PosixBase
 from virtualenv.create.via_global_ref.builtin.cpython.cpython3 import CPython3Posix
-from virtualenv.create.via_global_ref.builtin.python2.python2 import Python2
 from virtualenv.discovery.py_info import PythonInfo
 from virtualenv.info import IS_PYPY, IS_WIN, fs_is_case_sensitive
 from virtualenv.run import cli_run, session_via_cli
@@ -53,7 +53,7 @@ def _non_success_exit_code(capsys, target):
 
 def test_destination_exists_file(tmp_path, capsys):
     target = tmp_path / "out"
-    target.write_text("")
+    target.write_text("", encoding="utf-8")
     err = _non_success_exit_code(capsys, str(target))
     msg = f"the destination {str(target)} already exists and is a file"
     assert msg in err, err
@@ -101,29 +101,11 @@ for k, v in CURRENT.creators().key_to_meta.items():
             CREATE_METHODS.append((k, "copies"))
         if v.can_symlink:
             CREATE_METHODS.append((k, "symlinks"))
-_VENV_BUG_ON = (
-    IS_PYPY
-    and CURRENT.version_info[0:3] == (3, 6, 9)
-    and CURRENT.pypy_version_info[0:2] == [7, 3, 0]
-    and CURRENT.platform == "linux"
-)
 
 
 @pytest.mark.parametrize(
     ("creator", "isolated"),
-    [
-        pytest.param(
-            *i,
-            marks=pytest.mark.xfail(
-                reason="https://bitbucket.org/pypy/pypy/issues/3159/pypy36-730-venv-fails-with-copies-on-linux",
-                strict=True,
-            ),
-        )
-        if _VENV_BUG_ON and i[0][0] == "venv" and i[0][1] == "copies"
-        else i
-        for i in product(CREATE_METHODS, ["isolated", "global"])
-    ],
-    ids=lambda i: "-".join(i) if isinstance(i, tuple) else i,
+    [pytest.param(*i, id=f"{'-'.join(i[0])}-{i[1]}") for i in product(CREATE_METHODS, ["isolated", "global"])],
 )
 def test_create_no_seed(python, creator, isolated, system, coverage_env, special_name_dir):
     dest = special_name_dir
@@ -226,19 +208,15 @@ def test_create_no_seed(python, creator, isolated, system, coverage_env, special
         ).strip()
         assert result == "None"
 
-    if isinstance(creator, CPython2PosixBase):
-        make_file = debug["makefile_filename"]
-        assert os.path.exists(make_file)
-
-    git_ignore = (dest / ".gitignore").read_text()
+    git_ignore = (dest / ".gitignore").read_text(encoding="utf-8")
     assert git_ignore.splitlines() == ["# created by virtualenv automatically", "*"]
 
 
 def test_create_vcs_ignore_exists(tmp_path):
     git_ignore = tmp_path / ".gitignore"
-    git_ignore.write_text("magic")
+    git_ignore.write_text("magic", encoding="utf-8")
     cli_run([str(tmp_path), "--without-pip", "--activators", ""])
-    assert git_ignore.read_text() == "magic"
+    assert git_ignore.read_text(encoding="utf-8") == "magic"
 
 
 def test_create_vcs_ignore_override(tmp_path):
@@ -249,9 +227,9 @@ def test_create_vcs_ignore_override(tmp_path):
 
 def test_create_vcs_ignore_exists_override(tmp_path):
     git_ignore = tmp_path / ".gitignore"
-    git_ignore.write_text("magic")
+    git_ignore.write_text("magic", encoding="utf-8")
     cli_run([str(tmp_path), "--without-pip", "--no-vcs-ignore", "--activators", ""])
-    assert git_ignore.read_text() == "magic"
+    assert git_ignore.read_text(encoding="utf-8") == "magic"
 
 
 @pytest.mark.skipif(not CURRENT.has_venv, reason="requires interpreter with venv")
@@ -268,7 +246,7 @@ def test_venv_fails_not_inline(tmp_path, capsys, mocker):
     mocker.patch("virtualenv.run.session_via_cli", side_effect=_session_via_cli)
     before = tmp_path.stat().st_mode
     cfg_path = tmp_path / "pyvenv.cfg"
-    cfg_path.write_text("")
+    cfg_path.write_text("", encoding="utf-8")
     cfg = str(cfg_path)
     try:
         os.chmod(cfg, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
@@ -293,7 +271,7 @@ def test_create_clear_resets(tmp_path, creator, clear, caplog):
     cmd = [str(tmp_path), "--seeder", "app-data", "--without-pip", "--creator", creator, "-vvv"]
     cli_run(cmd)
 
-    marker.write_text("")  # if we a marker file this should be gone on a clear run, remain otherwise
+    marker.write_text("", encoding="utf-8")  # if we a marker file this should be gone on a clear run, remain otherwise
     assert marker.exists()
 
     cli_run(cmd + (["--clear"] if clear else []))
@@ -338,32 +316,6 @@ def test_home_path_is_exe_parent(tmp_path, creator):
         )
 
     assert any(os.path.exists(os.path.join(cfg["home"], exe)) for exe in exes)
-
-
-@pytest.mark.slow()
-@pytest.mark.usefixtures("current_fastest")
-def test_cross_major(cross_python, coverage_env, tmp_path, session_app_data):
-    cmd = [
-        "-p",
-        cross_python.executable,
-        str(tmp_path),
-        "--no-setuptools",
-        "--no-wheel",
-        "--activators",
-        "",
-    ]
-    result = cli_run(cmd)
-    pip_scripts = {i.name.replace(".exe", "") for i in result.creator.script_dir.iterdir() if i.name.startswith("pip")}
-    major, minor = cross_python.version_info[0:2]
-    assert pip_scripts == {
-        "pip",
-        f"pip{major}",
-        f"pip-{major}.{minor}",
-        f"pip{major}.{minor}",
-    }
-    coverage_env()
-    env = PythonInfo.from_exe(str(result.creator.exe), session_app_data)
-    assert env.version_info.major != CURRENT.version_info.major
 
 
 @pytest.mark.usefixtures("temp_app_data")
@@ -412,7 +364,19 @@ def test_create_long_path(tmp_path):
 @pytest.mark.parametrize("creator", sorted(set(PythonInfo.current_system().creators().key_to_class) - {"builtin"}))
 @pytest.mark.usefixtures("session_app_data")
 def test_create_distutils_cfg(creator, tmp_path, monkeypatch):
-    result = cli_run([str(tmp_path / "venv"), "--activators", "", "--creator", creator])
+    result = cli_run(
+        [
+            str(tmp_path / "venv"),
+            "--activators",
+            "",
+            "--creator",
+            creator,
+            "--setuptools",
+            "bundle",
+            "--wheel",
+            "bundle",
+        ],
+    )
 
     app = Path(__file__).parent / "console_app"
     dest = tmp_path / "console_app"
@@ -430,7 +394,7 @@ def test_create_distutils_cfg(creator, tmp_path, monkeypatch):
             install_data={tmp_path}{os.sep}data
             """,
     )
-    setup_cfg.write_text(setup_cfg.read_text() + conf)
+    setup_cfg.write_text(setup_cfg.read_text(encoding="utf-8") + conf, encoding="utf-8")
 
     monkeypatch.chdir(dest)  # distutils will read the setup.cfg from the cwd, so change to that
 
@@ -465,7 +429,9 @@ def list_files(path):
 
 def test_zip_importer_can_import_setuptools(tmp_path):
     """We're patching the loaders so might fail on r/o loaders, such as zipimporter on CPython<3.8"""
-    result = cli_run([str(tmp_path / "venv"), "--activators", "", "--no-pip", "--no-wheel", "--copies"])
+    result = cli_run(
+        [str(tmp_path / "venv"), "--activators", "", "--no-pip", "--no-wheel", "--copies", "--setuptools", "bundle"],
+    )
     zip_path = tmp_path / "site-packages.zip"
     with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zip_handler:
         lib = str(result.creator.purelib)
@@ -499,6 +465,7 @@ def test_no_preimport_threading(tmp_path):
     out = subprocess.check_output(
         [str(session.creator.exe), "-c", r"import sys; print('\n'.join(sorted(sys.modules)))"],
         text=True,
+        encoding="utf-8",
     )
     imported = set(out.splitlines())
     assert "threading" not in imported
@@ -509,12 +476,13 @@ def test_pth_in_site_vs_python_path(tmp_path):
     session = cli_run([str(tmp_path)])
     site_packages = str(session.creator.purelib)
     # install test.pth that sets sys.testpth='ok'
-    with open(os.path.join(site_packages, "test.pth"), "w") as f:
+    with open(os.path.join(site_packages, "test.pth"), "w", encoding="utf-8") as f:
         f.write('import sys; sys.testpth="ok"\n')
     # verify that test.pth is activated when interpreter is run
     out = subprocess.check_output(
         [str(session.creator.exe), "-c", r"import sys; print(sys.testpth)"],
         text=True,
+        encoding="utf-8",
     )
     assert out == "ok\n"
     # same with $PYTHONPATH pointing to site_packages
@@ -527,6 +495,7 @@ def test_pth_in_site_vs_python_path(tmp_path):
         [str(session.creator.exe), "-c", r"import sys; print(sys.testpth)"],
         text=True,
         env=env,
+        encoding="utf-8",
     )
     assert out == "ok\n"
 
@@ -540,6 +509,7 @@ def test_getsitepackages_system_site(tmp_path):
     out = subprocess.check_output(
         [str(session.creator.exe), "-c", r"import site; print(site.getsitepackages())"],
         text=True,
+        encoding="utf-8",
     )
     site_packages = ast.literal_eval(out)
 
@@ -554,6 +524,7 @@ def test_getsitepackages_system_site(tmp_path):
     out = subprocess.check_output(
         [str(session.creator.exe), "-c", r"import site; print(site.getsitepackages())"],
         text=True,
+        encoding="utf-8",
     )
     site_packages = [str(Path(i).resolve()) for i in ast.literal_eval(out)]
 
@@ -579,6 +550,7 @@ def test_get_site_packages(tmp_path):
     out = subprocess.check_output(
         [str(session.creator.exe), "-c", r"import site; print(site.getsitepackages())"],
         text=True,
+        encoding="utf-8",
     )
     site_packages = ast.literal_eval(out)
 
@@ -595,7 +567,10 @@ def test_debug_bad_virtualenv(tmp_path):
     result = cli_run(cmd)
     # if the site.py is removed/altered the debug should fail as no one is around to fix the paths
     cust = result.creator.purelib / "_a.pth"
-    cust.write_text('import sys; sys.stdout.write("std-out"); sys.stderr.write("std-err"); raise SystemExit(1)')
+    cust.write_text(
+        'import sys; sys.stdout.write("std-out"); sys.stderr.write("std-err"); raise SystemExit(1)',
+        encoding="utf-8",
+    )
     debug_info = result.creator.debug
     assert debug_info["returncode"] == 1
     assert "std-err" in debug_info["err"]
@@ -614,7 +589,7 @@ def test_python_path(monkeypatch, tmp_path, python_path_on):
         if flag:
             cmd.append(flag)
         cmd.extend(["-c", "import json; import sys; print(json.dumps(sys.path))"])
-        return [i if case_sensitive else i.lower() for i in json.loads(subprocess.check_output(cmd))]
+        return [i if case_sensitive else i.lower() for i in json.loads(subprocess.check_output(cmd, encoding="utf-8"))]
 
     monkeypatch.delenv("PYTHONPATH", raising=False)
     base = _get_sys_path()
@@ -658,33 +633,23 @@ def test_python_path(monkeypatch, tmp_path, python_path_on):
         assert base == extra_all
 
 
-@pytest.mark.parametrize(
-    ("py", "pyc"),
-    product(
-        [True, False] if Python2.from_stdlib(Python2.mappings(CURRENT), "os.py")[2] else [False],
-        [True, False] if Python2.from_stdlib(Python2.mappings(CURRENT), "os.pyc")[2] else [False],
-    ),
-)
-@pytest.mark.usefixtures("session_app_data")
-@pytest.mark.skip("no py2")
-def test_py_pyc_missing(tmp_path, mocker, py, pyc):
-    """Ensure that creation can succeed if os.pyc exists (even if os.py has been deleted)"""
-    previous = Python2.from_stdlib
+# Make sure that the venv creator works on systems where vendor-delivered files
+# (specifically venv scripts delivered with Python itself) are not writable.
+#
+# https://github.com/pypa/virtualenv/issues/2419
+@pytest.mark.skipif("venv" not in CURRENT_CREATORS, reason="test needs venv creator")
+def test_venv_creator_without_write_perms(tmp_path, mocker):
+    from virtualenv.run.session import Session
 
-    def from_stdlib(mappings, name):
-        path, to, exists = previous(mappings, name)
-        if name.endswith("py"):
-            exists = py
-        elif name.endswith("pyc"):
-            exists = pyc
-        return path, to, exists
+    prev = Session._create
 
-    mocker.patch.object(Python2, "from_stdlib", side_effect=from_stdlib)
+    def func(self):
+        prev(self)
+        scripts_dir = self.creator.dest / "bin"
+        for script in scripts_dir.glob("*ctivate*"):
+            script.chmod(stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
-    result = cli_run([str(tmp_path), "--without-pip", "--activators", "", "-vv", "-p", "2"])
-    py_at = Python2.from_stdlib(Python2.mappings(CURRENT), "os.py")[1](result.creator, Path("os.py"))
-    py = pyc is False or py  # if pyc is False we fallback to serve the py, which will exist (as we only mock the check)
-    assert py_at.exists() is py
+    mocker.patch("virtualenv.run.session.Session._create", side_effect=func, autospec=True)
 
-    pyc_at = Python2.from_stdlib(Python2.mappings(CURRENT), "osc.py")[1](result.creator, Path("os.pyc"))
-    assert pyc_at.exists() is pyc
+    cmd = [str(tmp_path), "--seeder", "app-data", "--without-pip", "--creator", "venv"]
+    cli_run(cmd)

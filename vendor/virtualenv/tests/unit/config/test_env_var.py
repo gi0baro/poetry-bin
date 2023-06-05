@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -12,7 +14,7 @@ from virtualenv.run import session_via_cli
 def _empty_conf(tmp_path, monkeypatch):
     conf = tmp_path / "conf.ini"
     monkeypatch.setenv(IniConfig.VIRTUALENV_CONFIG_FILE_ENV_VAR, str(conf))
-    conf.write_text("[virtualenv]")
+    conf.write_text("[virtualenv]", encoding="utf-8")
 
 
 @pytest.mark.usefixtures("_empty_conf")

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 from configparser import ConfigParser
@@ -44,7 +46,7 @@ class IniConfig:
             logging.error("failed to read config file %s because %r", config_file, exception)
 
     def _load(self):
-        with self.config_file.open("rt") as file_handler:
+        with self.config_file.open("rt", encoding="utf-8") as file_handler:
             return self.config_parser.read_file(file_handler)
 
     def get(self, key, as_type):

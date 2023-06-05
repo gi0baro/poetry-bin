@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from shlex import quote
 
 import pytest
@@ -8,7 +10,7 @@ from virtualenv.activation import BatchActivator
 @pytest.mark.usefixtures("activation_python")
 def test_batch(activation_tester_class, activation_tester, tmp_path):
     version_script = tmp_path / "version.bat"
-    version_script.write_text("ver")
+    version_script.write_text("ver", encoding="utf-8")
 
     class Batch(activation_tester_class):
         def __init__(self, session):

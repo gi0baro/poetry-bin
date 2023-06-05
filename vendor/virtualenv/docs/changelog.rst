@@ -5,6 +5,81 @@ Release History
 
 .. towncrier release notes start
 
+v20.23.0 (2023-04-27)
+---------------------
+
+Features - 20.23.0
+~~~~~~~~~~~~~~~~~~
+- Do not install ``wheel`` and ``setuptools`` seed packages for Python 3.12+. To restore the old behaviour use:
+
+  - for ``wheel`` use ``VIRTUALENV_WHEEL=bundle`` environment variable or ``--wheel=bundle`` CLI flag,
+  - for ``setuptools`` use ``VIRTUALENV_SETUPTOOLS=bundle`` environment variable or ``--setuptools=bundle`` CLI flag.
+
+  By :user:`chrysle`. (:issue:`2487`)
+- 3.12 support - by :user:`gaborbernat`. (:issue:`2558`)
+
+Bugfixes - 20.23.0
+~~~~~~~~~~~~~~~~~~
+- Prevent ``PermissionError`` when using venv creator on systems that deliver files without user write
+  permission - by :user:`kulikjak`. (:issue:`2543`)
+- Upgrade setuptools to ``67.7.2`` from ``67.6.1`` and pip to ``23.1.2`` from ``23.1`` - by :user:`szleb`. (:issue:`2560`)
+
+
+v20.22.0 (2023-04-19)
+---------------------
+
+Features - 20.22.0
+~~~~~~~~~~~~~~~~~~
+- Drop support for creating Python <=3.6 (including 2) interpreters. Removed pip of ``20.3.4``, ``21.3.1``; wheel of
+  ``0.37.1``; setuptools of ``59.6.0``, ``44.1.1``, ``50.3.2``- by :user:`gaborbernat`. (:issue:`2548`)
+
+
+v20.21.1 (2023-04-19)
+---------------------
+
+Bugfixes - 20.21.1
+~~~~~~~~~~~~~~~~~~
+- Add ``tox.ini`` to sdist - by :user:`mtelka`. (:issue:`2511`)
+- Move the use of 'let' in nushell to ensure compatibility with future releases of nushell, where 'let' no longer
+  assumes that its initializer is a full expressions. (:issue:`2527`)
+- The nushell command 'str collect' has been superseded by the 'str join' command. The activate.nu script has
+  been updated to reflect this change. (:issue:`2532`)
+- Upgrade embedded wheels:
+
+  * wheel to ``0.40.0`` from ``0.38.4``
+  * setuptools to ``67.6.1`` from ``67.4.0``
+  * pip to ``23.1`` from ``23.0.1`` (:issue:`2546`)
+
+
+v20.21.0 (2023-03-12)
+---------------------
+
+Features - 20.21.0
+~~~~~~~~~~~~~~~~~~
+- Make closure syntax explicitly starts with {||. (:issue:`2512`)
+
+Bugfixes - 20.21.0
+~~~~~~~~~~~~~~~~~~
+- Add ``print`` command to nushell print_prompt to ensure compatibility with future release of nushell,
+  where intermediate commands no longer print their result to stdout. (:issue:`2514`)
+- Do not assume the default encoding. (:issue:`2515`)
+- Make ``ReentrantFileLock`` thread-safe and,
+  thereby, fix race condition in ``virtualenv.cli_run`` - by :user:`radoering`. (:issue:`2516`)
+
+
+v20.20.0 (2023-02-28)
+---------------------
+
+Features - 20.20.0
+~~~~~~~~~~~~~~~~~~
+- Change environment variable existence check in Nushell activation script to not use deprecated command. (:issue:`2506`)
+
+Bugfixes - 20.20.0
+~~~~~~~~~~~~~~~~~~
+- Discover CPython implementations distributed on Windows by any organization - by :user:`faph`. (:issue:`2504`)
+- Upgrade embedded setuptools to ``67.4.0`` from ``67.1.0`` and pip to ``23.0.1`` from ``23.0`` - by :user:`gaborbernat`. (:issue:`2510`)
+
+
 v20.19.0 (2023-02-07)
 ---------------------
 
@@ -276,7 +351,7 @@ Features - 20.11.0
 - Avoid deprecation warning from py-filelock argument - by :user:`ofek`. (`#2237 <https://github.com/pypa/virtualenv/issues/2237>`_)
 - Upgrade embedded setuptools to ``61.1.0`` from ``58.3.0`` - by :user:`gaborbernat`. (`#2240 <https://github.com/pypa/virtualenv/issues/2240>`_)
 - Drop the runtime dependency of ``backports.entry-points-selectable`` - by :user:`hroncok`. (`#2246 <https://github.com/pypa/virtualenv/issues/2246>`_)
-- Fish: PATH variables should not be quoted when being set - by :user:`hroncok`. (`#2248 <https://github.com/pypa/virtualenv/issues/2248>`_)
+- Fish: PATH variables should not be quoted when being set - by :user:`d3dave`. (`#2248 <https://github.com/pypa/virtualenv/issues/2248>`_)
 
 
 v20.10.0 (2021-11-01)

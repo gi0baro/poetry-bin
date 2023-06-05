@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from virtualenv.discovery.py_info import PythonInfo
@@ -15,5 +17,5 @@ def fixture_file(fixture_name):
 
 
 def read_fixture(fixture_name):
-    fixture_json = fixture_file(fixture_name).read_text()
+    fixture_json = fixture_file(fixture_name).read_text(encoding="utf-8")
     return PythonInfo._from_json(fixture_json)

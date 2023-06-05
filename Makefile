@@ -33,7 +33,7 @@ sources: clean_src
 	@git clone https://github.com/lark-parser/lark.git src/lark && cd src/lark && git checkout 1.1.5
 	@git clone https://github.com/python-poetry/poetry.git src/poetry && cd src/poetry && git checkout 1.4.2
 	@git clone https://github.com/python-poetry/poetry-core.git src/poetry-core && cd src/poetry-core && git checkout 1.6.1
-	@git clone https://github.com/pypa/virtualenv.git src/virtualenv && cd src/virtualenv && git checkout 20.19.0
+	@git clone https://github.com/pypa/virtualenv.git src/virtualenv && cd src/virtualenv && git checkout 20.23.0
 
 patches:
 	@cd src/importlib_metadata && git diff --binary HEAD > ../../patches/importlib_metadata.patch

@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import logging
 import os
 from abc import ABCMeta
 from importlib.resources import read_text
-from pathlib import Path
 
 from virtualenv.info import fs_supports_symlink
 
@@ -88,10 +89,10 @@ class ViaGlobalRefApi(Creator, metaclass=ABCMeta):
         if text:
             pth = self.purelib / "_virtualenv.pth"
             logging.debug("create virtualenv import hook file %s", pth)
-            pth.write_text("import _virtualenv")
+            pth.write_text("import _virtualenv", encoding="utf-8")
             dest_path = self.purelib / "_virtualenv.py"
             logging.debug("create %s", dest_path)
-            dest_path.write_text(text)
+            dest_path.write_text(text, encoding="utf-8")
 
     def env_patch_text(self):
         """Patch the distutils package to not be derailed by its configuration files"""

@@ -1,7 +1,7 @@
 [build-system]
 build-backend = "hatchling.build"
 requires = [
-  "hatchling>=1.12.2",
+  "hatchling>=1.14",
 ]
 
 [project]
@@ -31,15 +31,15 @@ classifiers = [
   "Topic :: Software Development :: Testing",
   "Topic :: Utilities",
 ]
-version = "20.19.0"
+version = "20.23.0"
 dependencies = [
   "distlib<1,>=0.3.6",
-  "filelock<4,>=3.4.1",
-  'importlib-metadata>=4.8.3; python_version < "3.8"',
-  "platformdirs<4,>=2.4",
+  "filelock<4,>=3.11",
+  'importlib-metadata>=6.4.1; python_version < "3.8"',
+  "platformdirs<4,>=3.2",
 ]
 optional-dependencies.docs = [
-  "furo>=2022.12.7",
+  "furo>=2023.3.27",
   "proselint>=0.13",
   "sphinx>=6.1.3",
   "sphinx-argparse>=0.4",
@@ -47,24 +47,25 @@ optional-dependencies.docs = [
   "towncrier>=22.12",
 ]
 optional-dependencies.test = [
-  "covdefaults>=2.2.2",
-  "coverage>=7.1",
+  "covdefaults>=2.3",
+  "coverage>=7.2.3",
   "coverage-enable-subprocess>=1",
   "flaky>=3.7",
-  "packaging>=23",
-  "pytest>=7.2.1",
+  "packaging>=23.1",
+  "pytest>=7.3.1",
   "pytest-env>=0.8.1",
-  "pytest-freezegun>=0.4.2",
+  'pytest-freezegun>=0.4.2; platform_python_implementation == "PyPy"',
   "pytest-mock>=3.10",
   "pytest-randomly>=3.12",
   "pytest-timeout>=2.1",
+  "setuptools>=67.7.1",
+  'time-machine>=2.9; platform_python_implementation == "CPython"',
 ]
 urls.Documentation = "https://virtualenv.pypa.io"
 urls.Homepage = "https://github.com/pypa/virtualenv"
 urls.Source = "https://github.com/pypa/virtualenv"
 urls.Tracker = "https://github.com/pypa/virtualenv/issues"
 scripts.virtualenv = "virtualenv.__main__:run_with_catch"
-
 [project.entry-points."virtualenv.activate"]
 bash = "virtualenv.activation.bash:BashActivator"
 batch = "virtualenv.activation.batch:BatchActivator"
@@ -73,30 +74,47 @@ fish = "virtualenv.activation.fish:FishActivator"
 nushell = "virtualenv.activation.nushell:NushellActivator"
 powershell = "virtualenv.activation.powershell:PowerShellActivator"
 python = "virtualenv.activation.python:PythonActivator"
-
 [project.entry-points."virtualenv.create"]
-cpython2-mac-arm-framework = "virtualenv.create.via_global_ref.builtin.cpython.mac_os:CPython2macOsArmFramework"
-cpython2-mac-framework = "virtualenv.create.via_global_ref.builtin.cpython.mac_os:CPython2macOsFramework"
-cpython2-posix = "virtualenv.create.via_global_ref.builtin.cpython.cpython2:CPython2Posix"
-cpython2-win = "virtualenv.create.via_global_ref.builtin.cpython.cpython2:CPython2Windows"
 cpython3-mac-framework = "virtualenv.create.via_global_ref.builtin.cpython.mac_os:CPython3macOsFramework"
 cpython3-posix = "virtualenv.create.via_global_ref.builtin.cpython.cpython3:CPython3Posix"
 cpython3-win = "virtualenv.create.via_global_ref.builtin.cpython.cpython3:CPython3Windows"
-pypy2-posix = "virtualenv.create.via_global_ref.builtin.pypy.pypy2:PyPy2Posix"
-pypy2-win = "virtualenv.create.via_global_ref.builtin.pypy.pypy2:Pypy2Windows"
 pypy3-posix = "virtualenv.create.via_global_ref.builtin.pypy.pypy3:PyPy3Posix"
 pypy3-win = "virtualenv.create.via_global_ref.builtin.pypy.pypy3:Pypy3Windows"
 venv = "virtualenv.create.via_global_ref.venv:Venv"
-
 [project.entry-points."virtualenv.discovery"]
 builtin = "virtualenv.discovery.builtin:Builtin"
-
 [project.entry-points."virtualenv.seed"]
 app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
 pip = "virtualenv.seed.embed.pip_invoke:PipInvoke"
 
 [tool.hatch]
-build.targets.sdist.include = ["/src", "/tests"]
+build.targets.sdist.include = ["/src", "/tests", "/tox.ini"]
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+known_first_party = ["virtualenv"]
+add_imports = ["from __future__ import annotations"]
+
+[tool.flake8]
+max-complexity = 22
+max-line-length = 120
+unused-arguments-ignore-abstract-functions = true
+noqa-require-code = true
+dictionaries = ["en_US", "python", "technical", "django"]
+ignore = [
+  "E203", #  whitespace before ':'
+  "C901", # is too complex
+  "W503", # line break before binary operator
+]
+
+[tool.pytest.ini_options]
+markers = ["slow"]
+timeout = 600
+addopts = "--showlocals --no-success-flaky-report"
+env = ["PYTHONIOENCODING=utf-8"]
 
 [tool.coverage]
 html.show_contexts = true
@@ -116,33 +134,8 @@ run.parallel = true
 run.plugins = ["covdefaults"]
 run.relative_files = true
 
-[tool.black]
-line-length = 120
-
-[tool.isort]
-profile = "black"
-known_first_party = ["virtualenv"]
-
 [tool.pep8]
 max-line-length = "120"
-
-[tool.flake8]
-max-complexity = 22
-max-line-length = 120
-unused-arguments-ignore-abstract-functions = true
-noqa-require-code = true
-dictionaries = ["en_US", "python", "technical", "django"]
-ignore = [
-  "E203", #  whitespace before ':'
-  "C901", # is too complex
-  "W503", # line break before binary operator
-]
-
-[tool.pytest.ini_options]
-markers = ["slow"]
-timeout = 600
-addopts = "--tb=auto -ra --showlocals --no-success-flaky-report"
-env = ["PYTHONIOENCODING=utf-8"]
 
 [tool.towncrier]
 name = "tox"

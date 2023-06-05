@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess
@@ -56,6 +58,7 @@ def test_can_build_c_extensions(creator, tmp_path, coverage_env):
         [str(session.creator.exe), "-c", "import greet; greet.greet('World')"],
         universal_newlines=True,
         stdout=subprocess.PIPE,
+        encoding="utf-8",
     )
     out, _ = process.communicate()
     assert process.returncode == 0

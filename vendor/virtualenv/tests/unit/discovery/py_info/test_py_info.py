@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import functools
 import itertools
@@ -156,7 +158,7 @@ def test_py_info_cached_symlink(mocker, tmp_path, session_app_data):
     new_exe.symlink_to(sys.executable)
     pyvenv = Path(sys.executable).parents[1] / "pyvenv.cfg"
     if pyvenv.exists():
-        (tmp_path / pyvenv.name).write_text(pyvenv.read_text())
+        (tmp_path / pyvenv.name).write_text(pyvenv.read_text(encoding="utf-8"), encoding="utf-8")
     new_exe_str = str(new_exe)
     second_result = PythonInfo.from_exe(new_exe_str, session_app_data)
     assert second_result.executable == new_exe_str
@@ -211,7 +213,7 @@ def test_system_executable_no_exact_match(target, discovered, position, tmp_path
     selected = None
     for pos, i in enumerate(discovered):
         path = tmp_path / str(pos)
-        path.write_text("")
+        path.write_text("", encoding="utf-8")
         py_info = _make_py_info(i)
         py_info.system_executable = CURRENT.system_executable
         py_info.executable = CURRENT.system_executable
@@ -259,7 +261,7 @@ def test_py_info_ignores_distutils_config(monkeypatch, tmp_path):
     install_scripts={tmp_path}{os.sep}scripts
     install_data={tmp_path}{os.sep}data
     """
-    (tmp_path / "setup.cfg").write_text(dedent(raw))
+    (tmp_path / "setup.cfg").write_text(dedent(raw), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     py_info = PythonInfo.from_exe(sys.executable)
     distutils = py_info.distutils_install
@@ -289,7 +291,7 @@ def test_discover_exe_on_path_non_spec_name_not_match(mocker):
     assert CURRENT.satisfies(spec, impl_must_match=True) is False
 
 
-@pytest.mark.skipif(IS_PYPY, reason="setuptools distutil1s patching does not work")
+@pytest.mark.skipif(IS_PYPY, reason="setuptools distutils patching does not work")
 def test_py_info_setuptools():
     from setuptools.dist import Distribution
 
@@ -343,9 +345,6 @@ def test_custom_venv_install_scheme_is_prefered(mocker):
         # define the prefix as sysconfig.get_preferred_scheme did before 3.11
         sysconfig_install_schemes["nt" if os.name == "nt" else "posix_prefix"] = default_scheme
 
-    if sys.version_info[0] == 2:
-        sysconfig_install_schemes = _stringify_schemes_dict(sysconfig_install_schemes)
-
     # On Python < 3.10, the distutils schemes are not derived from sysconfig schemes
     # So we mock them as well to assert the custom "venv" install scheme has priority
     distutils_scheme = {
@@ -359,9 +358,6 @@ def test_custom_venv_install_scheme_is_prefered(mocker):
         "unix_prefix": distutils_scheme,
         "nt": distutils_scheme,
     }
-
-    if sys.version_info[0] == 2:
-        distutils_schemes = _stringify_schemes_dict(distutils_schemes)
 
     # We need to mock distutils first, so they don't see the mocked sysconfig,
     # if imported for the first time.

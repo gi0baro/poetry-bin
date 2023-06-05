@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import shutil
@@ -9,9 +11,8 @@ from pathlib import Path
 import pytest
 
 from virtualenv.app_data import AppDataDiskFolder
-from virtualenv.discovery.builtin import get_interpreter
 from virtualenv.discovery.py_info import PythonInfo
-from virtualenv.info import IS_WIN, fs_supports_symlink
+from virtualenv.info import IS_PYPY, IS_WIN, fs_supports_symlink
 from virtualenv.report import LOGGER
 
 
@@ -54,9 +55,9 @@ def has_symlink_support(tmp_path_factory):  # noqa: U100
 def link_folder(has_symlink_support):
     if has_symlink_support:
         return os.symlink
-    elif sys.platform == "win32" and sys.version_info[0:2] > (3, 4):
+    elif sys.platform == "win32":
         # on Windows junctions may be used instead
-        import _winapi  # Cpython3.5 has builtin implementation for junctions
+        import _winapi
 
         return getattr(_winapi, "CreateJunction", None)
     else:
@@ -141,22 +142,6 @@ def _ignore_global_config(tmp_path_factory):
     filename = str(tmp_path_factory.mktemp("folder") / "virtualenv-test-suite.ini")
     with change_os_environ("VIRTUALENV_CONFIG_FILE", filename):
         yield
-
-
-@pytest.fixture(autouse=True, scope="session")
-def _pip_cert(tmp_path_factory):
-    # workaround for https://github.com/pypa/pip/issues/8984 - if the certificate is explicitly set no error can happen
-    key = "PIP_CERT"
-    if key in os.environ:
-        yield
-    else:
-        cert = tmp_path_factory.mktemp("folder") / "cert"
-        import pkgutil
-
-        cert_data = pkgutil.get_data("pip._vendor.certifi", "cacert.pem")
-        cert.write_bytes(cert_data)
-        with change_os_environ(key, str(cert)):
-            yield
 
 
 @pytest.fixture(autouse=True)
@@ -358,18 +343,6 @@ def temp_app_data(monkeypatch, tmp_path):
 
 
 @pytest.fixture(scope="session")
-def cross_python(is_inside_ci, session_app_data):
-    spec = str(2 if sys.version_info[0] == 3 else 3)
-    interpreter = get_interpreter(spec, [], session_app_data)
-    if interpreter is None:
-        msg = f"could not find {spec}"
-        if is_inside_ci:
-            raise RuntimeError(msg)
-        pytest.skip(msg=msg)
-    return interpreter
-
-
-@pytest.fixture(scope="session")
 def for_py_version():
     return f"{sys.version_info.major}.{sys.version_info.minor}"
 
@@ -379,3 +352,16 @@ def _skip_if_test_in_system(session_app_data):
     current = PythonInfo.current(session_app_data)
     if current.system_executable is not None:
         pytest.skip("test not valid if run under system")
+
+
+if IS_PYPY:
+
+    @pytest.fixture()
+    def time_freeze(freezer):
+        return freezer.move_to
+
+else:
+
+    @pytest.fixture()
+    def time_freeze(time_machine):
+        return lambda s: time_machine.move_to(s, tick=False)

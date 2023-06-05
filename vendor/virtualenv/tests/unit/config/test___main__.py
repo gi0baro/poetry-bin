@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import re
 import sys
+from pathlib import Path
 from subprocess import PIPE, Popen, check_output
 
 import pytest
@@ -9,7 +12,12 @@ from virtualenv.util.error import ProcessCallFailed
 
 
 def test_main():
-    process = Popen([sys.executable, "-m", "virtualenv", "--help"], universal_newlines=True, stdout=PIPE)
+    process = Popen(
+        [sys.executable, "-m", "virtualenv", "--help"],
+        universal_newlines=True,
+        stdout=PIPE,
+        encoding="utf-8",
+    )
     out, _ = process.communicate()
     assert not process.returncode
     assert out
@@ -52,8 +60,8 @@ def test_fail_with_traceback(raise_on_session_done, tmp_path, capsys):
 
 
 @pytest.mark.usefixtures("session_app_data")
-def test_session_report_full(tmp_path, capsys):
-    run_with_catch([str(tmp_path)])
+def test_session_report_full(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    run_with_catch([str(tmp_path), "--setuptools", "bundle", "--wheel", "bundle"])
     out, err = capsys.readouterr()
     assert err == ""
     lines = out.splitlines()
@@ -92,6 +100,7 @@ def test_session_report_subprocess(tmp_path):
     out = check_output(
         [sys.executable, "-m", "virtualenv", str(tmp_path), "--activators", "powershell", "--without-pip"],
         text=True,
+        encoding="utf-8",
     )
     lines = out.split("\n")
     regexes = [

@@ -1,5 +1,7 @@
 """holds locking functionality that works across processes"""
 
+from __future__ import annotations
+
 import logging
 import os
 from abc import ABCMeta, abstractmethod
@@ -23,13 +25,16 @@ class _CountedFileLock(FileLock):
         self.thread_safe = RLock()
 
     def acquire(self, timeout=None, poll_interval=0.05):
-        with self.thread_safe:
-            if self.count == 0:
-                super().acquire(timeout, poll_interval)
-            self.count += 1
+        if not self.thread_safe.acquire(timeout=-1 if timeout is None else timeout):
+            raise Timeout(self.lock_file)
+        if self.count == 0:
+            super().acquire(timeout, poll_interval)
+        self.count += 1
 
     def release(self, force=False):
         with self.thread_safe:
+            if self.count > 0:
+                self.thread_safe.release()
             if self.count == 1:
                 super().release(force=force)
             self.count = max(self.count - 1, 0)
