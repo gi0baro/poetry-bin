@@ -12,7 +12,7 @@ from packaging.utils import canonicalize_name
 from poetry.core.constraints.version import parse_constraint
 from poetry.core.factory import Factory
 from poetry.core.packages.url_dependency import URLDependency
-from poetry.core.toml import TOMLFile
+from poetry.core.utils._compat import tomllib
 from poetry.core.version.markers import SingleMarker
 
 
@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from _pytest.logging import LogCaptureFixture
 
     from poetry.core.packages.dependency import Dependency
+    from poetry.core.packages.directory_dependency import DirectoryDependency
+    from poetry.core.packages.file_dependency import FileDependency
     from poetry.core.packages.vcs_dependency import VCSDependency
 
 
@@ -151,6 +153,54 @@ def test_create_poetry() -> None:
     ]
 
 
+def test_create_poetry_with_dependencies_with_subdirectory() -> None:
+    poetry = Factory().create_poetry(
+        fixtures_dir / "project_with_dependencies_with_subdirectory"
+    )
+    package = poetry.package
+    dependencies = {str(dep.name): dep for dep in package.requires}
+
+    # git dependency
+    pendulum = dependencies["pendulum"]
+    assert pendulum.is_vcs()
+    assert pendulum.pretty_constraint == "branch 2.0"
+    pendulum = cast("VCSDependency", pendulum)
+    assert pendulum.source == "https://github.com/sdispater/pendulum.git"
+    assert pendulum.directory == "sub"
+
+    # file dependency
+    demo = dependencies["demo"]
+    assert demo.is_file()
+    assert demo.pretty_constraint == "*"
+    demo = cast("FileDependency", demo)
+    assert demo.path == Path("../distributions/demo-0.1.0-in-subdir.zip")
+    assert demo.directory == "sub"
+    demo_dependencies = [dep for dep in package.requires if dep.name == "demo"]
+    assert len(demo_dependencies) == 2
+    assert demo_dependencies[0] == demo_dependencies[1]
+    assert {str(dep.marker) for dep in demo_dependencies} == {
+        'sys_platform == "win32"',
+        'sys_platform == "linux"',
+    }
+
+    # directory dependency
+    simple_project = dependencies["simple-project"]
+    assert simple_project.is_directory()
+    assert simple_project.pretty_constraint == "*"
+    simple_project = cast("DirectoryDependency", simple_project)
+    assert simple_project.path == Path("../simple_project")
+    with pytest.raises(AttributeError):
+        _ = simple_project.directory  # type: ignore[attr-defined]
+
+    # url dependency
+    foo = dependencies["foo"]
+    assert foo.is_url()
+    assert foo.pretty_constraint == "*"
+    foo = cast("URLDependency", foo)
+    assert foo.url == "https://example.com/foo.zip"
+    assert foo.directory == "sub"
+
+
 def test_create_poetry_with_packages_and_includes() -> None:
     poetry = Factory().create_poetry(
         fixtures_dir.parent / "masonry" / "builders" / "fixtures" / "with-include"
@@ -185,16 +235,18 @@ def test_create_poetry_with_multi_constraints_dependency() -> None:
 
 
 def test_validate() -> None:
-    complete = TOMLFile(fixtures_dir / "complete.toml")
-    doc: dict[str, Any] = complete.read()
+    complete = fixtures_dir / "complete.toml"
+    with complete.open("rb") as f:
+        doc = tomllib.load(f)
     content = doc["tool"]["poetry"]
 
     assert Factory.validate(content) == {"errors": [], "warnings": []}
 
 
 def test_validate_fails() -> None:
-    complete = TOMLFile(fixtures_dir / "complete.toml")
-    doc: dict[str, Any] = complete.read()
+    complete = fixtures_dir / "complete.toml"
+    with complete.open("rb") as f:
+        doc = tomllib.load(f)
     content = doc["tool"]["poetry"]
     content["authors"] = "this is not a valid array"
 
@@ -204,10 +256,11 @@ def test_validate_fails() -> None:
 
 
 def test_validate_without_strict_fails_only_non_strict() -> None:
-    project_failing_strict_validation = TOMLFile(
+    project_failing_strict_validation = (
         fixtures_dir / "project_failing_strict_validation" / "pyproject.toml"
     )
-    doc: dict[str, Any] = project_failing_strict_validation.read()
+    with project_failing_strict_validation.open("rb") as f:
+        doc = tomllib.load(f)
     content = doc["tool"]["poetry"]
 
     assert Factory.validate(content) == {
@@ -222,10 +275,11 @@ def test_validate_without_strict_fails_only_non_strict() -> None:
 
 
 def test_validate_strict_fails_strict_and_non_strict() -> None:
-    project_failing_strict_validation = TOMLFile(
+    project_failing_strict_validation = (
         fixtures_dir / "project_failing_strict_validation" / "pyproject.toml"
     )
-    doc: dict[str, Any] = project_failing_strict_validation.read()
+    with project_failing_strict_validation.open("rb") as f:
+        doc = tomllib.load(f)
     content = doc["tool"]["poetry"]
 
     assert Factory.validate(content, strict=True) == {
@@ -265,16 +319,18 @@ def test_validate_strict_fails_strict_and_non_strict() -> None:
 
 
 def test_strict_validation_success_on_multiple_readme_files() -> None:
-    with_readme_files = TOMLFile(fixtures_dir / "with_readme_files" / "pyproject.toml")
-    doc: dict[str, Any] = with_readme_files.read()
+    with_readme_files = fixtures_dir / "with_readme_files" / "pyproject.toml"
+    with with_readme_files.open("rb") as f:
+        doc = tomllib.load(f)
     content = doc["tool"]["poetry"]
 
     assert Factory.validate(content, strict=True) == {"errors": [], "warnings": []}
 
 
 def test_strict_validation_fails_on_readme_files_with_unmatching_types() -> None:
-    with_readme_files = TOMLFile(fixtures_dir / "with_readme_files" / "pyproject.toml")
-    doc: dict[str, Any] = with_readme_files.read()
+    with_readme_files = fixtures_dir / "with_readme_files" / "pyproject.toml"
+    with with_readme_files.open("rb") as f:
+        doc = tomllib.load(f)
     content = doc["tool"]["poetry"]
     content["readme"][0] = "README.md"
 
@@ -422,3 +478,19 @@ def test_create_dependency_marker_variants(
     assert dep.python_versions == exp_python
     assert dep.python_constraint == parse_constraint(exp_python)
     assert str(dep.marker) == exp_marker
+
+
+def test_all_classifiers_unique_even_if_classifiers_is_duplicated() -> None:
+    poetry = Factory().create_poetry(
+        fixtures_dir / "project_with_duplicated_classifiers"
+    )
+    package = poetry.package
+    assert package.all_classifiers == [
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Topic :: Software Development :: Build Tools",
+    ]

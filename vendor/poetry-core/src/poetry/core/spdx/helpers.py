@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import functools
 import json
-import os
 
 from importlib import resources
 

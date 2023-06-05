@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import Union
 
@@ -45,7 +46,7 @@ class Release:
                 object.__setattr__(self, "patch", 0)
         parts = [
             str(part)
-            for part in [self.major, self.minor, self.patch, *self.extra]
+            for part in (self.major, self.minor, self.patch, *self.extra)
             if part is not None
         ]
         object.__setattr__(self, "text", ".".join(parts))
@@ -66,6 +67,13 @@ class Release:
             minor=parts[1] if len(parts) > 1 else None,
             patch=parts[2] if len(parts) > 2 else None,
             extra=parts[3:],
+        )
+
+    def to_parts(self) -> Sequence[int]:
+        return tuple(
+            part
+            for part in [self.major, self.minor, self.patch, *self.extra]
+            if part is not None
         )
 
     def to_string(self) -> str:
@@ -96,6 +104,24 @@ class Release:
             minor=self.minor if self.minor is not None else 0,
             patch=self.patch + 1 if self.patch is not None else 1,
             extra=tuple(0 for _ in self.extra),
+        )
+
+    def next(self) -> Release:
+        if self.precision == 1:
+            return self.next_major()
+
+        if self.precision == 2:
+            return self.next_minor()
+
+        if self.precision == 3:
+            return self.next_patch()
+
+        return dataclasses.replace(
+            self,
+            major=self.major,
+            minor=self.minor,
+            patch=self.patch,
+            extra=(*self.extra[:-1], self.extra[-1] + 1),
         )
 
 

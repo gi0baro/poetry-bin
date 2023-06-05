@@ -7,7 +7,6 @@ import warnings
 from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Iterable
 from typing import TypeVar
 
 from packaging.utils import canonicalize_name
@@ -23,6 +22,8 @@ from poetry.core.version.markers import parse_marker
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from packaging.utils import NormalizedName
 
     from poetry.core.constraints.version import VersionConstraint
@@ -176,8 +177,12 @@ class Dependency(PackageSpecification):
             self.deactivate()
 
             for or_ in markers["extra"]:
-                for _, extra in or_:
-                    self.in_extras.append(canonicalize_name(extra))
+                for op, extra in or_:
+                    if op == "==":
+                        self.in_extras.append(canonicalize_name(extra))
+                    elif op == "" and "||" in extra:
+                        for _extra in extra.split(" || "):
+                            self.in_extras.append(canonicalize_name(_extra))
 
         # Recalculate python versions.
         self._python_versions = "*"
@@ -234,13 +239,13 @@ class Dependency(PackageSpecification):
         constraint = self.constraint
         if isinstance(constraint, VersionUnion):
             if (
-                constraint.excludes_single_version()
-                or constraint.excludes_single_wildcard_range()
+                constraint.excludes_single_version
+                or constraint.excludes_single_wildcard_range
             ):
                 # This branch is a short-circuit logic for special cases and
                 # avoids having to split and parse constraint again. This has
                 # no functional difference with the logic in the else branch.
-                requirement += f" ({str(constraint)})"
+                requirement += f" ({constraint})"
             else:
                 constraints = ",".join(
                     str(parse_constraint(c)) for c in self.pretty_constraint.split(",")
@@ -288,7 +293,7 @@ class Dependency(PackageSpecification):
 
             # we re-check for any marker here since the without extra marker might
             # return an any marker again
-            if not marker.is_empty() and not marker.is_any():
+            if not (marker.is_empty() or marker.is_any()):
                 markers.append(str(marker))
 
             has_extras = "extra" in convert_markers(marker)
@@ -341,9 +346,9 @@ class Dependency(PackageSpecification):
         cls, name: str, relative_to: Path | None = None
     ) -> Dependency:
         """
-        Resolve a PEP-508 requirement string to a `Dependency` instance. If a `relative_to`
-        path is specified, this is used as the base directory if the identified dependency is
-        of file or directory type.
+        Resolve a PEP-508 requirement string to a `Dependency` instance. If a
+        `relative_to` path is specified, this is used as the base directory if the
+        identified dependency is of file or directory type.
         """
         from poetry.core.packages.url_dependency import URLDependency
         from poetry.core.packages.utils.link import Link
@@ -425,7 +430,7 @@ class Dependency(PackageSpecification):
                 dep = VCSDependency(
                     name, "git", link.url_without_fragment, extras=req.extras
                 )
-            elif link.scheme in ["http", "https"]:
+            elif link.scheme in ("http", "https"):
                 dep = URLDependency(
                     name,
                     link.url_without_fragment,
@@ -436,7 +441,11 @@ class Dependency(PackageSpecification):
                 # handle RFC 8089 references
                 path = url_to_path(req.url)
                 dep = _make_file_or_dir_dep(
-                    name=name, path=path, base=relative_to, extras=req.extras
+                    name=name,
+                    path=path,
+                    base=relative_to,
+                    subdirectory=link.subdirectory_fragment,
+                    extras=req.extras,
                 )
             else:
                 with suppress(ValueError):
@@ -455,10 +464,7 @@ class Dependency(PackageSpecification):
                 dep._constraint = parse_constraint(version)
         else:
             constraint: VersionConstraint | str
-            if req.pretty_constraint:
-                constraint = req.constraint
-            else:
-                constraint = "*"
+            constraint = req.constraint if req.pretty_constraint else "*"
             dep = Dependency(name, constraint, extras=req.extras)
 
         if req.marker:
@@ -493,18 +499,19 @@ class Dependency(PackageSpecification):
         return self.base_pep_508_name
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {str(self)}>"
+        return f"<{self.__class__.__name__} {self}>"
 
 
 def _make_file_or_dir_dep(
     name: str,
     path: Path,
     base: Path | None = None,
+    subdirectory: str | None = None,
     extras: list[str] | None = None,
 ) -> FileDependency | DirectoryDependency | None:
     """
-    Helper function to create a file or directoru dependency with the given arguments. If
-    path is not a file or directory that exists, `None` is returned.
+    Helper function to create a file or directoru dependency with the given arguments.
+    If path is not a file or directory that exists, `None` is returned.
     """
     from poetry.core.packages.directory_dependency import DirectoryDependency
     from poetry.core.packages.file_dependency import FileDependency
@@ -515,8 +522,12 @@ def _make_file_or_dir_dep(
         _path = Path(base) / path
 
     if _path.is_file():
-        return FileDependency(name, path, base=base, extras=extras)
+        return FileDependency(
+            name, path, base=base, directory=subdirectory, extras=extras
+        )
     elif _path.is_dir():
+        if subdirectory:
+            path = path / subdirectory
         return DirectoryDependency(name, path, base=base, extras=extras)
 
     return None

@@ -53,6 +53,22 @@ def test_allows_all() -> None:
 
 
 @pytest.mark.parametrize(
+    ("constraint", "inverted"),
+    [
+        (EmptyConstraint(), AnyConstraint()),
+        (Constraint("foo"), Constraint("foo", "!=")),
+        (
+            MultiConstraint(Constraint("foo", "!="), Constraint("bar", "!=")),
+            UnionConstraint(Constraint("foo"), Constraint("bar")),
+        ),
+    ],
+)
+def test_invert(constraint: BaseConstraint, inverted: BaseConstraint) -> None:
+    assert constraint.invert() == inverted
+    assert inverted.invert() == constraint
+
+
+@pytest.mark.parametrize(
     ("constraint1", "constraint2", "expected"),
     [
         (
@@ -202,6 +218,15 @@ def test_allows_all() -> None:
             UnionConstraint(Constraint("win32"), Constraint("linux")),
             MultiConstraint(Constraint("win32", "!="), Constraint("linux", "!=")),
             EmptyConstraint(),
+        ),
+        (
+            MultiConstraint(Constraint("win32", "!="), Constraint("linux", "!=")),
+            MultiConstraint(Constraint("win32", "!="), Constraint("darwin", "!=")),
+            MultiConstraint(
+                Constraint("win32", "!="),
+                Constraint("linux", "!="),
+                Constraint("darwin", "!="),
+            ),
         ),
     ],
 )
@@ -376,6 +401,11 @@ def test_intersect(
                 Constraint("linux"),
                 MultiConstraint(Constraint("win32", "!="), Constraint("linux", "!=")),
             ),
+        ),
+        (
+            MultiConstraint(Constraint("win32", "!="), Constraint("linux", "!=")),
+            MultiConstraint(Constraint("win32", "!="), Constraint("darwin", "!=")),
+            MultiConstraint(Constraint("win32", "!=")),
         ),
     ],
 )

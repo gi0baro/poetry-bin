@@ -21,14 +21,14 @@ def validate_object(obj: dict[str, Any], schema_name: str) -> list[str]:
     from jsonschema import Draft7Validator
 
     validator = Draft7Validator(schema)
-    validation_errors = sorted(validator.iter_errors(obj), key=lambda e: e.path)  # type: ignore[no-any-return]
+    validation_errors = sorted(validator.iter_errors(obj), key=lambda e: e.path)  # type: ignore[no-any-return] # noqa: E501
 
     errors = []
 
     for error in validation_errors:
         message = error.message
         if error.path:
-            path = ".".join(str(x) for x in error.absolute_path)
+            path = ".".join(map(str, error.absolute_path))
             message = f"[{path}] {message}"
 
         errors.append(message)

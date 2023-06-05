@@ -5,11 +5,7 @@ import re
 import warnings
 
 from contextlib import contextmanager
-from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Collection
-from typing import Iterable
-from typing import Iterator
 from typing import TypeVar
 
 from poetry.core.constraints.version import parse_constraint
@@ -22,6 +18,11 @@ from poetry.core.version.markers import parse_marker
 
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+    from collections.abc import Iterable
+    from collections.abc import Iterator
+    from pathlib import Path
+
     from packaging.utils import NormalizedName
 
     from poetry.core.constraints.version import Version
@@ -33,7 +34,9 @@ if TYPE_CHECKING:
 
     T = TypeVar("T", bound="Package")
 
-AUTHOR_REGEX = re.compile(r"(?u)^(?P<name>[- .,\w\d'’\"():&]+)(?: <(?P<email>.+?)>)?$")
+AUTHOR_REGEX = re.compile(
+    r"(?u)^(?P<name>[- .,\w\d'’\"():&]+)(?: <(?P<email>.+?)>)?$"  # noqa: RUF001
+)
 
 
 class Package(PackageSpecification):
@@ -108,8 +111,8 @@ class Package(PackageSpecification):
 
         self._dependency_groups: dict[str, DependencyGroup] = {}
 
-        # For compatibility with previous version, we keep the category
-        self.category = "main"
+        # Category is heading towards deprecation.
+        self._category = "main"
         self.files: list[dict[str, str]] = []
         self.optional = False
 
@@ -156,10 +159,10 @@ class Package(PackageSpecification):
 
     @property
     def full_pretty_version(self) -> str:
-        if self.source_type in ["file", "directory", "url"]:
+        if self.source_type in ("file", "directory", "url"):
             return f"{self.pretty_version} {self.source_url}"
 
-        if self.source_type not in ["hg", "git"]:
+        if self.source_type not in ("hg", "git"):
             return self.pretty_version
 
         ref: str | None
@@ -345,7 +348,7 @@ class Package(PackageSpecification):
         # it like this so that 3.10 is sorted after 3.9.
         sorted_classifiers = []
         python_classifiers_inserted = False
-        for classifier in sorted(set(classifiers)):
+        for classifier in sorted(set(classifiers) - set(python_classifiers)):
             if (
                 not python_classifiers_inserted
                 and classifier > python_classifier_prefix
@@ -373,6 +376,24 @@ class Package(PackageSpecification):
             urls["Documentation"] = self.documentation_url
 
         return urls
+
+    @property
+    def category(self) -> str:
+        warnings.warn(
+            "`category` is deprecated and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._category
+
+    @category.setter
+    def category(self, category: str) -> None:
+        warnings.warn(
+            "Setting `category` is deprecated and will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._category = category
 
     @property
     def readme(self) -> Path | None:
@@ -517,6 +538,7 @@ class Package(PackageSpecification):
             dep = FileDependency(
                 self._name,
                 Path(self._source_url),
+                directory=self.source_subdirectory,
                 groups=list(self._dependency_groups.keys()),
                 optional=self.optional,
                 base=self.root_dir,
@@ -585,7 +607,7 @@ class Package(PackageSpecification):
         if not dependency.constraint.allows(self.version):
             return False
 
-        if not ignore_source_type and not self.source_satisfies(dependency):
+        if not (ignore_source_type or self.source_satisfies(dependency)):
             return False
 
         return True
@@ -634,21 +656,21 @@ class Package(PackageSpecification):
         args = [repr(self._name), repr(self._version.text)]
 
         if self._features:
-            args.append(f"features={repr(self._features)}")
+            args.append(f"features={self._features!r}")
 
         if self._source_type:
-            args.append(f"source_type={repr(self._source_type)}")
-            args.append(f"source_url={repr(self._source_url)}")
+            args.append(f"source_type={self._source_type!r}")
+            args.append(f"source_url={self._source_url!r}")
 
             if self._source_reference:
-                args.append(f"source_reference={repr(self._source_reference)}")
+                args.append(f"source_reference={self._source_reference!r}")
 
             if self._source_resolved_reference:
                 args.append(
-                    f"source_resolved_reference={repr(self._source_resolved_reference)}"
+                    f"source_resolved_reference={self._source_resolved_reference!r}"
                 )
             if self._source_subdirectory:
-                args.append(f"source_subdirectory={repr(self._source_subdirectory)}")
+                args.append(f"source_subdirectory={self._source_subdirectory!r}")
 
         args_str = ", ".join(args)
         return f"Package({args_str})"

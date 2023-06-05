@@ -8,6 +8,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import zipfile
 
@@ -15,10 +16,9 @@ from base64 import urlsafe_b64encode
 from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING
-from typing import Iterator
 from typing import TextIO
 
-from packaging.tags import sys_tags
+import packaging.tags
 
 from poetry.core import __version__
 from poetry.core.constraints.version import parse_constraint
@@ -27,10 +27,13 @@ from poetry.core.masonry.builders.sdist import SdistBuilder
 from poetry.core.masonry.utils.helpers import distribution_name
 from poetry.core.masonry.utils.helpers import normalize_file_permissions
 from poetry.core.masonry.utils.package_include import PackageInclude
+from poetry.core.utils.helpers import decode
 from poetry.core.utils.helpers import temporary_directory
 
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from packaging.utils import NormalizedName
 
     from poetry.core.poetry import Poetry
@@ -101,7 +104,7 @@ class WheelBuilder(Builder):
         if not target_dir.exists():
             target_dir.mkdir()
 
-        (fd, temp_path) = tempfile.mkstemp(suffix=".whl")
+        fd, temp_path = tempfile.mkstemp(suffix=".whl")
 
         st_mode = os.stat(temp_path).st_mode
         new_mode = normalize_file_permissions(st_mode)
@@ -326,20 +329,59 @@ class WheelBuilder(Builder):
         escaped_name = distribution_name(name)
         return f"{escaped_name}-{version}.dist-info"
 
+    def _get_sys_tags(self) -> list[str]:
+        """Get sys_tags via subprocess.
+        Required if poetry-core is not run inside the build environment.
+        """
+        try:
+            output = subprocess.check_output(
+                [
+                    self.executable.as_posix(),
+                    "-c",
+                    f"""
+import importlib.util
+import sys
+
+from pathlib import Path
+
+spec = importlib.util.spec_from_file_location(
+    "packaging", Path(r"{packaging.__file__}")
+)
+
+packaging = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = packaging
+
+spec = importlib.util.spec_from_file_location(
+    "packaging.tags", Path(r"{packaging.tags.__file__}")
+)
+packaging_tags = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(packaging_tags)
+for t in packaging_tags.sys_tags():
+    print(t.interpreter, t.abi, t.platform, sep="-")
+""",
+                ],
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                "Failed to get sys_tags for python interpreter"
+                f" '{self.executable.as_posix()}':\n{decode(e.output)}"
+            )
+        return decode(output).strip().splitlines()
+
     @property
     def tag(self) -> str:
         if self._package.build_script:
-            sys_tag = next(sys_tags())
+            if self.executable != Path(sys.executable):
+                # poetry-core is not run in the build environment
+                # -> this is probably not a PEP 517 build but a poetry build
+                return self._get_sys_tags()[0]
+            sys_tag = next(packaging.tags.sys_tags())
             tag = (sys_tag.interpreter, sys_tag.abi, sys_tag.platform)
         else:
             platform = "any"
-            if self.supports_python2():
-                impl = "py2.py3"
-            else:
-                impl = "py3"
-
+            impl = "py2.py3" if self.supports_python2() else "py3"
             tag = (impl, "none", platform)
-
         return "-".join(tag)
 
     def _add_file(
@@ -361,7 +403,7 @@ class WheelBuilder(Builder):
             zinfo.external_attr |= 0x10  # MS-DOS directory flag
 
         hashsum = hashlib.sha256()
-        with open(full_path, "rb") as src:
+        with full_path.open("rb") as src:
             while True:
                 buf = src.read(1024 * 8)
                 if not buf:

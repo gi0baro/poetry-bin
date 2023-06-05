@@ -6,9 +6,6 @@ from poetry.core.constraints.generic.base_constraint import BaseConstraint
 class EmptyConstraint(BaseConstraint):
     pretty_string = None
 
-    def matches(self, _: BaseConstraint) -> bool:
-        return True
-
     def is_empty(self) -> bool:
         return True
 
@@ -20,6 +17,11 @@ class EmptyConstraint(BaseConstraint):
 
     def allows_any(self, other: BaseConstraint) -> bool:
         return False
+
+    def invert(self) -> BaseConstraint:
+        from poetry.core.constraints.generic.any_constraint import AnyConstraint
+
+        return AnyConstraint()
 
     def intersect(self, other: BaseConstraint) -> BaseConstraint:
         return self

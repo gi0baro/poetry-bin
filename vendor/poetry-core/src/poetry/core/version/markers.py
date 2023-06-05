@@ -8,18 +8,25 @@ from abc import ABC
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 from typing import Any
-from typing import Callable
-from typing import Iterable
+from typing import Generic
+from typing import TypeVar
+from typing import Union
 
+from poetry.core.constraints.generic import BaseConstraint
+from poetry.core.constraints.generic import Constraint
+from poetry.core.constraints.generic import MultiConstraint
+from poetry.core.constraints.generic import UnionConstraint
 from poetry.core.constraints.version import VersionConstraint
+from poetry.core.constraints.version.exceptions import ParseConstraintError
 from poetry.core.version.grammars import GRAMMAR_PEP_508_MARKERS
 from poetry.core.version.parser import Parser
 
 
 if TYPE_CHECKING:
-    from lark import Tree
+    from collections.abc import Callable
+    from collections.abc import Iterable
 
-    from poetry.core.constraints.generic import BaseConstraint
+    from lark import Tree
 
 
 class InvalidMarker(ValueError):
@@ -57,13 +64,22 @@ _parser = Parser(GRAMMAR_PEP_508_MARKERS, "lalr")
 
 
 class BaseMarker(ABC):
+    @property
+    def complexity(self) -> tuple[int, int]:
+        """
+        first element: number of single markers, where SingleMarkerLike count as
+                       actual number
+        second element: number of single markers, where SingleMarkerLike count as 1
+        """
+        return 1, 1
+
     @abstractmethod
     def intersect(self, other: BaseMarker) -> BaseMarker:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def union(self, other: BaseMarker) -> BaseMarker:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def is_any(self) -> bool:
         return False
@@ -73,34 +89,34 @@ class BaseMarker(ABC):
 
     @abstractmethod
     def validate(self, environment: dict[str, Any] | None) -> bool:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def without_extras(self) -> BaseMarker:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def exclude(self, marker_name: str) -> BaseMarker:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def only(self, *marker_names: str) -> BaseMarker:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def invert(self) -> BaseMarker:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} {str(self)}>"
+        return f"<{self.__class__.__name__} {self}>"
 
     @abstractmethod
     def __hash__(self) -> int:
-        raise NotImplementedError()
+        raise NotImplementedError
 
     @abstractmethod
     def __eq__(self, other: object) -> bool:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class AnyMarker(BaseMarker):
@@ -112,9 +128,6 @@ class AnyMarker(BaseMarker):
 
     def is_any(self) -> bool:
         return True
-
-    def is_empty(self) -> bool:
-        return False
 
     def validate(self, environment: dict[str, Any] | None) -> bool:
         return True
@@ -154,9 +167,6 @@ class EmptyMarker(BaseMarker):
     def union(self, other: BaseMarker) -> BaseMarker:
         return other
 
-    def is_any(self) -> bool:
-        return False
-
     def is_empty(self) -> bool:
         return True
 
@@ -169,7 +179,7 @@ class EmptyMarker(BaseMarker):
     def exclude(self, marker_name: str) -> EmptyMarker:
         return self
 
-    def only(self, *marker_names: str) -> EmptyMarker:
+    def only(self, *marker_names: str) -> BaseMarker:
         return self
 
     def invert(self) -> AnyMarker:
@@ -191,17 +201,13 @@ class EmptyMarker(BaseMarker):
         return isinstance(other, EmptyMarker)
 
 
-class SingleMarker(BaseMarker):
-    _CONSTRAINT_RE = re.compile(r"(?i)^(~=|!=|>=?|<=?|==?=?|in|not in)?\s*(.+)$")
-    _VERSION_LIKE_MARKER_NAME = {
-        "python_version",
-        "python_full_version",
-        "platform_release",
-    }
+SingleMarkerConstraint = TypeVar(
+    "SingleMarkerConstraint", bound=Union[BaseConstraint, VersionConstraint]
+)
 
-    def __init__(
-        self, name: str, constraint: str | BaseConstraint | VersionConstraint
-    ) -> None:
+
+class SingleMarkerLike(BaseMarker, ABC, Generic[SingleMarkerConstraint]):
+    def __init__(self, name: str, constraint: SingleMarkerConstraint) -> None:
         from poetry.core.constraints.generic import (
             parse_constraint as parse_generic_constraint,
         )
@@ -209,90 +215,21 @@ class SingleMarker(BaseMarker):
             parse_constraint as parse_version_constraint,
         )
 
-        self._constraint: BaseConstraint | VersionConstraint
-        self._parser: Callable[[str], BaseConstraint | VersionConstraint]
         self._name = ALIASES.get(name, name)
-        constraint_string = str(constraint)
-
-        # Extract operator and value
-        m = self._CONSTRAINT_RE.match(constraint_string)
-        if m is None:
-            raise InvalidMarker(f"Invalid marker '{constraint_string}'")
-
-        self._operator = m.group(1)
-        if self._operator is None:
-            self._operator = "=="
-
-        self._value = m.group(2)
-        self._parser = parse_generic_constraint
-
-        if name in self._VERSION_LIKE_MARKER_NAME:
+        self._constraint = constraint
+        self._parser: Callable[[str], BaseConstraint | VersionConstraint]
+        if isinstance(constraint, VersionConstraint):
             self._parser = parse_version_constraint
-
-            if self._operator in {"in", "not in"}:
-                versions = []
-                for v in re.split("[ ,]+", self._value):
-                    split = v.split(".")
-                    if len(split) in [1, 2]:
-                        split.append("*")
-                        op = "" if self._operator == "in" else "!="
-                    else:
-                        op = "==" if self._operator == "in" else "!="
-
-                    versions.append(op + ".".join(split))
-
-                glue = ", "
-                if self._operator == "in":
-                    glue = " || "
-
-                self._constraint = self._parser(glue.join(versions))
-            else:
-                self._constraint = self._parser(constraint_string)
         else:
-            # if we have a in/not in operator we split the constraint
-            # into a union/multi-constraint of single constraint
-            if self._operator in {"in", "not in"}:
-                op, glue = ("==", " || ") if self._operator == "in" else ("!=", ", ")
-                values = re.split("[ ,]+", self._value)
-                constraint_string = glue.join(f"{op} {value}" for value in values)
-
-            self._constraint = self._parser(constraint_string)
+            self._parser = parse_generic_constraint
 
     @property
     def name(self) -> str:
         return self._name
 
     @property
-    def constraint(self) -> BaseConstraint | VersionConstraint:
+    def constraint(self) -> SingleMarkerConstraint:
         return self._constraint
-
-    @property
-    def operator(self) -> str:
-        return self._operator
-
-    @property
-    def value(self) -> str:
-        return self._value
-
-    def intersect(self, other: BaseMarker) -> BaseMarker:
-        if isinstance(other, SingleMarker):
-            merged = _merge_single_markers(self, other, MultiMarker)
-            if merged is not None:
-                return merged
-
-            return MultiMarker(self, other)
-
-        return other.intersect(self)
-
-    def union(self, other: BaseMarker) -> BaseMarker:
-        if isinstance(other, SingleMarker):
-            merged = _merge_single_markers(self, other, MarkerUnion)
-            if merged is not None:
-                return merged
-
-            return MarkerUnion(self, other)
-
-        return other.union(self)
 
     def validate(self, environment: dict[str, Any] | None) -> bool:
         if environment is None:
@@ -316,11 +253,118 @@ class SingleMarker(BaseMarker):
 
         return self
 
-    def only(self, *marker_names: str) -> SingleMarker | AnyMarker:
+    def only(self, *marker_names: str) -> BaseMarker:
         if self.name not in marker_names:
             return AnyMarker()
 
         return self
+
+    def intersect(self, other: BaseMarker) -> BaseMarker:
+        if isinstance(other, SingleMarkerLike):
+            merged = _merge_single_markers(self, other, MultiMarker)
+            if merged is not None:
+                return merged
+
+            return MultiMarker(self, other)
+
+        return other.intersect(self)
+
+    def union(self, other: BaseMarker) -> BaseMarker:
+        if isinstance(other, SingleMarkerLike):
+            merged = _merge_single_markers(self, other, MarkerUnion)
+            if merged is not None:
+                return merged
+
+            return MarkerUnion(self, other)
+
+        return other.union(self)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SingleMarkerLike):
+            return NotImplemented
+
+        return self._name == other.name and self._constraint == other.constraint
+
+    def __hash__(self) -> int:
+        return hash((self._name, self._constraint))
+
+
+class SingleMarker(SingleMarkerLike[Union[BaseConstraint, VersionConstraint]]):
+    _CONSTRAINT_RE = re.compile(r"(?i)^(~=|!=|>=?|<=?|==?=?|in|not in)?\s*(.+)$")
+    _VERSION_LIKE_MARKER_NAME = {
+        "python_version",
+        "python_full_version",
+        "platform_release",
+    }
+
+    def __init__(
+        self, name: str, constraint: str | BaseConstraint | VersionConstraint
+    ) -> None:
+        from poetry.core.constraints.generic import (
+            parse_constraint as parse_generic_constraint,
+        )
+        from poetry.core.constraints.version import parse_marker_version_constraint
+
+        parsed_constraint: BaseConstraint | VersionConstraint
+        parser: Callable[[str], BaseConstraint | VersionConstraint]
+        original_constraint_string = constraint_string = str(constraint)
+
+        # Extract operator and value
+        m = self._CONSTRAINT_RE.match(constraint_string)
+        if m is None:
+            raise InvalidMarker(f"Invalid marker for '{name}': {constraint_string}")
+
+        self._operator = m.group(1)
+        if self._operator is None:
+            self._operator = "=="
+
+        self._value = m.group(2)
+        parser = parse_generic_constraint
+
+        if name in self._VERSION_LIKE_MARKER_NAME:
+            parser = parse_marker_version_constraint
+
+            if self._operator in {"in", "not in"}:
+                versions = []
+                for v in re.split("[ ,]+", self._value):
+                    split = v.split(".")
+                    if len(split) in (1, 2):
+                        split.append("*")
+                        op = "" if self._operator == "in" else "!="
+                    else:
+                        op = "==" if self._operator == "in" else "!="
+
+                    versions.append(op + ".".join(split))
+
+                glue = ", "
+                if self._operator == "in":
+                    glue = " || "
+
+                constraint_string = glue.join(versions)
+        else:
+            # if we have a in/not in operator we split the constraint
+            # into a union/multi-constraint of single constraint
+            if self._operator in {"in", "not in"}:
+                op, glue = ("==", " || ") if self._operator == "in" else ("!=", ", ")
+                values = re.split("[ ,]+", self._value)
+                constraint_string = glue.join(f"{op} {value}" for value in values)
+
+        try:
+            parsed_constraint = parser(constraint_string)
+        except ParseConstraintError as e:
+            raise InvalidMarker(
+                f"Invalid marker for '{name}': {original_constraint_string}"
+            ) from e
+
+        super().__init__(name, parsed_constraint)
+
+    @property
+    def operator(self) -> str:
+        return self._operator
+
+    @property
+    def value(self) -> str:
+        return self._value
 
     def invert(self) -> BaseMarker:
         if self._operator in ("===", "=="):
@@ -367,17 +411,62 @@ class SingleMarker(BaseMarker):
 
         return parse_marker(f"{self._name} {operator} '{self._value}'")
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SingleMarker):
-            return False
-
-        return self._name == other.name and self._constraint == other.constraint
-
-    def __hash__(self) -> int:
-        return hash((self._name, self._constraint))
-
     def __str__(self) -> str:
         return f'{self._name} {self._operator} "{self._value}"'
+
+
+class AtomicMultiMarker(SingleMarkerLike[MultiConstraint]):
+    def __init__(self, name: str, constraint: MultiConstraint) -> None:
+        assert all(c.operator == "!=" for c in constraint.constraints)
+        super().__init__(name, constraint)
+        self._values: list[str] = []
+
+    @property
+    def complexity(self) -> tuple[int, int]:
+        return len(self._constraint.constraints), 1
+
+    def invert(self) -> BaseMarker:
+        return AtomicMarkerUnion(self._name, self._constraint.invert())
+
+    def expand(self) -> MultiMarker:
+        return MultiMarker(
+            *(SingleMarker(self._name, c) for c in self._constraint.constraints)
+        )
+
+    def __str__(self) -> str:
+        return " and ".join(
+            f'{self._name} != "{c.value}"' for c in self._constraint.constraints
+        )
+
+
+class AtomicMarkerUnion(SingleMarkerLike[UnionConstraint]):
+    def __init__(self, name: str, constraint: UnionConstraint) -> None:
+        assert all(
+            isinstance(c, Constraint) and c.operator == "=="
+            for c in constraint.constraints
+        )
+        super().__init__(name, constraint)
+
+    @property
+    def complexity(self) -> tuple[int, int]:
+        return len(self._constraint.constraints), 1
+
+    def invert(self) -> BaseMarker:
+        return AtomicMultiMarker(self._name, self._constraint.invert())
+
+    def expand(self) -> MarkerUnion:
+        return MarkerUnion(
+            *(SingleMarker(self._name, c) for c in self._constraint.constraints)
+        )
+
+    def __str__(self) -> str:
+        # In __init__ we've made sure that we have a UnionConstraint that
+        # contains only elements of type Constraint (instead of BaseConstraint)
+        # but mypy can't see that.
+        return " or ".join(
+            f'{self._name} == "{c.value}"'  # type: ignore[attr-defined]
+            for c in self._constraint.constraints
+        )
 
 
 def _flatten_markers(
@@ -409,6 +498,12 @@ class MultiMarker(BaseMarker):
     def markers(self) -> list[BaseMarker]:
         return self._markers
 
+    @property
+    def complexity(self) -> tuple[int, int]:
+        return tuple(  # type: ignore[return-value]
+            sum(c) for c in zip(*(m.complexity for m in self._markers))
+        )
+
     @classmethod
     def of(cls, *markers: BaseMarker) -> BaseMarker:
         new_markers = _flatten_markers(markers, MultiMarker)
@@ -428,12 +523,12 @@ class MultiMarker(BaseMarker):
                 for i, mark in enumerate(new_markers):
                     # If we have a SingleMarker then with any luck after intersection
                     # it'll become another SingleMarker.
-                    if isinstance(mark, SingleMarker):
-                        new_marker = marker.intersect(mark)
+                    if isinstance(mark, SingleMarkerLike):
+                        new_marker = mark.intersect(marker)
                         if new_marker.is_empty():
                             return EmptyMarker()
 
-                        if isinstance(new_marker, SingleMarker):
+                        if isinstance(new_marker, SingleMarkerLike):
                             new_markers[i] = new_marker
                             intersected = True
                             break
@@ -506,7 +601,7 @@ class MultiMarker(BaseMarker):
             unique_union = MultiMarker(*unique_markers).union(
                 MultiMarker(*other_unique_markers)
             )
-            if isinstance(unique_union, (SingleMarker, AnyMarker)):
+            if isinstance(unique_union, (SingleMarkerLike, AnyMarker)):
                 # Use list instead of set for deterministic order.
                 common_markers = [
                     marker for marker in self.markers if marker in shared_markers
@@ -525,7 +620,7 @@ class MultiMarker(BaseMarker):
         new_markers = []
 
         for m in self._markers:
-            if isinstance(m, SingleMarker) and m.name == marker_name:
+            if isinstance(m, SingleMarkerLike) and m.name == marker_name:
                 # The marker is not relevant since it must be excluded
                 continue
 
@@ -563,7 +658,7 @@ class MultiMarker(BaseMarker):
             if isinstance(m, (SingleMarker, MultiMarker)):
                 elements.append(str(m))
             else:
-                elements.append(f"({str(m)})")
+                elements.append(f"({m})")
 
         return " and ".join(elements)
 
@@ -575,6 +670,12 @@ class MarkerUnion(BaseMarker):
     @property
     def markers(self) -> list[BaseMarker]:
         return self._markers
+
+    @property
+    def complexity(self) -> tuple[int, int]:
+        return tuple(  # type: ignore[return-value]
+            sum(c) for c in zip(*(m.complexity for m in self._markers))
+        )
 
     @classmethod
     def of(cls, *markers: BaseMarker) -> BaseMarker:
@@ -595,12 +696,12 @@ class MarkerUnion(BaseMarker):
                 for i, mark in enumerate(new_markers):
                     # If we have a SingleMarker then with any luck after union it'll
                     # become another SingleMarker.
-                    if isinstance(mark, SingleMarker):
-                        new_marker = marker.union(mark)
+                    if isinstance(mark, SingleMarkerLike):
+                        new_marker = mark.union(marker)
                         if new_marker.is_any():
                             return AnyMarker()
 
-                        if isinstance(new_marker, SingleMarker):
+                        if isinstance(new_marker, SingleMarkerLike):
                             new_markers[i] = new_marker
                             included = True
                             break
@@ -679,7 +780,7 @@ class MarkerUnion(BaseMarker):
             unique_intersection = MarkerUnion(*unique_markers).intersect(
                 MarkerUnion(*other_unique_markers)
             )
-            if isinstance(unique_intersection, (SingleMarker, EmptyMarker)):
+            if isinstance(unique_intersection, (SingleMarkerLike, EmptyMarker)):
                 # Use list instead of set for deterministic order.
                 common_markers = [
                     marker for marker in self.markers if marker in shared_markers
@@ -698,7 +799,7 @@ class MarkerUnion(BaseMarker):
         new_markers = []
 
         for m in self._markers:
-            if isinstance(m, SingleMarker) and m.name == marker_name:
+            if isinstance(m, SingleMarkerLike) and m.name == marker_name:
                 # The marker is not relevant since it must be excluded
                 continue
 
@@ -732,15 +833,7 @@ class MarkerUnion(BaseMarker):
         return h
 
     def __str__(self) -> str:
-        return " or ".join(
-            str(m) for m in self._markers if not m.is_any() and not m.is_empty()
-        )
-
-    def is_any(self) -> bool:
-        return any(m.is_any() for m in self._markers)
-
-    def is_empty(self) -> bool:
-        return all(m.is_empty() for m in self._markers)
+        return " or ".join(str(m) for m in self._markers)
 
 
 @functools.lru_cache(maxsize=None)
@@ -842,19 +935,34 @@ def intersection(*markers: BaseMarker) -> BaseMarker:
 
 
 def union(*markers: BaseMarker) -> BaseMarker:
-    conjunction = cnf(MarkerUnion(*markers))
+    # Sometimes normalization makes it more complicate instead of simple
+    # -> choose candidate with the least complexity
+    unnormalized: BaseMarker = MarkerUnion(*markers)
+    while (
+        isinstance(unnormalized, (MultiMarker, MarkerUnion))
+        and len(unnormalized.markers) == 1
+    ):
+        unnormalized = unnormalized.markers[0]
+
+    conjunction = cnf(unnormalized)
     if not isinstance(conjunction, MultiMarker):
         return conjunction
 
-    return dnf(conjunction)
+    disjunction = dnf(conjunction)
+    if not isinstance(disjunction, MarkerUnion):
+        return disjunction
+
+    return min(disjunction, conjunction, unnormalized, key=lambda x: x.complexity)
 
 
 def _merge_single_markers(
-    marker1: SingleMarker,
-    marker2: SingleMarker,
+    marker1: SingleMarkerLike[SingleMarkerConstraint],
+    marker2: SingleMarkerLike[SingleMarkerConstraint],
     merge_class: type[MultiMarker | MarkerUnion],
 ) -> BaseMarker | None:
     if {marker1.name, marker2.name} == PYTHON_VERSION_MARKERS:
+        assert isinstance(marker1, SingleMarker)
+        assert isinstance(marker2, SingleMarker)
         return _merge_python_version_single_markers(marker1, marker2, merge_class)
 
     if marker1.name != marker2.name:
@@ -877,11 +985,20 @@ def _merge_single_markers(
         result_marker = marker1
     elif result_constraint == marker2.constraint:
         result_marker = marker2
-    elif (
+    elif isinstance(result_constraint, Constraint) or (
         isinstance(result_constraint, VersionConstraint)
         and result_constraint.is_simple()
     ):
         result_marker = SingleMarker(marker1.name, result_constraint)
+    elif isinstance(result_constraint, UnionConstraint) and all(
+        isinstance(c, Constraint) and c.operator == "=="
+        for c in result_constraint.constraints
+    ):
+        result_marker = AtomicMarkerUnion(marker1.name, result_constraint)
+    elif isinstance(result_constraint, MultiConstraint) and all(
+        c.operator == "!=" for c in result_constraint.constraints
+    ):
+        result_marker = AtomicMultiMarker(marker1.name, result_constraint)
     return result_marker
 
 

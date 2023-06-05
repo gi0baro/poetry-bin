@@ -6,7 +6,9 @@ from packaging.utils import canonicalize_name
 
 from poetry.core.constraints.version.exceptions import ParseConstraintError
 from poetry.core.packages.dependency import Dependency
+from poetry.core.version.markers import InvalidMarker
 from poetry.core.version.markers import parse_marker
+from poetry.core.version.requirements import InvalidRequirement
 
 
 @pytest.mark.parametrize(
@@ -107,7 +109,7 @@ def test_to_pep_508_in_extras_parsed() -> None:
     [
         ("!=1.2.3", "!=1.2.3"),
         ("!=1.2.*", "!=1.2.*"),
-        ("<2.0 || >=2.1", "!=2.0.*"),
+        ("<2.0 || >=2.1.dev0", "!=2.0.*"),
     ],
 )
 def test_to_pep_508_with_excluded_versions(exclusion: str, expected: str) -> None:
@@ -184,6 +186,29 @@ def test_to_pep_508_combination() -> None:
     assert dependency.to_pep_508() == "foo (>=1.2,<1.3,!=1.2.5)"
 
 
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "enum34; extra == ':python_version < \"3.4\"'",
+        "enum34; extra == \":python_version < '3.4'\"",
+    ],
+)
+def test_to_pep_508_with_invalid_marker(requirement: str) -> None:
+    with pytest.raises(InvalidMarker):
+        _ = Dependency.create_from_pep_508(requirement)
+
+
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        'enum34; extra == ":python_version < "3.4""',
+    ],
+)
+def test_to_pep_508_with_invalid_requirement(requirement: str) -> None:
+    with pytest.raises(InvalidRequirement):
+        _ = Dependency.create_from_pep_508(requirement)
+
+
 def test_complete_name() -> None:
     assert Dependency("foo", ">=1.2.3").complete_name == "foo"
     assert (
@@ -204,29 +229,41 @@ def test_complete_name() -> None:
             ["x"],
             "A[x] (>=1.6.5,!=1.8.0,<3.1.0)",
         ),
-        # test single version range exclusions
+        # test single version range (wildcard)
+        ("A", "==2.*", None, "A (==2.*)"),
+        ("A", "==2.0.*", None, "A (==2.0.*)"),
+        ("A", "==0.0.*", None, "A (==0.0.*)"),
+        ("A", "==0.1.*", None, "A (==0.1.*)"),
+        ("A", "==0.*", None, "A (==0.*)"),
+        ("A", ">=1.0.dev0,<2", None, "A (==1.*)"),
+        ("A", ">=1.dev0,<2", None, "A (==1.*)"),
+        ("A", ">=1.0.dev1,<2", None, "A (>=1.0.dev1,<2)"),
+        ("A", ">=1.1.dev0,<2", None, "A (>=1.1.dev0,<2)"),
+        ("A", ">=1.0.dev0,<2.0.dev0", None, "A (==1.*)"),
+        ("A", ">=1.0.dev0,<2.0.dev1", None, "A (>=1.0.dev0,<2.0.dev1)"),
+        ("A", ">=1,<2", None, "A (>=1,<2)"),
+        ("A", ">=1.0.dev0,<1.1", None, "A (==1.0.*)"),
+        ("A", ">=1.0.0.0.dev0,<1.1.0.0.0", None, "A (==1.0.*)"),
+        # test single version range (wildcard) exclusions
         ("A", ">=1.8,!=2.0.*", None, "A (>=1.8,!=2.0.*)"),
         ("A", "!=0.0.*", None, "A (!=0.0.*)"),
         ("A", "!=0.1.*", None, "A (!=0.1.*)"),
-        ("A", "!=0.*", None, "A (>=1.0.0)"),
+        ("A", "!=0.*", None, "A (!=0.*)"),
         ("A", ">=1.8,!=2.*", None, "A (>=1.8,!=2.*)"),
         ("A", ">=1.8,!=2.*.*", None, "A (>=1.8,!=2.*)"),
-        ("A", ">=1.8,<2.0 || >=2.1.0", None, "A (>=1.8,!=2.0.*)"),
-        ("A", ">=1.8,<2.0.0 || >=3.0.0", None, "A (>=1.8,!=2.*)"),
-        ("A", ">=1.8,<2.0 || >=3", None, "A (>=1.8,!=2.*)"),
-        ("A", ">=1.8,<2 || >=2.1.0", None, "A (>=1.8,!=2.0.*)"),
-        ("A", ">=1.8,<2 || >=2.1", None, "A (>=1.8,!=2.0.*)"),
+        ("A", ">=1.8,<2.0 || >=2.1.0.dev0", None, "A (>=1.8,!=2.0.*)"),
+        ("A", ">=1.8,<2.0.0 || >=3.0.0.dev0", None, "A (>=1.8,!=2.*)"),
+        ("A", ">=1.8,<2.0 || >=3.dev0", None, "A (>=1.8,!=2.*)"),
+        ("A", ">=1.8,<2 || >=2.1.0.dev0", None, "A (>=1.8,!=2.0.*)"),
+        ("A", ">=1.8,<2 || >=2.1.dev0", None, "A (>=1.8,!=2.0.*)"),
         ("A", ">=1.8,!=2.0.*,!=3.0.*", None, "A (>=1.8,!=2.0.*,!=3.0.*)"),
-        ("A", ">=1.8.0.0,<2.0.0.0 || >=2.0.1.0", None, "A (>=1.8.0.0,!=2.0.0.*)"),
-        ("A", ">=1.8.0.0,<2 || >=2.0.1.0", None, "A (>=1.8.0.0,!=2.0.0.*)"),
+        ("A", ">=1.8.0.0,<2.0.0.0 || >=2.0.1.0.dev0", None, "A (>=1.8.0.0,!=2.0.0.*)"),
+        ("A", ">=1.8.0.0,<2 || >=2.0.1.0.dev0", None, "A (>=1.8.0.0,!=2.0.0.*)"),
         # we verify that the range exclusion logic is not too eager
         ("A", ">=1.8,<2.0 || >=2.2.0", None, "A (>=1.8,<2.0 || >=2.2.0)"),
         ("A", ">=1.8,<2.0 || >=2.1.5", None, "A (>=1.8,<2.0 || >=2.1.5)"),
         ("A", ">=1.8.0.0,<2 || >=2.0.1.5", None, "A (>=1.8.0.0,<2 || >=2.0.1.5)"),
-        # non-semver version test is ignored due to existing bug in wildcard
-        # constraint parsing that ignores non-semver versions
-        # TODO: re-enable for verification once fixed
-        # ("A", ">=1.8.0.0,!=2.0.0.*", None, "A (>=1.8.0.0,!=2.0.0.*)"),  # noqa: E800
+        ("A", ">=1.8.0.0,!=2.0.0.*", None, "A (>=1.8.0.0,!=2.0.0.*)"),
     ],
 )
 def test_dependency_string_representation(

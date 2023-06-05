@@ -11,7 +11,9 @@ from pathlib import Path
 from typing import Any
 from typing import Generator
 
-from poetry.core.toml import TOMLFile
+import tomli_w
+
+from poetry.core.utils._compat import tomllib
 
 
 __toml_build_backend_patch__ = {
@@ -28,14 +30,15 @@ def temporary_project_directory(
 ) -> Generator[str, None, None]:
     """
     Context manager that takes a project source directory, copies content to a temporary
-    directory, patches the `pyproject.toml` using the provided patch, or using the default
-    patch if one is not given. The default path replaces `build-system` section in order
-    to use the working copy of poetry-core as the backend.
+    directory, patches the `pyproject.toml` using the provided patch, or using the
+    default patch if one is not given. The default path replaces `build-system` section
+    in order to use the working copy of poetry-core as the backend.
 
     Once the context, exists, the temporary directory is cleaned up.
 
     :param path: Source project root directory to copy from.
-    :param toml_patch: Patch to use for the pyproject.toml, defaults to build system patching.
+    :param toml_patch: Patch to use for the pyproject.toml,
+                        defaults to build system patching.
     :return: A temporary copy
     """
     assert (path / "pyproject.toml").exists()
@@ -43,10 +46,12 @@ def temporary_project_directory(
     with tempfile.TemporaryDirectory(prefix="poetry-core-pep517") as tmp:
         dst = Path(tmp) / path.name
         shutil.copytree(str(path), dst)
-        toml = TOMLFile(str(dst / "pyproject.toml"))
-        data = toml.read()
+        toml = dst / "pyproject.toml"
+        with toml.open("rb") as f:
+            data = tomllib.load(f)
         data.update(toml_patch or __toml_build_backend_patch__)
-        toml.write(data)
+        with toml.open("wb") as f:
+            tomli_w.dump(data, f)
         yield str(dst)
 
 
@@ -68,7 +73,7 @@ def validate_wheel_contents(
     with zipfile.ZipFile(path) as z:
         namelist = z.namelist()
         # we use concatenation here for PY2 compat
-        for filename in ["WHEEL", "METADATA", "RECORD"] + files:
+        for filename in ["WHEEL", "METADATA", "RECORD", *files]:
             assert f"{dist_info}/{filename}" in namelist
 
 
