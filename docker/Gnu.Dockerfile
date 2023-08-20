@@ -18,7 +18,7 @@ FROM python:${PYTHON_IMAGE}
 
 COPY --from=fetcher /opt/poetry_bin /opt/poetry_bin
 
-RUN ln -s /opt/poetry_bin/poetry /bin/poetry
+RUN ln -s /opt/poetry_bin/poetry /usr/bin/poetry
 
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=off
