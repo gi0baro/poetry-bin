@@ -16,10 +16,7 @@ def validate_object(obj: dict[str, Any]) -> list[str]:
     schema = json.loads(resources.read_text(f"{__name__}.schemas", "poetry.json"))
 
     validator = jsonschema.Draft7Validator(schema)
-    validation_errors = sorted(
-        validator.iter_errors(obj),
-        key=lambda e: e.path,  # type: ignore[no-any-return]
-    )
+    validation_errors = sorted(validator.iter_errors(obj), key=lambda e: e.path)
 
     errors = []
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import ClassVar
+from typing import Protocol
 
 import pytest
 
@@ -14,7 +16,6 @@ from poetry.plugins import ApplicationPlugin
 from poetry.plugins import Plugin
 from poetry.plugins.plugin_manager import PluginManager
 from poetry.poetry import Poetry
-from tests.compat import Protocol
 from tests.helpers import mock_metadata_entry_points
 
 
@@ -22,6 +23,7 @@ if TYPE_CHECKING:
     from cleo.io.io import IO
     from pytest_mock import MockerFixture
 
+    from poetry.console.commands.command import Command
     from tests.conftest import Config
     from tests.types import FixtureDirGetter
 
@@ -38,7 +40,7 @@ class MyPlugin(Plugin):
 
 
 class MyCommandPlugin(ApplicationPlugin):
-    commands = []
+    commands: ClassVar[list[type[Command]]] = []
 
 
 class InvalidPlugin:

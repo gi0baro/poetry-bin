@@ -16,6 +16,7 @@ from typing import Any
 
 from cleo.io.null_io import NullIO
 from poetry.core.packages.utils.link import Link
+from requests.utils import atomic_open
 
 from poetry.installation.chef import Chef
 from poetry.installation.chef import ChefBuildError
@@ -29,7 +30,6 @@ from poetry.utils._compat import decode
 from poetry.utils.authenticator import Authenticator
 from poetry.utils.cache import ArtifactCache
 from poetry.utils.env import EnvCommandError
-from poetry.utils.helpers import atomic_open
 from poetry.utils.helpers import get_file_hash
 from poetry.utils.helpers import pluralize
 from poetry.utils.helpers import remove_directory
@@ -370,12 +370,10 @@ class Executor:
             if self.supports_fancy_output():
                 self._write(
                     operation,
-                    (
-                        f"  <fg=default;options=bold,dark>•</> {operation_message}: "
-                        "<fg=default;options=bold,dark>Skipped</> "
-                        "<fg=default;options=dark>for the following reason:</> "
-                        f"<fg=default;options=bold,dark>{operation.skip_reason}</>"
-                    ),
+                    f"  <fg=default;options=bold,dark>•</> {operation_message}: "
+                    "<fg=default;options=bold,dark>Skipped</> "
+                    "<fg=default;options=dark>for the following reason:</> "
+                    f"<fg=default;options=bold,dark>{operation.skip_reason}</>",
                 )
 
             self._skipped[operation.job_type] += 1
@@ -461,13 +459,18 @@ class Executor:
             )
 
         if isinstance(operation, Update):
+            initial_version = (initial_pkg := operation.initial_package).version
+            target_version = (target_pkg := operation.target_package).version
+            update_kind = (
+                "Updating" if target_version >= initial_version else "Downgrading"
+            )
             return (
-                f"<{base_tag}>Updating"
-                f" <{package_color}>{operation.initial_package.name}</{package_color}> "
+                f"<{base_tag}>{update_kind}"
+                f" <{package_color}>{initial_pkg.name}</{package_color}> "
                 f"(<{source_operation_color}>"
-                f"{operation.initial_package.full_pretty_version}"
+                f"{initial_pkg.full_pretty_version}"
                 f"</{source_operation_color}> -> <{operation_color}>"
-                f"{operation.target_package.full_pretty_version}</>)</>"
+                f"{target_pkg.full_pretty_version}</>)</>"
             )
         return ""
 
@@ -766,10 +769,7 @@ class Executor:
                     link
                 )
                 cached_file = cache_directory.joinpath(link.filename)
-                # We can't use unlink(missing_ok=True) because it's not available
-                # prior to Python 3.8
-                if cached_file.exists():
-                    cached_file.unlink()
+                cached_file.unlink(missing_ok=True)
 
                 raise
 
@@ -897,9 +897,7 @@ class Executor:
             ) in self._env.site_packages.find_distribution_direct_url_json_files(
                 distribution_name=package.name, writable_only=True
             ):
-                # We can't use unlink(missing_ok=True) because it's not always available
-                if direct_url_json.exists():
-                    direct_url_json.unlink()
+                direct_url_json.unlink(missing_ok=True)
             return
 
         url_reference: dict[str, Any] | None = None
