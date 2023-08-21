@@ -23,7 +23,7 @@ jobs:
 
     strategy:
       matrix:
-        python_version: [3.7, 3.8, 3.9, '3.10', '3.11']
+        python_version: [3.8, 3.9, '3.10', '3.11']
         image_flavor: ['', '-slim']
 
     steps:
@@ -64,6 +64,18 @@ jobs:
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
           POETRY_VERSION=1.4.2-1
 
+    - name: Build and push 1.5 image
+      uses: docker/build-push-action@v4
+      with:
+        context: docker
+        platforms: linux/amd64,linux/arm64
+        file: docker/Gnu.fixedv.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.5
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          POETRY_VERSION=1.5.1-1
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
@@ -86,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: [3.7, 3.8, 3.9, '3.10', '3.11']
+        python_version: [3.8, 3.9, '3.10', '3.11']
         image_flavor: ['-alpine']
 
     steps:
@@ -120,6 +132,17 @@ jobs:
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
           POETRY_VERSION=1.4.2-1
+
+    - name: Build and push 1.5 image
+      uses: docker/build-push-action@v4
+      with:
+        context: docker
+        file: docker/Alpine.fixedv.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.5
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          POETRY_VERSION=1.5.1-1
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
