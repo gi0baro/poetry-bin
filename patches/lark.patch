@@ -1,5 +1,5 @@
 diff --git a/lark/load_grammar.py b/lark/load_grammar.py
-index d4f553c..8681b80 100644
+index 90401ad..361f113 100644
 --- a/lark/load_grammar.py
 +++ b/lark/load_grammar.py
 @@ -8,6 +8,7 @@ import pkgutil

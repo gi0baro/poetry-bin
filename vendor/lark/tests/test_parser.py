@@ -430,7 +430,7 @@ def _make_full_earley_test(LEXER):
         def test_earley3(self):
             """Tests prioritization and disambiguation for pseudo-terminals (there should be only one result)
 
-            By default, `+` should immitate regexp greedy-matching
+            By default, `+` should imitate regexp greedy-matching
             """
             grammar = """
             start: A A
@@ -1472,7 +1472,7 @@ def _make_parser_test(LEXER, PARSER):
         #     # This parse raises an exception because the lexer will always try to consume
         #     # "a" first and will never match the regular expression
         #     # This behavior is subject to change!!
-        #     # Thie won't happen with ambiguity handling.
+        #     # This won't happen with ambiguity handling.
         #     g = _Lark("""start: (A | /a?ab/)+
         #                  A: "a"  """)
         #     self.assertRaises(LexError, g.parse, 'aab')
@@ -1743,7 +1743,7 @@ def _make_parser_test(LEXER, PARSER):
 
         def test_reduce_cycle(self):
             """Tests an edge-condition in the LALR parser, in which a transition state looks exactly like the end state.
-            It seems that the correct solution is to explicitely distinguish finalization in the reduce() function.
+            It seems that the correct solution is to explicitly distinguish finalization in the reduce() function.
             """
 
             l = _Lark("""
@@ -2624,6 +2624,25 @@ def _make_parser_test(LEXER, PARSER):
             parser = _Lark(grammar, transformer=AbTransformer())
             b = parser.parse(s)
             assert a == b
+
+        @unittest.skipIf(PARSER!='lalr', "strict mode is only supported in lalr for now")
+        def test_strict(self):
+            # Test regex collision
+            grammar = r"""
+            start: A | B
+
+            A: /e?rez/
+            B: /erez?/
+            """
+
+            self.assertRaises(LexError, _Lark, grammar, strict=True)
+
+            # Test shift-reduce collision
+            grammar = r"""
+            start: a "."
+            a: "."+
+            """
+            self.assertRaises(GrammarError, _Lark, grammar, strict=True)
 
 
     _NAME = "Test" + PARSER.capitalize() + LEXER.capitalize()

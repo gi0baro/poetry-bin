@@ -6,7 +6,7 @@ Lark can parse all context-free languages. To put it simply, it means that it is
 
 **Who is it for?**
 
-   - **Beginners**: Lark is very friendly for experimentation. It can parse any grammar you throw at it, no matter how complicated or ambiguous, and do so efficiently. It also constructs an annotated parse-tree for you, using only the grammar and an input, and it gives you convienient and flexible tools to process that parse-tree.
+   - **Beginners**: Lark is very friendly for experimentation. It can parse any grammar you throw at it, no matter how complicated or ambiguous, and do so efficiently. It also constructs an annotated parse-tree for you, using only the grammar and an input, and it gives you convenient and flexible tools to process that parse-tree.
 
    - **Experts**: Lark implements both Earley(SPPF) and LALR(1), and several different lexers, so you can trade-off power and speed, according to your requirements. It also provides a variety of sophisticated features and utilities.
 
@@ -145,11 +145,12 @@ For a more thorough and objective comparison, checkout the [Python Parsing Bench
 ### Projects using Lark
 
  - [Poetry](https://github.com/python-poetry/poetry-core) - A utility for dependency management and packaging
- - [tartiflette](https://github.com/dailymotion/tartiflette) - a GraphQL server by Dailymotion
+ - [Vyper](https://github.com/vyperlang/vyper) - Pythonic Smart Contract Language for the EVM
  - [PyQuil](https://github.com/rigetti/pyquil) - Python library for quantum programming using Quil
  - [Preql](https://github.com/erezsh/preql) - An interpreted relational query language that compiles to SQL
  - [Hypothesis](https://github.com/HypothesisWorks/hypothesis) - Library for property-based testing
  - [mappyfile](https://github.com/geographika/mappyfile) - a MapFile parser for working with MapServer configuration
+ - [tartiflette](https://github.com/dailymotion/tartiflette) - GraphQL server by Dailymotion
  - [synapse](https://github.com/vertexproject/synapse) - an intelligence analysis platform
  - [Datacube-core](https://github.com/opendatacube/datacube-core) - Open Data Cube analyses continental scale Earth Observation data through time
  - [SPFlow](https://github.com/SPFlow/SPFlow) - Library for Sum-Product Networks
