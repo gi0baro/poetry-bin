@@ -2599,7 +2599,7 @@ index b69df38b..fa3f698c 100644
      cleo = get_package_from_repository("cleo", repository)
      assert cleo is not None
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 269287de..f38b7180 100644
+index 269287de..f44f23af 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
 @@ -58,6 +58,11 @@ print("nullpackage loaded"),
@@ -2666,6 +2666,15 @@ index 269287de..f38b7180 100644
  def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_ones_first(  # noqa: E501
      manager: EnvManager,
      poetry: Poetry,
+@@ -1149,7 +1156,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
+ 
+     m.assert_called_with(
+         config_virtualenvs_path / f"{venv_name}-py3.7",
+-        executable=Path("/usr/bin/python3"),
++        executable=Path("/usr/bin/python"),
+         flags=venv_flags_default,
+         prompt="simple-project-py3.7",
+     )
 @@ -1197,12 +1204,26 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
  
      poetry.package.python_versions = "^3.6"

@@ -1156,7 +1156,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
 
     m.assert_called_with(
         config_virtualenvs_path / f"{venv_name}-py3.7",
-        executable=Path("/usr/bin/python3"),
+        executable=Path("/usr/bin/python"),
         flags=venv_flags_default,
         prompt="simple-project-py3.7",
     )
