@@ -8,6 +8,7 @@ from abc import ABC
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import ClassVar
 from typing import Generic
 from typing import TypeVar
 from typing import Union
@@ -151,7 +152,7 @@ class AnyMarker(BaseMarker):
         return "<AnyMarker>"
 
     def __hash__(self) -> int:
-        return hash(("<any>", "<any>"))
+        return hash("any")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BaseMarker):
@@ -192,7 +193,7 @@ class EmptyMarker(BaseMarker):
         return "<EmptyMarker>"
 
     def __hash__(self) -> int:
-        return hash(("<empty>", "<empty>"))
+        return hash("empty")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BaseMarker):
@@ -230,6 +231,10 @@ class SingleMarkerLike(BaseMarker, ABC, Generic[SingleMarkerConstraint]):
     @property
     def constraint(self) -> SingleMarkerConstraint:
         return self._constraint
+
+    @property
+    def _key(self) -> tuple[object, ...]:
+        return self._name, self._constraint
 
     def validate(self, environment: dict[str, Any] | None) -> bool:
         if environment is None:
@@ -283,15 +288,16 @@ class SingleMarkerLike(BaseMarker, ABC, Generic[SingleMarkerConstraint]):
         if not isinstance(other, SingleMarkerLike):
             return NotImplemented
 
-        return self._name == other.name and self._constraint == other.constraint
+        return self._key == other._key
 
     def __hash__(self) -> int:
-        return hash((self._name, self._constraint))
+        return hash(self._key)
 
 
 class SingleMarker(SingleMarkerLike[Union[BaseConstraint, VersionConstraint]]):
     _CONSTRAINT_RE = re.compile(r"(?i)^(~=|!=|>=?|<=?|==?=?|in|not in)?\s*(.+)$")
-    _VERSION_LIKE_MARKER_NAME = {
+    VALUE_SEPARATOR_RE = re.compile("[ ,|]+")
+    _VERSION_LIKE_MARKER_NAME: ClassVar[set[str]] = {
         "python_version",
         "python_full_version",
         "platform_release",
@@ -326,7 +332,7 @@ class SingleMarker(SingleMarkerLike[Union[BaseConstraint, VersionConstraint]]):
 
             if self._operator in {"in", "not in"}:
                 versions = []
-                for v in re.split("[ ,]+", self._value):
+                for v in self.VALUE_SEPARATOR_RE.split(self._value):
                     split = v.split(".")
                     if len(split) in (1, 2):
                         split.append("*")
@@ -346,7 +352,7 @@ class SingleMarker(SingleMarkerLike[Union[BaseConstraint, VersionConstraint]]):
             # into a union/multi-constraint of single constraint
             if self._operator in {"in", "not in"}:
                 op, glue = ("==", " || ") if self._operator == "in" else ("!=", ", ")
-                values = re.split("[ ,]+", self._value)
+                values = self.VALUE_SEPARATOR_RE.split(self._value)
                 constraint_string = glue.join(f"{op} {value}" for value in values)
 
         try:
@@ -365,6 +371,10 @@ class SingleMarker(SingleMarkerLike[Union[BaseConstraint, VersionConstraint]]):
     @property
     def value(self) -> str:
         return self._value
+
+    @property
+    def _key(self) -> tuple[object, ...]:
+        return self._name, self._operator, self._value
 
     def invert(self) -> BaseMarker:
         if self._operator in ("===", "=="):
@@ -410,6 +420,15 @@ class SingleMarker(SingleMarkerLike[Union[BaseConstraint, VersionConstraint]]):
             raise RuntimeError(f"Invalid marker operator '{self._operator}'")
 
         return parse_marker(f"{self._name} {operator} '{self._value}'")
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SingleMarker):
+            return NotImplemented
+
+        return self._key == other._key
+
+    def __hash__(self) -> int:
+        return hash(self._key)
 
     def __str__(self) -> str:
         return f'{self._name} {self._operator} "{self._value}"'
@@ -492,10 +511,10 @@ def _flatten_markers(
 
 class MultiMarker(BaseMarker):
     def __init__(self, *markers: BaseMarker) -> None:
-        self._markers = _flatten_markers(markers, MultiMarker)
+        self._markers = tuple(_flatten_markers(markers, MultiMarker))
 
     @property
-    def markers(self) -> list[BaseMarker]:
+    def markers(self) -> tuple[BaseMarker, ...]:
         return self._markers
 
     @property
@@ -643,14 +662,10 @@ class MultiMarker(BaseMarker):
         if not isinstance(other, MultiMarker):
             return False
 
-        return set(self._markers) == set(other.markers)
+        return self._markers == other.markers
 
     def __hash__(self) -> int:
-        h = hash("multi")
-        for m in self._markers:
-            h ^= hash(m)
-
-        return h
+        return hash(("multi", *self._markers))
 
     def __str__(self) -> str:
         elements = []
@@ -665,10 +680,10 @@ class MultiMarker(BaseMarker):
 
 class MarkerUnion(BaseMarker):
     def __init__(self, *markers: BaseMarker) -> None:
-        self._markers = _flatten_markers(markers, MarkerUnion)
+        self._markers = tuple(_flatten_markers(markers, MarkerUnion))
 
     @property
-    def markers(self) -> list[BaseMarker]:
+    def markers(self) -> tuple[BaseMarker, ...]:
         return self._markers
 
     @property
@@ -732,12 +747,6 @@ class MarkerUnion(BaseMarker):
             return new_markers[0]
 
         return MarkerUnion(*new_markers)
-
-    def append(self, marker: BaseMarker) -> None:
-        if marker in self._markers:
-            return
-
-        self._markers.append(marker)
 
     def intersect(self, other: BaseMarker) -> BaseMarker:
         return intersection(self, other)
@@ -823,14 +832,10 @@ class MarkerUnion(BaseMarker):
         if not isinstance(other, MarkerUnion):
             return False
 
-        return set(self._markers) == set(other.markers)
+        return self._markers == other.markers
 
     def __hash__(self) -> int:
-        h = hash("union")
-        for m in self._markers:
-            h ^= hash(m)
-
-        return h
+        return hash(("union", *self._markers))
 
     def __str__(self) -> str:
         return " or ".join(str(m) for m in self._markers)
@@ -896,6 +901,7 @@ def _compact_markers(
     return union(*sub_markers)
 
 
+@functools.lru_cache(maxsize=None)
 def cnf(marker: BaseMarker) -> BaseMarker:
     """Transforms the marker into CNF (conjunctive normal form)."""
     if isinstance(marker, MarkerUnion):
@@ -913,6 +919,7 @@ def cnf(marker: BaseMarker) -> BaseMarker:
     return marker
 
 
+@functools.lru_cache(maxsize=None)
 def dnf(marker: BaseMarker) -> BaseMarker:
     """Transforms the marker into DNF (disjunctive normal form)."""
     if isinstance(marker, MultiMarker):
@@ -955,6 +962,7 @@ def union(*markers: BaseMarker) -> BaseMarker:
     return min(disjunction, conjunction, unnormalized, key=lambda x: x.complexity)
 
 
+@functools.lru_cache(maxsize=None)
 def _merge_single_markers(
     marker1: SingleMarkerLike[SingleMarkerConstraint],
     marker2: SingleMarkerLike[SingleMarkerConstraint],

@@ -1,18 +1,8 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index e4e2b31..c9eb6c7 100644
+index b5aa4de..fe59e1d 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
-@@ -25,9 +25,6 @@ include = [
- [tool.poetry.dependencies]
- python = "^3.7"
- 
--# required for compatibility
--importlib-metadata = {version = ">=1.7.0", python = "<3.8"}
--
- [tool.poetry.group.dev.dependencies]
- pre-commit = ">=2.15.0"
- tox = ">=3.0"
-@@ -137,6 +134,5 @@ drop = [
+@@ -133,6 +133,5 @@ drop = [
  pyrsistent = "https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENSE.mit"
  
  [build-system]
@@ -21,13 +11,13 @@ index e4e2b31..c9eb6c7 100644
  build-backend = "poetry.core.masonry.api"
 -backend-path = ["src"]
 diff --git a/src/poetry/core/__init__.py b/src/poetry/core/__init__.py
-index e9ca693..c5f7003 100644
+index 25ea462..0ec6a4f 100644
 --- a/src/poetry/core/__init__.py
 +++ b/src/poetry/core/__init__.py
 @@ -8,8 +8,3 @@ from pathlib import Path
  # this cannot presently be replaced with importlib.metadata.version as when building
  # itself, poetry-core is not available as an installed distribution.
- __version__ = "1.6.1"
+ __version__ = "1.7.0"
 -
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 -
@@ -13932,7 +13922,7 @@ index 9201da2..0000000
 -CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/src/poetry/core/_vendor/lark/__init__.py b/src/poetry/core/_vendor/lark/__init__.py
 deleted file mode 100644
-index 881f37a..0000000
+index 632230d..0000000
 --- a/src/poetry/core/_vendor/lark/__init__.py
 +++ /dev/null
 @@ -1,38 +0,0 @@
@@ -13952,7 +13942,7 @@ index 881f37a..0000000
 -from .utils import logger
 -from .visitors import Discard, Transformer, Transformer_NonRecursive, Visitor, v_args
 -
--__version__: str = "1.1.5"
+-__version__: str = "1.1.7"
 -
 -__all__ = (
 -    "GrammarError",
@@ -14073,10 +14063,10 @@ index 0ceee98..0000000
 -    return t
 diff --git a/src/poetry/core/_vendor/lark/common.py b/src/poetry/core/_vendor/lark/common.py
 deleted file mode 100644
-index d716add..0000000
+index 870b515..0000000
 --- a/src/poetry/core/_vendor/lark/common.py
 +++ /dev/null
-@@ -1,82 +0,0 @@
+@@ -1,85 +0,0 @@
 -from copy import deepcopy
 -import sys
 -from types import ModuleType
@@ -14117,8 +14107,10 @@ index d716add..0000000
 -    skip_validation: bool
 -    use_bytes: bool
 -    lexer_type: Optional[_LexerArgType]
+-    strict: bool
 -
--    def __init__(self, terminals: Collection[TerminalDef], re_module: ModuleType, ignore: Collection[str]=(), postlex: 'Optional[PostLex]'=None, callbacks: Optional[Dict[str, _Callback]]=None, g_regex_flags: int=0, skip_validation: bool=False, use_bytes: bool=False):
+-    def __init__(self, terminals: Collection[TerminalDef], re_module: ModuleType, ignore: Collection[str]=(), postlex: 'Optional[PostLex]'=None,
+-                 callbacks: Optional[Dict[str, _Callback]]=None, g_regex_flags: int=0, skip_validation: bool=False, use_bytes: bool=False, strict: bool=False):
 -        self.terminals = terminals
 -        self.terminals_by_name = {t.name: t for t in self.terminals}
 -        assert len(self.terminals) == len(self.terminals_by_name)
@@ -14129,6 +14121,7 @@ index d716add..0000000
 -        self.re_module = re_module
 -        self.skip_validation = skip_validation
 -        self.use_bytes = use_bytes
+-        self.strict = strict
 -        self.lexer_type = None
 -
 -    def _deserialize(self):
@@ -14161,7 +14154,7 @@ index d716add..0000000
 -###}
 diff --git a/src/poetry/core/_vendor/lark/exceptions.py b/src/poetry/core/_vendor/lark/exceptions.py
 deleted file mode 100644
-index 35b986a..0000000
+index 32f0930..0000000
 --- a/src/poetry/core/_vendor/lark/exceptions.py
 +++ /dev/null
 @@ -1,292 +0,0 @@
@@ -14384,7 +14377,7 @@ index 35b986a..0000000
 -        expected: The set of expected tokens
 -        considered_rules: Which rules were considered, to deduce the expected tokens
 -        state: A value representing the parser state. Do not rely on its value or type.
--        interactive_parser: An instance of ``InteractiveParser``, that is initialized to the point of failture,
+-        interactive_parser: An instance of ``InteractiveParser``, that is initialized to the point of failure,
 -                            and can be used for debugging and error handling.
 -
 -    Note: These parameters are available as attributes of the instance.
@@ -14652,10 +14645,13 @@ index e15b163..0000000
 -SQL_COMMENT: /--[^\n]*/
 diff --git a/src/poetry/core/_vendor/lark/grammars/lark.lark b/src/poetry/core/_vendor/lark/grammars/lark.lark
 deleted file mode 100644
-index fcac71e..0000000
+index fbcf88a..0000000
 --- a/src/poetry/core/_vendor/lark/grammars/lark.lark
 +++ /dev/null
-@@ -1,59 +0,0 @@
+@@ -1,62 +0,0 @@
+-# Lark grammar of Lark's syntax
+-# Note: Lark is not bootstrapped, its parser is implemented in load_grammar.py
+-
 -start: (_item? _NL)* _item?
 -
 -_item: rule
@@ -14711,16 +14707,16 @@ index fcac71e..0000000
 -%import common.SIGNED_INT -> NUMBER
 -%import common.WS_INLINE
 -
--COMMENT: /\s*/ "//" /[^\n]/*
+-COMMENT: /\s*/ "//" /[^\n]/* | /\s*/ "#" /[^\n]/*
 -
 -%ignore WS_INLINE
 -%ignore COMMENT
 diff --git a/src/poetry/core/_vendor/lark/grammars/python.lark b/src/poetry/core/_vendor/lark/grammars/python.lark
 deleted file mode 100644
-index 5c131a2..0000000
+index 70ffad7..0000000
 --- a/src/poetry/core/_vendor/lark/grammars/python.lark
 +++ /dev/null
-@@ -1,304 +0,0 @@
+@@ -1,302 +0,0 @@
 -// Python 3 grammar for Lark
 -
 -// This grammar should parse all python 3.x code successfully.
@@ -14920,11 +14916,11 @@ index 5c131a2..0000000
 -?atom: "(" yield_expr ")"
 -     | "(" _tuple_inner? ")" -> tuple
 -     | "(" comprehension{test_or_star_expr} ")" -> tuple_comprehension
--     | "[" _testlist_comp? "]"  -> list
+-     | "[" _exprlist? "]"  -> list
 -     | "[" comprehension{test_or_star_expr} "]"  -> list_comprehension
 -     | "{" _dict_exprlist? "}" -> dict
 -     | "{" comprehension{key_value} "}" -> dict_comprehension
--     | "{" _set_exprlist "}" -> set
+-     | "{" _exprlist "}" -> set
 -     | "{" comprehension{test} "}" -> set_comprehension
 -     | name -> var
 -     | number
@@ -14938,9 +14934,7 @@ index 5c131a2..0000000
 -
 -?string_concat: string+
 -
--_testlist_comp: test | _tuple_inner
 -_tuple_inner: test_or_star_expr (("," test_or_star_expr)+ [","] | ",")
--
 -
 -?test_or_star_expr: test
 -                 | star_expr
@@ -14957,7 +14951,7 @@ index 5c131a2..0000000
 -
 -key_value: test ":"  test
 -
--_set_exprlist: test_or_star_expr (","  test_or_star_expr)* [","]
+-_exprlist: test_or_star_expr (","  test_or_star_expr)* [","]
 -
 -classdef: "class" name ["(" [arguments] ")"] ":" suite
 -
@@ -15158,10 +15152,10 @@ index a97612f..0000000
 -###}
 diff --git a/src/poetry/core/_vendor/lark/lark.py b/src/poetry/core/_vendor/lark/lark.py
 deleted file mode 100644
-index c93e9e1..0000000
+index d60c204..0000000
 --- a/src/poetry/core/_vendor/lark/lark.py
 +++ /dev/null
-@@ -1,648 +0,0 @@
+@@ -1,655 +0,0 @@
 -from abc import ABC, abstractmethod
 -import getpass
 -import sys, os, pickle
@@ -15184,7 +15178,7 @@ index c93e9e1..0000000
 -
 -from .exceptions import ConfigurationError, assert_config, UnexpectedInput
 -from .utils import Serialize, SerializeMemoizer, FS, isascii, logger
--from .load_grammar import load_grammar, FromPackageLoader, Grammar, verify_used_files, PackageResource, md5_digest
+-from .load_grammar import load_grammar, FromPackageLoader, Grammar, verify_used_files, PackageResource, sha256_digest
 -from .tree import Tree
 -from .common import LexerConf, ParserConf, _ParserArgType, _LexerArgType
 -
@@ -15218,6 +15212,7 @@ index c93e9e1..0000000
 -
 -    start: List[str]
 -    debug: bool
+-    strict: bool
 -    transformer: 'Optional[Transformer]'
 -    propagate_positions: Union[bool, str]
 -    maybe_placeholders: bool
@@ -15245,10 +15240,14 @@ index c93e9e1..0000000
 -    debug
 -            Display debug information and extra warnings. Use only when debugging (Default: ``False``)
 -            When used with Earley, it generates a forest graph as "sppf.png", if 'dot' is installed.
+-    strict
+-            Throw an exception on any potential ambiguity, including shift/reduce conflicts, and regex collisions.
 -    transformer
 -            Applies the transformer to every parse tree (equivalent to applying it after the parse, but faster)
 -    propagate_positions
--            Propagates (line, column, end_line, end_column) attributes into all tree branches.
+-            Propagates positional attributes into the 'meta' attribute of all tree branches.
+-            Sets attributes: (line, column, end_line, end_column, start_pos, end_pos,
+-                              container_line, container_column, container_end_line, container_end_column)
 -            Accepts ``False``, ``True``, or a callable, which will filter which nodes to ignore when propagating.
 -    maybe_placeholders
 -            When ``True``, the ``[]`` operator returns ``None`` when not matched.
@@ -15320,6 +15319,7 @@ index c93e9e1..0000000
 -    # - Potentially in `lark.tools.__init__`, if it makes sense, and it can easily be passed as a cmd argument
 -    _defaults: Dict[str, Any] = {
 -        'debug': False,
+-        'strict': False,
 -        'keep_all_tokens': False,
 -        'tree_class': None,
 -        'cache': False,
@@ -15418,6 +15418,7 @@ index c93e9e1..0000000
 -    grammar: 'Grammar'
 -    options: LarkOptions
 -    lexer: Lexer
+-    parser: 'ParsingFrontend'
 -    terminals: Collection[TerminalDef]
 -
 -    def __init__(self, grammar: 'Union[Grammar, str, IO[str]]', **options) -> None:
@@ -15452,7 +15453,7 @@ index c93e9e1..0000000
 -            grammar = read()
 -
 -        cache_fn = None
--        cache_md5 = None
+-        cache_sha256 = None
 -        if isinstance(grammar, str):
 -            self.source_grammar = grammar
 -            if self.options.use_bytes:
@@ -15467,7 +15468,7 @@ index c93e9e1..0000000
 -                options_str = ''.join(k+str(v) for k, v in options.items() if k not in unhashable)
 -                from . import __version__
 -                s = grammar + options_str + __version__ + str(sys.version_info[:2])
--                cache_md5 = md5_digest(s)
+-                cache_sha256 = sha256_digest(s)
 -
 -                if isinstance(self.options.cache, str):
 -                    cache_fn = self.options.cache
@@ -15483,7 +15484,7 @@ index c93e9e1..0000000
 -                        # specific reason - we just want a username.
 -                        username = "unknown"
 -
--                    cache_fn = tempfile.gettempdir() + "/.lark_cache_%s_%s_%s_%s.tmp" % (username, cache_md5, *sys.version_info[:2])
+-                    cache_fn = tempfile.gettempdir() + "/.lark_cache_%s_%s_%s_%s.tmp" % (username, cache_sha256, *sys.version_info[:2])
 -
 -                old_options = self.options
 -                try:
@@ -15492,9 +15493,9 @@ index c93e9e1..0000000
 -                        # Remove options that aren't relevant for loading from cache
 -                        for name in (set(options) - _LOAD_ALLOWED_OPTIONS):
 -                            del options[name]
--                        file_md5 = f.readline().rstrip(b'\n')
+-                        file_sha256 = f.readline().rstrip(b'\n')
 -                        cached_used_files = pickle.load(f)
--                        if file_md5 == cache_md5.encode('utf8') and verify_used_files(cached_used_files):
+-                        if file_sha256 == cache_sha256.encode('utf8') and verify_used_files(cached_used_files):
 -                            cached_parser_data = pickle.load(f)
 -                            self._load(cached_parser_data, **options)
 -                            return
@@ -15588,7 +15589,7 @@ index c93e9e1..0000000
 -        # TODO Deprecate lexer_callbacks?
 -        self.lexer_conf = LexerConf(
 -                self.terminals, re_module, self.ignore_tokens, self.options.postlex,
--                self.options.lexer_callbacks, self.options.g_regex_flags, use_bytes=self.options.use_bytes
+-                self.options.lexer_callbacks, self.options.g_regex_flags, use_bytes=self.options.use_bytes, strict=self.options.strict
 -            )
 -
 -        if self.options.parser:
@@ -15600,8 +15601,8 @@ index c93e9e1..0000000
 -            logger.debug('Saving grammar to cache: %s', cache_fn)
 -            try:
 -                with FS.open(cache_fn, 'wb') as f:
--                    assert cache_md5 is not None
--                    f.write(cache_md5.encode('utf8') + b'\n')
+-                    assert cache_sha256 is not None
+-                    f.write(cache_sha256.encode('utf8') + b'\n')
 -                    pickle.dump(used_files, f)
 -                    self.save(f, _LOAD_ALLOWED_OPTIONS)
 -            except IOError as e:
@@ -15812,31 +15813,40 @@ index c93e9e1..0000000
 -###}
 diff --git a/src/poetry/core/_vendor/lark/lexer.py b/src/poetry/core/_vendor/lark/lexer.py
 deleted file mode 100644
-index 5e6d6d4..0000000
+index b754933..0000000
 --- a/src/poetry/core/_vendor/lark/lexer.py
 +++ /dev/null
-@@ -1,603 +0,0 @@
+@@ -1,661 +0,0 @@
 -# Lexer Implementation
 -
 -from abc import abstractmethod, ABC
 -import re
 -from contextlib import suppress
 -from typing import (
--    TypeVar, Type, List, Dict, Iterator, Collection, Callable, Optional, FrozenSet, Any,
--    Pattern as REPattern, ClassVar, TYPE_CHECKING, overload
+-    TypeVar, Type, Dict, Iterator, Collection, Callable, Optional, FrozenSet, Any,
+-    ClassVar, TYPE_CHECKING, overload
 -)
 -from types import ModuleType
 -import warnings
+-try:
+-    import interegular
+-except ImportError:
+-    pass
 -if TYPE_CHECKING:
 -    from .common import LexerConf
 -
--from .utils import classify, get_regexp_width, Serialize
+-from .utils import classify, get_regexp_width, Serialize, logger
 -from .exceptions import UnexpectedCharacters, LexError, UnexpectedToken
 -from .grammar import TOKEN_DEFAULT_PRIORITY
+-
 -
 -###{standalone
 -from copy import copy
 -
+-try:  # For the standalone parser, we need to make sure that has_interegular is False to avoid NameErrors later on
+-    has_interegular = bool(interegular)
+-except NameError:
+-    has_interegular = False
 -
 -class Pattern(Serialize, ABC):
 -
@@ -15845,7 +15855,7 @@ index 5e6d6d4..0000000
 -    raw: Optional[str]
 -    type: ClassVar[str]
 -
--    def __init__(self, value: str, flags: Collection[str]=(), raw: Optional[str]=None) -> None:
+-    def __init__(self, value: str, flags: Collection[str] = (), raw: Optional[str] = None) -> None:
 -        self.value = value
 -        self.flags = frozenset(flags)
 -        self.raw = raw
@@ -15881,7 +15891,7 @@ index 5e6d6d4..0000000
 -
 -
 -class PatternStr(Pattern):
--    __serialize_fields__ = 'value', 'flags'
+-    __serialize_fields__ = 'value', 'flags', 'raw'
 -
 -    type: ClassVar[str] = "str"
 -
@@ -15898,7 +15908,7 @@ index 5e6d6d4..0000000
 -
 -
 -class PatternRE(Pattern):
--    __serialize_fields__ = 'value', 'flags', '_width'
+-    __serialize_fields__ = 'value', 'flags', 'raw', '_width'
 -
 -    type: ClassVar[str] = "re"
 -
@@ -15928,7 +15938,7 @@ index 5e6d6d4..0000000
 -    pattern: Pattern
 -    priority: int
 -
--    def __init__(self, name: str, pattern: Pattern, priority: int=TOKEN_DEFAULT_PRIORITY) -> None:
+-    def __init__(self, name: str, pattern: Pattern, priority: int = TOKEN_DEFAULT_PRIORITY) -> None:
 -        assert isinstance(pattern, Pattern), pattern
 -        self.name = name
 -        self.pattern = pattern
@@ -15938,7 +15948,7 @@ index 5e6d6d4..0000000
 -        return '%s(%r, %r)' % (type(self).__name__, self.name, self.pattern)
 -
 -    def user_repr(self) -> str:
--        if self.name.startswith('__'): # We represent a generated terminal
+-        if self.name.startswith('__'):  # We represent a generated terminal
 -            return self.pattern.raw or self.name
 -        else:
 -            return self.name
@@ -15980,29 +15990,29 @@ index 5e6d6d4..0000000
 -
 -    @overload
 -    def __new__(
--        cls,
--        type: str,
--        value: Any,
--        start_pos: Optional[int]=None,
--        line: Optional[int]=None,
--        column: Optional[int]=None,
--        end_line: Optional[int]=None,
--        end_column: Optional[int]=None,
--        end_pos: Optional[int]=None
+-            cls,
+-            type: str,
+-            value: Any,
+-            start_pos: Optional[int] = None,
+-            line: Optional[int] = None,
+-            column: Optional[int] = None,
+-            end_line: Optional[int] = None,
+-            end_column: Optional[int] = None,
+-            end_pos: Optional[int] = None
 -    ) -> 'Token':
 -        ...
 -
 -    @overload
 -    def __new__(
--        cls,
--        type_: str,
--        value: Any,
--        start_pos: Optional[int]=None,
--        line: Optional[int]=None,
--        column: Optional[int]=None,
--        end_line: Optional[int]=None,
--        end_column: Optional[int]=None,
--        end_pos: Optional[int]=None
+-            cls,
+-            type_: str,
+-            value: Any,
+-            start_pos: Optional[int] = None,
+-            line: Optional[int] = None,
+-            column: Optional[int] = None,
+-            end_line: Optional[int] = None,
+-            end_column: Optional[int] = None,
+-            end_pos: Optional[int] = None
 -    ) -> 'Token':        ...
 -
 -    def __new__(cls, *args, **kwargs):
@@ -16031,11 +16041,11 @@ index 5e6d6d4..0000000
 -        return inst
 -
 -    @overload
--    def update(self, type: Optional[str]=None, value: Optional[Any]=None) -> 'Token':
+-    def update(self, type: Optional[str] = None, value: Optional[Any] = None) -> 'Token':
 -        ...
 -
 -    @overload
--    def update(self, type_: Optional[str]=None, value: Optional[Any]=None) -> 'Token':
+-    def update(self, type_: Optional[str] = None, value: Optional[Any] = None) -> 'Token':
 -        ...
 -
 -    def update(self, *args, **kwargs):
@@ -16048,7 +16058,7 @@ index 5e6d6d4..0000000
 -
 -        return self._future_update(*args, **kwargs)
 -
--    def _future_update(self, type: Optional[str]=None, value: Optional[Any]=None) -> 'Token':
+-    def _future_update(self, type: Optional[str] = None, value: Optional[Any] = None) -> 'Token':
 -        return Token.new_borrow_pos(
 -            type if type is not None else self.type,
 -            value if value is not None else self.value,
@@ -16182,7 +16192,7 @@ index 5e6d6d4..0000000
 -            try:
 -                mre = self.re_.compile(pattern, self.g_regex_flags)
 -            except AssertionError:  # Yes, this is what Python provides us.. :/
--                return self._build_mres(terminals, max_size//2)
+-                return self._build_mres(terminals, max_size // 2)
 -
 -            mres.append(mre)
 -            terminals = terminals[max_size:]
@@ -16208,12 +16218,16 @@ index 5e6d6d4..0000000
 -
 -class LexerState:
 -    """Represents the current state of the lexer as it scans the text
--    (Lexer objects are only instanciated per grammar, not per text)
+-    (Lexer objects are only instantiated per grammar, not per text)
 -    """
 -
 -    __slots__ = 'text', 'line_ctr', 'last_token'
 -
--    def __init__(self, text, line_ctr=None, last_token=None):
+-    text: str
+-    line_ctr: LineCounter
+-    last_token: Optional[Token]
+-
+-    def __init__(self, text: str, line_ctr: Optional[LineCounter]=None, last_token: Optional[Token]=None):
 -        self.text = text
 -        self.line_ctr = line_ctr or LineCounter(b'\n' if isinstance(text, bytes) else '\n')
 -        self.last_token = last_token
@@ -16266,8 +16280,39 @@ index 5e6d6d4..0000000
 -        return LexerState(text)
 -
 -
--class BasicLexer(Lexer):
+-def _check_regex_collisions(terminal_to_regexp: Dict[TerminalDef, str], comparator, strict_mode, max_collisions_to_show=8):
+-    if not comparator:
+-        comparator = interegular.Comparator.from_regexes(terminal_to_regexp)
 -
+-    # When in strict mode, we only ever try to provide one example, so taking
+-    # a long time for that should be fine
+-    max_time = 2 if strict_mode else 0.2
+-
+-    # We don't want to show too many collisions.
+-    if comparator.count_marked_pairs() >= max_collisions_to_show:
+-        return
+-    for group in classify(terminal_to_regexp, lambda t: t.priority).values():
+-        for a, b in comparator.check(group, skip_marked=True):
+-            assert a.priority == b.priority
+-            # Mark this pair to not repeat warnings when multiple different BasicLexers see the same collision
+-            comparator.mark(a, b)
+-
+-            # Notify the user
+-            message = f"Collision between Terminals {a.name} and {b.name}. "
+-            try:
+-                example = comparator.get_example_overlap(a, b, max_time).format_multiline()
+-            except ValueError:
+-                # Couldn't find an example within max_time steps.
+-                example = "No example could be found fast enough. However, the collision does still exists"
+-            if strict_mode:
+-                raise LexError(f"{message}\n{example}")
+-            logger.warning("%s The lexer will choose between them arbitrarily.\n%s", message, example)
+-            if comparator.count_marked_pairs() >= max_collisions_to_show:
+-                logger.warning("Found 8 regex collisions, will not check for more.")
+-                return
+-
+-
+-class BasicLexer(Lexer):
 -    terminals: Collection[TerminalDef]
 -    ignore_types: FrozenSet[str]
 -    newline_types: FrozenSet[str]
@@ -16275,7 +16320,7 @@ index 5e6d6d4..0000000
 -    callback: Dict[str, _Callback]
 -    re: ModuleType
 -
--    def __init__(self, conf: 'LexerConf') -> None:
+-    def __init__(self, conf: 'LexerConf', comparator=None) -> None:
 -        terminals = list(conf.terminals)
 -        assert all(isinstance(t, TerminalDef) for t in terminals), terminals
 -
@@ -16283,17 +16328,26 @@ index 5e6d6d4..0000000
 -
 -        if not conf.skip_validation:
 -            # Sanitization
+-            terminal_to_regexp = {}
 -            for t in terminals:
+-                regexp = t.pattern.to_regexp()
 -                try:
--                    self.re.compile(t.pattern.to_regexp(), conf.g_regex_flags)
+-                    self.re.compile(regexp, conf.g_regex_flags)
 -                except self.re.error:
 -                    raise LexError("Cannot compile token %s: %s" % (t.name, t.pattern))
 -
 -                if t.pattern.min_width == 0:
 -                    raise LexError("Lexer does not allow zero-width terminals. (%s: %s)" % (t.name, t.pattern))
+-                if t.pattern.type == "re":
+-                    terminal_to_regexp[t] = regexp
 -
 -            if not (set(conf.ignore) <= {t.name for t in terminals}):
 -                raise LexError("Ignore terminals are not defined: %s" % (set(conf.ignore) - {t.name for t in terminals}))
+-
+-            if has_interegular:
+-                _check_regex_collisions(terminal_to_regexp, comparator, conf.strict)
+-            elif conf.strict:
+-                raise LexError("interegular must be installed for strict mode. Use `pip install 'lark[interegular]'`.")
 -
 -        # Init
 -        self.newline_types = frozenset(t.name for t in terminals if _regexp_has_newline(t.pattern.to_regexp()))
@@ -16335,7 +16389,7 @@ index 5e6d6d4..0000000
 -            while True:
 -                yield self.next_token(state, parser_state)
 -
--    def next_token(self, lex_state: LexerState, parser_state: Any=None) -> Token:
+-    def next_token(self, lex_state: LexerState, parser_state: Any = None) -> Token:
 -        line_ctr = lex_state.line_ctr
 -        while line_ctr.char_pos < len(lex_state.text):
 -            res = self.match(lex_state.text, line_ctr.char_pos)
@@ -16383,6 +16437,10 @@ index 5e6d6d4..0000000
 -        trad_conf = copy(conf)
 -        trad_conf.terminals = terminals
 -
+-        if has_interegular and not conf.skip_validation:
+-            comparator = interegular.Comparator.from_regexes({t: t.pattern.to_regexp() for t in terminals})
+-        else:
+-            comparator = None
 -        lexer_by_tokens: Dict[FrozenSet[str], BasicLexer] = {}
 -        self.lexers = {}
 -        for state, accepts in states.items():
@@ -16393,13 +16451,14 @@ index 5e6d6d4..0000000
 -                accepts = set(accepts) | set(conf.ignore) | set(always_accept)
 -                lexer_conf = copy(trad_conf)
 -                lexer_conf.terminals = [terminals_by_name[n] for n in accepts if n in terminals_by_name]
--                lexer = BasicLexer(lexer_conf)
+-                lexer = BasicLexer(lexer_conf, comparator)
 -                lexer_by_tokens[key] = lexer
 -
 -            self.lexers[state] = lexer
 -
 -        assert trad_conf.terminals is terminals
--        self.root_lexer = BasicLexer(trad_conf)
+-        trad_conf.skip_validation = True  # We don't need to verify all terminals again
+-        self.root_lexer = BasicLexer(trad_conf, comparator)
 -
 -    def lex(self, lexer_state: LexerState, parser_state: Any) -> Iterator[Token]:
 -        try:
@@ -16421,7 +16480,7 @@ index 5e6d6d4..0000000
 -###}
 diff --git a/src/poetry/core/_vendor/lark/load_grammar.py b/src/poetry/core/_vendor/lark/load_grammar.py
 deleted file mode 100644
-index d4f553c..0000000
+index 90401ad..0000000
 --- a/src/poetry/core/_vendor/lark/load_grammar.py
 +++ /dev/null
 @@ -1,1423 +0,0 @@
@@ -16506,7 +16565,7 @@ index d4f553c..0000000
 -    '_RBRA': r'\]',
 -    '_LBRACE': r'\{',
 -    '_RBRACE': r'\}',
--    'OP': '[+*]|[?](?![a-z])',
+-    'OP': '[+*]|[?](?![a-z_])',
 -    '_COLON': ':',
 -    '_COMMA': ',',
 -    '_OR': r'\|',
@@ -16521,7 +16580,7 @@ index d4f553c..0000000
 -    '_NL': r'(\r?\n)+\s*',
 -    '_NL_OR': r'(\r?\n)+\s*\|',
 -    'WS': r'[ \t]+',
--    'COMMENT': r'\s*//[^\n]*',
+-    'COMMENT': r'\s*//[^\n]*|\s*#[^\n]*',
 -    'BACKSLASH': r'\\[ ]*\n',
 -    '_TO': '->',
 -    '_IGNORE': r'%ignore',
@@ -17741,7 +17800,7 @@ index d4f553c..0000000
 -            except IOError:
 -                continue
 -            else:
--                h = md5_digest(text)
+-                h = sha256_digest(text)
 -                if self.used_files.get(joined_path, h) != h:
 -                    raise RuntimeError("Grammar file was changed during importing")
 -                self.used_files[joined_path] = h
@@ -17820,7 +17879,7 @@ index d4f553c..0000000
 -        if text is None: # We don't know how to load the path. ignore it.
 -            continue
 -
--        current = md5_digest(text)
+-        current = sha256_digest(text)
 -        if old != current:
 -            logger.info("File %r changed, rebuilding Parser" % path)
 -            return False
@@ -17838,22 +17897,22 @@ index d4f553c..0000000
 -    return builder.build(), builder.used_files
 -
 -
--def md5_digest(s: str) -> str:
--    """Get the md5 digest of a string
+-def sha256_digest(s: str) -> str:
+-    """Get the sha256 digest of a string
 -
 -    Supports the `usedforsecurity` argument for Python 3.9+ to allow running on
 -    a FIPS-enabled system.
 -    """
 -    if sys.version_info >= (3, 9):
--        return hashlib.md5(s.encode('utf8'), usedforsecurity=False).hexdigest()
+-        return hashlib.sha256(s.encode('utf8'), usedforsecurity=False).hexdigest()
 -    else:
--        return hashlib.md5(s.encode('utf8')).hexdigest()
+-        return hashlib.sha256(s.encode('utf8')).hexdigest()
 diff --git a/src/poetry/core/_vendor/lark/parse_tree_builder.py b/src/poetry/core/_vendor/lark/parse_tree_builder.py
 deleted file mode 100644
-index bb907a2..0000000
+index 1ce3373..0000000
 --- a/src/poetry/core/_vendor/lark/parse_tree_builder.py
 +++ /dev/null
-@@ -1,387 +0,0 @@
+@@ -1,389 +0,0 @@
 -from typing import List
 -
 -from .exceptions import GrammarError, ConfigurationError
@@ -17906,6 +17965,7 @@ index bb907a2..0000000
 -
 -                res_meta.container_line = getattr(first_meta, 'container_line', first_meta.line)
 -                res_meta.container_column = getattr(first_meta, 'container_column', first_meta.column)
+-                res_meta.container_start_pos = getattr(first_meta, 'container_start_pos', first_meta.start_pos)
 -
 -            last_meta = self._pp_get_meta(reversed(children))
 -            if last_meta is not None:
@@ -17917,6 +17977,7 @@ index bb907a2..0000000
 -
 -                res_meta.container_end_line = getattr(last_meta, 'container_end_line', last_meta.end_line)
 -                res_meta.container_end_column = getattr(last_meta, 'container_end_column', last_meta.end_column)
+-                res_meta.container_end_pos = getattr(last_meta, 'container_end_pos', last_meta.end_pos)
 -
 -        return res
 -
@@ -18243,11 +18304,11 @@ index bb907a2..0000000
 -###}
 diff --git a/src/poetry/core/_vendor/lark/parser_frontends.py b/src/poetry/core/_vendor/lark/parser_frontends.py
 deleted file mode 100644
-index 4e28e36..0000000
+index 19d7696..0000000
 --- a/src/poetry/core/_vendor/lark/parser_frontends.py
 +++ /dev/null
-@@ -1,245 +0,0 @@
--from typing import Any, Callable, Dict, Tuple
+@@ -1,253 +0,0 @@
+-from typing import Any, Callable, Dict, Optional, Collection
 -
 -from .exceptions import ConfigurationError, GrammarError, assert_config
 -from .utils import get_regexp_width, Serialize
@@ -18287,7 +18348,11 @@ index 4e28e36..0000000
 -class ParsingFrontend(Serialize):
 -    __serialize_fields__ = 'lexer_conf', 'parser_conf', 'parser'
 -
--    def __init__(self, lexer_conf, parser_conf, options, parser=None):
+-    lexer_conf: LexerConf
+-    parser_conf: ParserConf
+-    options: Any
+-
+-    def __init__(self, lexer_conf: LexerConf, parser_conf: ParserConf, options, parser=None):
 -        self.parser_conf = parser_conf
 -        self.lexer_conf = lexer_conf
 -        self.options = options
@@ -18310,16 +18375,17 @@ index 4e28e36..0000000
 -            self.skip_lexer = True
 -            return
 -
--        try:
+-        if isinstance(lexer_type, type):
+-            assert issubclass(lexer_type, Lexer)
+-            self.lexer = _wrap_lexer(lexer_type)(lexer_conf)
+-        elif isinstance(lexer_type, str):
 -            create_lexer = {
 -                'basic': create_basic_lexer,
 -                'contextual': create_contextual_lexer,
 -            }[lexer_type]
--        except KeyError:
--            assert issubclass(lexer_type, Lexer), lexer_type
--            self.lexer = _wrap_lexer(lexer_type)(lexer_conf)
--        else:
 -            self.lexer = create_lexer(lexer_conf, self.parser, lexer_conf.postlex, options)
+-        else:
+-            raise TypeError("Bad value for lexer_type: {lexer_type}")
 -
 -        if lexer_conf.postlex:
 -            self.lexer = PostLexConnector(self.lexer, lexer_conf.postlex)
@@ -18334,21 +18400,23 @@ index 4e28e36..0000000
 -            raise ConfigurationError("Unknown start rule %s. Must be one of %r" % (start, self.parser_conf.start))
 -        return start
 -
--    def _make_lexer_thread(self, text):
+-    def _make_lexer_thread(self, text: str):
 -        cls = (self.options and self.options._plugins.get('LexerThread')) or LexerThread
 -        return text if self.skip_lexer else cls.from_text(self.lexer, text)
 -
--    def parse(self, text, start=None, on_error=None):
+-    def parse(self, text: str, start=None, on_error=None):
 -        chosen_start = self._verify_start(start)
 -        kw = {} if on_error is None else {'on_error': on_error}
 -        stream = self._make_lexer_thread(text)
 -        return self.parser.parse(stream, chosen_start, **kw)
 -
--    def parse_interactive(self, text=None, start=None):
+-    def parse_interactive(self, text: Optional[str]=None, start=None):
+-        # TODO BREAK - Change text from Optional[str] to text: str = ''.
+-        #   Would break behavior of exhaust_lexer(), which currently raises TypeError, and after the change would just return []
 -        chosen_start = self._verify_start(start)
 -        if self.parser_conf.parser_type != 'lalr':
 -            raise ConfigurationError("parse_interactive() currently only works with parser='lalr' ")
--        stream = self._make_lexer_thread(text)
+-        stream = self._make_lexer_thread(text)  # type: ignore[arg-type]
 -        return self.parser.parse_interactive(stream, chosen_start)
 -
 -
@@ -18382,20 +18450,21 @@ index 4e28e36..0000000
 -
 -
 -
--def create_basic_lexer(lexer_conf, parser, postlex, options):
+-def create_basic_lexer(lexer_conf, parser, postlex, options) -> BasicLexer:
 -    cls = (options and options._plugins.get('BasicLexer')) or BasicLexer
 -    return cls(lexer_conf)
 -
--def create_contextual_lexer(lexer_conf, parser, postlex, options):
+-def create_contextual_lexer(lexer_conf: LexerConf, parser, postlex, options) -> ContextualLexer:
 -    cls = (options and options._plugins.get('ContextualLexer')) or ContextualLexer
--    states = {idx:list(t.keys()) for idx, t in parser._parse_table.states.items()}
--    always_accept = postlex.always_accept if postlex else ()
+-    states: Dict[str, Collection[str]] = {idx:list(t.keys()) for idx, t in parser._parse_table.states.items()}
+-    always_accept: Collection[str] = postlex.always_accept if postlex else ()
 -    return cls(lexer_conf, states, always_accept=always_accept)
 -
--def create_lalr_parser(lexer_conf, parser_conf, options=None):
+-def create_lalr_parser(lexer_conf: LexerConf, parser_conf: ParserConf, options=None) -> LALR_Parser:
 -    debug = options.debug if options else False
+-    strict = options.strict if options else False
 -    cls = (options and options._plugins.get('LALR_Parser')) or LALR_Parser
--    return cls(parser_conf, debug=debug)
+-    return cls(parser_conf, debug=debug, strict=strict)
 -
 -_parser_creators['lalr'] = create_lalr_parser
 -
@@ -18422,7 +18491,7 @@ index 4e28e36..0000000
 -        return self.regexps[term.name].match(text, index)
 -
 -
--def create_earley_parser__dynamic(lexer_conf, parser_conf, options=None, **kw):
+-def create_earley_parser__dynamic(lexer_conf: LexerConf, parser_conf: ParserConf, **kw):
 -    if lexer_conf.callbacks:
 -        raise GrammarError("Earley's dynamic lexer doesn't support lexer_callbacks.")
 -
@@ -18432,10 +18501,10 @@ index 4e28e36..0000000
 -def _match_earley_basic(term, token):
 -    return term.name == token.type
 -
--def create_earley_parser__basic(lexer_conf, parser_conf, options, **kw):
+-def create_earley_parser__basic(lexer_conf: LexerConf, parser_conf: ParserConf, **kw):
 -    return earley.Parser(lexer_conf, parser_conf, _match_earley_basic, **kw)
 -
--def create_earley_parser(lexer_conf, parser_conf, options):
+-def create_earley_parser(lexer_conf: LexerConf, parser_conf: ParserConf, options) -> earley.Parser:
 -    resolve_ambiguity = options.ambiguity == 'resolve'
 -    debug = options.debug if options else False
 -    tree_class = options.tree_class or Tree if options.ambiguity != 'forest' else None
@@ -18444,12 +18513,12 @@ index 4e28e36..0000000
 -    if lexer_conf.lexer_type == 'dynamic':
 -        f = create_earley_parser__dynamic
 -    elif lexer_conf.lexer_type == 'dynamic_complete':
--        extra['complete_lex'] =True
+-        extra['complete_lex'] = True
 -        f = create_earley_parser__dynamic
 -    else:
 -        f = create_earley_parser__basic
 -
--    return f(lexer_conf, parser_conf, options, resolve_ambiguity=resolve_ambiguity, debug=debug, tree_class=tree_class, **extra)
+-    return f(lexer_conf, parser_conf, resolve_ambiguity=resolve_ambiguity, debug=debug, tree_class=tree_class, **extra)
 -
 -
 -
@@ -18494,10 +18563,10 @@ index 4e28e36..0000000
 -    return ParsingFrontend(lexer_conf, parser_conf, options)
 diff --git a/src/poetry/core/_vendor/lark/parsers/cyk.py b/src/poetry/core/_vendor/lark/parsers/cyk.py
 deleted file mode 100644
-index 82818cc..0000000
+index b5334f9..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/cyk.py
 +++ /dev/null
-@@ -1,345 +0,0 @@
+@@ -1,340 +0,0 @@
 -"""This module implements a CYK parser."""
 -
 -# Author: https://github.com/ehudt (2018)
@@ -18512,11 +18581,6 @@ index 82818cc..0000000
 -from ..lexer import Token
 -from ..tree import Tree
 -from ..grammar import Terminal as T, NonTerminal as NT, Symbol
--
--try:
--    xrange
--except NameError:
--    xrange = range
 -
 -def match(t, s):
 -    assert isinstance(t, T)
@@ -18653,11 +18717,11 @@ index 82818cc..0000000
 -                        trees[(i, i)][rule.lhs] = RuleNode(rule, [T(w)], weight=rule.weight)
 -
 -    # Iterate over lengths of sub-sentences
--    for l in xrange(2, len(s) + 1):
+-    for l in range(2, len(s) + 1):
 -        # Iterate over sub-sentences with the given length
--        for i in xrange(len(s) - l + 1):
+-        for i in range(len(s) - l + 1):
 -            # Choose partition of the sub-sentence in [1, l)
--            for p in xrange(i + 1, i + l):
+-            for p in range(i + 1, i + l):
 -                span1 = (i, p - 1)
 -                span2 = (p, i + l - 1)
 -                for r1, r2 in itertools.product(table[span1], table[span2]):
@@ -18750,7 +18814,7 @@ index 82818cc..0000000
 -
 -
 -def _remove_unit_rule(g, rule):
--    """Removes 'rule' from 'g' without changing the langugage produced by 'g'."""
+-    """Removes 'rule' from 'g' without changing the language produced by 'g'."""
 -    new_rules = [x for x in g.rules if x != rule]
 -    refs = [x for x in g.rules if x.lhs == rule.rhs[0]]
 -    new_rules += [build_unit_skiprule(rule, ref) for ref in refs]
@@ -18762,7 +18826,7 @@ index 82818cc..0000000
 -    rule_str = str(rule.lhs) + '__' + '_'.join(str(x) for x in rule.rhs)
 -    rule_name = '__SP_%s' % (rule_str) + '_%d'
 -    yield Rule(rule.lhs, [rule.rhs[0], NT(rule_name % 1)], weight=rule.weight, alias=rule.alias)
--    for i in xrange(1, len(rule.rhs) - 2):
+-    for i in range(1, len(rule.rhs) - 2):
 -        yield Rule(NT(rule_name % i), [rule.rhs[i], NT(rule_name % (i + 1))], weight=0, alias='Split')
 -    yield Rule(NT(rule_name % (len(rule.rhs) - 2)), rule.rhs[-2:], weight=0, alias='Split')
 -
@@ -18845,10 +18909,10 @@ index 82818cc..0000000
 -            return RuleNode(node.rule, children)
 diff --git a/src/poetry/core/_vendor/lark/parsers/earley.py b/src/poetry/core/_vendor/lark/parsers/earley.py
 deleted file mode 100644
-index 2a047b0..0000000
+index a6229f8..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/earley.py
 +++ /dev/null
-@@ -1,295 +0,0 @@
+@@ -1,305 +0,0 @@
 -"""This module implements an Earley parser.
 -
 -The core Earley algorithm used here is based on Elizabeth Scott's implementation, here:
@@ -18859,6 +18923,8 @@ index 2a047b0..0000000
 -The Earley parser outputs an SPPF-tree as per that document. The SPPF tree format
 -is explained here: https://lark-parser.readthedocs.io/en/latest/_static/sppf/sppf.html
 -"""
+-
+-import typing
 -
 -from collections import deque
 -
@@ -18871,8 +18937,15 @@ index 2a047b0..0000000
 -from .earley_common import Item
 -from .earley_forest import ForestSumVisitor, SymbolNode, TokenNode, ForestToParseTree
 -
+-if typing.TYPE_CHECKING:
+-    from ..common import LexerConf, ParserConf
+-
 -class Parser:
--    def __init__(self, lexer_conf, parser_conf, term_matcher, resolve_ambiguity=True, debug=False, tree_class=Tree):
+-    lexer_conf: 'LexerConf'
+-    parser_conf: 'ParserConf'
+-    debug: bool
+-
+-    def __init__(self, lexer_conf: 'LexerConf', parser_conf: 'ParserConf', term_matcher, resolve_ambiguity=True, debug=False, tree_class=Tree):
 -        analysis = GrammarAnalyzer(parser_conf)
 -        self.lexer_conf = lexer_conf
 -        self.parser_conf = parser_conf
@@ -18883,7 +18956,8 @@ index 2a047b0..0000000
 -        self.FIRST = analysis.FIRST
 -        self.NULLABLE = analysis.NULLABLE
 -        self.callbacks = parser_conf.callbacks
--        self.predictions = {}
+-        # TODO add typing info
+-        self.predictions = {}   # type: ignore[var-annotated]
 -
 -        ## These could be moved to the grammar analyzer. Pre-computing these is *much* faster than
 -        #  the slow 'isupper' in is_terminal.
@@ -19194,7 +19268,7 @@ index 46e242b..0000000
 -#   ...   # removed at commit 4c1cfb2faf24e8f8bff7112627a00b94d261b420
 diff --git a/src/poetry/core/_vendor/lark/parsers/earley_forest.py b/src/poetry/core/_vendor/lark/parsers/earley_forest.py
 deleted file mode 100644
-index 5892c78..0000000
+index 6763af6..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/earley_forest.py
 +++ /dev/null
 @@ -1,804 +0,0 @@
@@ -19215,7 +19289,6 @@ index 5892c78..0000000
 -
 -from ..parse_tree_builder import AmbiguousIntermediateExpander
 -from ..visitors import Discard
--from ..lexer import Token
 -from ..utils import logger
 -from ..tree import Tree
 -
@@ -19285,7 +19358,8 @@ index 5892c78..0000000
 -    def children(self):
 -        """Returns a list of this node's children sorted from greatest to
 -        least priority."""
--        if not self.paths_loaded: self.load_paths()
+-        if not self.paths_loaded:
+-            self.load_paths()
 -        return sorted(self._children, key=attrgetter('sort_key'))
 -
 -    def __iter__(self):
@@ -20004,10 +20078,10 @@ index 5892c78..0000000
 -            self.graph.add_edge(self.pydot.Edge(graph_node, child_graph_node))
 diff --git a/src/poetry/core/_vendor/lark/parsers/grammar_analysis.py b/src/poetry/core/_vendor/lark/parsers/grammar_analysis.py
 deleted file mode 100644
-index b526e47..0000000
+index bdbadf3..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/grammar_analysis.py
 +++ /dev/null
-@@ -1,185 +0,0 @@
+@@ -1,186 +0,0 @@
 -from collections import Counter, defaultdict
 -
 -from ..utils import bfs, fzset, classify
@@ -20132,8 +20206,9 @@ index b526e47..0000000
 -
 -
 -class GrammarAnalyzer:
--    def __init__(self, parser_conf, debug=False):
+-    def __init__(self, parser_conf, debug=False, strict=False):
 -        self.debug = debug
+-        self.strict = strict
 -
 -        root_rules = {start: Rule(NonTerminal('$root_' + start), [NonTerminal(start), Terminal('$END')])
 -                      for start in parser_conf.start}
@@ -20195,10 +20270,10 @@ index b526e47..0000000
 -        return fzset(init_ptrs)
 diff --git a/src/poetry/core/_vendor/lark/parsers/lalr_analysis.py b/src/poetry/core/_vendor/lark/parsers/lalr_analysis.py
 deleted file mode 100644
-index 216371e..0000000
+index 7373ebd..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/lalr_analysis.py
 +++ /dev/null
-@@ -1,303 +0,0 @@
+@@ -1,307 +0,0 @@
 -"""This module builds a LALR(1) transition-table for lalr_parser.py
 -
 -For now, shift/reduce conflicts are automatically resolved as shifts.
@@ -20292,9 +20367,7 @@ index 216371e..0000000
 -def digraph(X, R, G):
 -    F = {}
 -    S = []
--    N = {}
--    for x in X:
--        N[x] = 0
+-    N = dict.fromkeys(X, 0)
 -    for x in X:
 -        # this is always true for the first iteration, but N[x] may be updated in traverse below
 -        if N[x] == 0:
@@ -20334,8 +20407,8 @@ index 216371e..0000000
 -
 -
 -class LALR_Analyzer(GrammarAnalyzer):
--    def __init__(self, parser_conf, debug=False):
--        GrammarAnalyzer.__init__(self, parser_conf, debug)
+-    def __init__(self, parser_conf, debug=False, strict=False):
+-        GrammarAnalyzer.__init__(self, parser_conf, debug, strict)
 -        self.nonterminal_transitions = []
 -        self.directly_reads = defaultdict(set)
 -        self.reads = defaultdict(set)
@@ -20423,7 +20496,7 @@ index 216371e..0000000
 -                    if nt2 not in self.reads:
 -                        continue
 -                    for j in range(i + 1, len(rp.rule.expansion)):
--                        if not rp.rule.expansion[j] in self.NULLABLE:
+-                        if rp.rule.expansion[j] not in self.NULLABLE:
 -                            break
 -                    else:
 -                        includes.append(nt2)
@@ -20448,9 +20521,7 @@ index 216371e..0000000
 -        m = {}
 -        reduce_reduce = []
 -        for state in self.lr0_states:
--            actions = {}
--            for la, next_state in state.transitions.items():
--                actions[la] = (Shift, next_state.closure)
+-            actions = {la: (Shift, next_state.closure) for la, next_state in state.transitions.items()}
 -            for la, rules in state.lookaheads.items():
 -                if len(rules) > 1:
 -                    # Try to resolve conflict based on priority
@@ -20461,10 +20532,18 @@ index 216371e..0000000
 -                        rules = [best[1]]
 -                    else:
 -                        reduce_reduce.append((state, la, rules))
+-                        continue
+-
+-                rule ,= rules
 -                if la in actions:
--                    if self.debug:
+-                    if self.strict:
+-                        raise GrammarError(f"Shift/Reduce conflict for terminal {la.name}. [strict-mode]\n ")
+-                    elif self.debug:
 -                        logger.warning('Shift/Reduce conflict for terminal %s: (resolving as shift)', la.name)
--                        logger.warning(' * %s', list(rules)[0])
+-                        logger.warning(' * %s', rule)
+-                    else:
+-                        logger.debug('Shift/Reduce conflict for terminal %s: (resolving as shift)', la.name)
+-                        logger.debug(' * %s', rule)
 -                else:
 -                    actions[la] = (Reduce, list(rules)[0])
 -            m[state] = { k.name: v for k, v in actions.items() }
@@ -20504,7 +20583,7 @@ index 216371e..0000000
 -        self.compute_lalr1_states()
 diff --git a/src/poetry/core/_vendor/lark/parsers/lalr_interactive_parser.py b/src/poetry/core/_vendor/lark/parsers/lalr_interactive_parser.py
 deleted file mode 100644
-index f8fd93a..0000000
+index 7ee4001..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/lalr_interactive_parser.py
 +++ /dev/null
 @@ -1,149 +0,0 @@
@@ -20626,7 +20705,7 @@ index f8fd93a..0000000
 -    def resume_parse(self):
 -        """Resume automated parsing from the current state.
 -        """
--        return self.parser.parse_from_state(self.parser_state, last_token=self.lexer_state.state.last_token)
+-        return self.parser.parse_from_state(self.parser_state, last_token=self.lexer_thread.state.last_token)
 -
 -
 -
@@ -20659,7 +20738,7 @@ index f8fd93a..0000000
 -        return InteractiveParser(p.parser, p.parser_state, p.lexer_thread)
 diff --git a/src/poetry/core/_vendor/lark/parsers/lalr_parser.py b/src/poetry/core/_vendor/lark/parsers/lalr_parser.py
 deleted file mode 100644
-index 5cf6ca4..0000000
+index c330a4d..0000000
 --- a/src/poetry/core/_vendor/lark/parsers/lalr_parser.py
 +++ /dev/null
 @@ -1,204 +0,0 @@
@@ -20672,15 +20751,15 @@ index 5cf6ca4..0000000
 -from ..lexer import Token
 -from ..utils import Serialize
 -
--from .lalr_analysis import LALR_Analyzer, Shift, Reduce, IntParseTable
+-from .lalr_analysis import LALR_Analyzer, Shift, IntParseTable
 -from .lalr_interactive_parser import InteractiveParser
 -from lark.exceptions import UnexpectedCharacters, UnexpectedInput, UnexpectedToken
 -
 -###{standalone
 -
 -class LALR_Parser(Serialize):
--    def __init__(self, parser_conf, debug=False):
--        analysis = LALR_Analyzer(parser_conf, debug=debug)
+-    def __init__(self, parser_conf, debug=False, strict=False):
+-        analysis = LALR_Analyzer(parser_conf, debug=debug, strict=strict)
 -        analysis.compute_lalr()
 -        callbacks = parser_conf.callbacks
 -
@@ -20867,121 +20946,6 @@ index 5cf6ca4..0000000
 -
 -            raise
 -###}
-diff --git a/src/poetry/core/_vendor/lark/parsers/resolve_ambig.py b/src/poetry/core/_vendor/lark/parsers/resolve_ambig.py
-deleted file mode 100644
-index 2470eb9..0000000
---- a/src/poetry/core/_vendor/lark/parsers/resolve_ambig.py
-+++ /dev/null
-@@ -1,109 +0,0 @@
--from ..utils import compare
--from functools import cmp_to_key
--
--from ..tree import Tree
--
--
--# Standard ambiguity resolver (uses comparison)
--#
--# Author: Erez Sh
--
--def _compare_rules(rule1, rule2):
--    return -compare( len(rule1.expansion), len(rule2.expansion))
--
--def _sum_priority(tree):
--    p = 0
--
--    for n in tree.iter_subtrees():
--        try:
--            p += n.meta.rule.options.priority or 0
--        except AttributeError:
--            pass
--
--    return p
--
--def _compare_priority(tree1, tree2):
--    tree1.iter_subtrees()
--
--def _compare_drv(tree1, tree2):
--    try:
--        rule1 = tree1.meta.rule
--    except AttributeError:
--        rule1 = None
--
--    try:
--        rule2 = tree2.meta.rule
--    except AttributeError:
--        rule2 = None
--
--    if None == rule1 == rule2:
--        return compare(tree1, tree2)
--    elif rule1 is None:
--        return -1
--    elif rule2 is None:
--        return 1
--
--    assert tree1.data != '_ambig'
--    assert tree2.data != '_ambig'
--
--    p1 = _sum_priority(tree1)
--    p2 = _sum_priority(tree2)
--    c = (p1 or p2) and compare(p1, p2)
--    if c:
--        return c
--
--    c = _compare_rules(tree1.meta.rule, tree2.meta.rule)
--    if c:
--        return c
--
--    # rules are "equal", so compare trees
--    if len(tree1.children) == len(tree2.children):
--        for t1, t2 in zip(tree1.children, tree2.children):
--            c = _compare_drv(t1, t2)
--            if c:
--                return c
--
--    return compare(len(tree1.children), len(tree2.children))
--
--
--def _standard_resolve_ambig(tree):
--    assert tree.data == '_ambig'
--    key_f = cmp_to_key(_compare_drv)
--    best = max(tree.children, key=key_f)
--    assert best.data == 'drv'
--    tree.set('drv', best.children)
--    tree.meta.rule = best.meta.rule   # needed for applying callbacks
--
--def standard_resolve_ambig(tree):
--    for ambig in tree.find_data('_ambig'):
--        _standard_resolve_ambig(ambig)
--
--    return tree
--
--
--
--
--# Anti-score Sum
--#
--# Author: Uriva (https://github.com/uriva)
--
--def _antiscore_sum_drv(tree):
--    if not isinstance(tree, Tree):
--        return 0
--
--    assert tree.data != '_ambig'
--
--    return _sum_priority(tree)
--
--def _antiscore_sum_resolve_ambig(tree):
--    assert tree.data == '_ambig'
--    best = min(tree.children, key=_antiscore_sum_drv)
--    assert best.data == 'drv'
--    tree.set('drv', best.children)
--    tree.meta.rule = best.meta.rule   # needed for applying callbacks
--
--def antiscore_sum_resolve_ambig(tree):
--    for ambig in tree.find_data('_ambig'):
--        _antiscore_sum_resolve_ambig(ambig)
--
--    return tree
 diff --git a/src/poetry/core/_vendor/lark/parsers/xearley.py b/src/poetry/core/_vendor/lark/parsers/xearley.py
 deleted file mode 100644
 index 343e5c0..0000000
@@ -21152,13 +21116,13 @@ deleted file mode 100644
 index e69de29..0000000
 diff --git a/src/poetry/core/_vendor/lark/reconstruct.py b/src/poetry/core/_vendor/lark/reconstruct.py
 deleted file mode 100644
-index 906ca81..0000000
+index 79a5eee..0000000
 --- a/src/poetry/core/_vendor/lark/reconstruct.py
 +++ /dev/null
 @@ -1,106 +0,0 @@
 -"""Reconstruct text from a tree, based on Lark grammar"""
 -
--from typing import List, Dict, Union, Callable, Iterable, Optional
+-from typing import Dict, Callable, Iterable, Optional
 -
 -from .lark import Lark
 -from .tree import Tree, ParseTree
@@ -21227,7 +21191,7 @@ index 906ca81..0000000
 -        The reconstructor cannot generate values from regexps. If you need to produce discarded
 -        regexes, such as newlines, use `term_subs` and provide default values for them.
 -
--    Paramters:
+-    Parameters:
 -        parser: a Lark instance
 -        term_subs: a dictionary of [Terminal name as str] to [output text as str]
 -    """
@@ -21264,10 +21228,10 @@ index 906ca81..0000000
 -        return ''.join(y)
 diff --git a/src/poetry/core/_vendor/lark/tools/__init__.py b/src/poetry/core/_vendor/lark/tools/__init__.py
 deleted file mode 100644
-index 391f991..0000000
+index c6995c6..0000000
 --- a/src/poetry/core/_vendor/lark/tools/__init__.py
 +++ /dev/null
-@@ -1,64 +0,0 @@
+@@ -1,71 +0,0 @@
 -import sys
 -from argparse import ArgumentParser, FileType
 -from textwrap import indent
@@ -21276,6 +21240,11 @@ index 391f991..0000000
 -import warnings
 -
 -from lark import Lark, logger
+-try:
+-    from interegular import logger as interegular_logger
+-    has_interegular = True
+-except ImportError:
+-    has_interegular = False
 -
 -lalr_argparser = ArgumentParser(add_help=False, epilog='Look at the Lark documentation for more info on the options')
 -
@@ -21310,6 +21279,8 @@ index 391f991..0000000
 -
 -def build_lalr(namespace):
 -    logger.setLevel((ERROR, WARN, INFO, DEBUG)[min(namespace.verbose, 3)])
+-    if has_interegular:
+-        interegular_logger.setLevel(logger.getEffectiveLevel())
 -    if len(namespace.start) == 0:
 -        namespace.start.append('start')
 -    kwargs = {n: getattr(namespace, n) for n in options}
@@ -21542,16 +21513,14 @@ index 1fc27d5..0000000
 -    print(main(fn=args.nearley_grammar, start=args.start_rule, nearley_lib=args.nearley_lib, es6=args.es6))
 diff --git a/src/poetry/core/_vendor/lark/tools/serialize.py b/src/poetry/core/_vendor/lark/tools/serialize.py
 deleted file mode 100644
-index 6154024..0000000
+index eb28824..0000000
 --- a/src/poetry/core/_vendor/lark/tools/serialize.py
 +++ /dev/null
-@@ -1,34 +0,0 @@
--import codecs
+@@ -1,32 +0,0 @@
 -import sys
 -import json
 -
--from lark import Lark
--from lark.grammar import RuleOptions, Rule
+-from lark.grammar import Rule
 -from lark.lexer import TerminalDef
 -from lark.tools import lalr_argparser, build_lalr
 -
@@ -21782,18 +21751,21 @@ index 3ae2cdb..0000000
 -    main()
 diff --git a/src/poetry/core/_vendor/lark/tree.py b/src/poetry/core/_vendor/lark/tree.py
 deleted file mode 100644
-index 8d83a04..0000000
+index 438837e..0000000
 --- a/src/poetry/core/_vendor/lark/tree.py
 +++ /dev/null
-@@ -1,264 +0,0 @@
+@@ -1,272 +0,0 @@
 -import sys
 -from copy import deepcopy
 -
--from typing import List, Callable, Iterator, Union, Optional, Generic, TypeVar, Any, TYPE_CHECKING
+-from typing import List, Callable, Iterator, Union, Optional, Generic, TypeVar, TYPE_CHECKING
 -
 -if TYPE_CHECKING:
 -    from .lexer import TerminalDef, Token
--    import rich
+-    try:
+-        import rich
+-    except ImportError:
+-        pass
 -    if sys.version_info >= (3, 8):
 -        from typing import Literal
 -    else:
@@ -21832,7 +21804,12 @@ index 8d83a04..0000000
 -        data: The name of the rule or alias
 -        children: List of matched sub-rules and terminals
 -        meta: Line & Column numbers (if ``propagate_positions`` is enabled).
--            meta attributes: line, column, start_pos, end_line, end_column, end_pos
+-            meta attributes: (line, column, end_line, end_column, start_pos, end_pos,
+-                              container_line, container_column, container_end_line, container_end_column)
+-            container_* attributes consider all symbols, including those that have been inlined in the tree.
+-            For example, in the rule 'a: _A B _C', the regular attributes will mark the start and end of B,
+-            but the container_* attributes will also include _A and _C in the range. However, rules that
+-            contain 'a' will consider it in full, including _A and _C for all attributes.
 -    """
 -
 -    data: str
@@ -21874,7 +21851,7 @@ index 8d83a04..0000000
 -        """
 -        return ''.join(self._pretty(0, indent_str))
 -
--    def __rich__(self, parent:'rich.tree.Tree'=None) -> 'rich.tree.Tree':
+-    def __rich__(self, parent:Optional['rich.tree.Tree']=None) -> 'rich.tree.Tree':
 -        """Returns a tree widget for the 'rich' library.
 -
 -        Example:
@@ -22052,7 +22029,7 @@ index 8d83a04..0000000
 -    return graph
 diff --git a/src/poetry/core/_vendor/lark/tree_matcher.py b/src/poetry/core/_vendor/lark/tree_matcher.py
 deleted file mode 100644
-index fdcd2bf..0000000
+index 0f42652..0000000
 --- a/src/poetry/core/_vendor/lark/tree_matcher.py
 +++ /dev/null
 @@ -1,186 +0,0 @@
@@ -22141,7 +22118,7 @@ index fdcd2bf..0000000
 -
 -    Supports templates and inlined rules (`rule{a, b,..}` and `_rule`)
 -
--    Initiialize with an instance of Lark.
+-    Initialize with an instance of Lark.
 -    """
 -
 -    def __init__(self, parser):
@@ -22244,7 +22221,7 @@ index fdcd2bf..0000000
 -        return unreduced_tree
 diff --git a/src/poetry/core/_vendor/lark/tree_templates.py b/src/poetry/core/_vendor/lark/tree_templates.py
 deleted file mode 100644
-index 03eaa27..0000000
+index 6ec7323..0000000
 --- a/src/poetry/core/_vendor/lark/tree_templates.py
 +++ /dev/null
 @@ -1,180 +0,0 @@
@@ -22388,7 +22365,7 @@ index 03eaa27..0000000
 -        return self.conf._match_tree_template(self.tree, tree)
 -
 -    def search(self, tree: TreeOrCode) -> Iterator[Tuple[Tree[str], MatchResult]]:
--        """Search for all occurances of the tree template inside ``tree``.
+-        """Search for all occurrences of the tree template inside ``tree``.
 -        """
 -        tree = self.conf._get_tree(tree)
 -        for subtree in tree.iter_subtrees():
@@ -22403,7 +22380,7 @@ index 03eaa27..0000000
 -
 -
 -def translate(t1: Template, t2: Template, tree: TreeOrCode):
--    """Search tree and translate each occurrance of t1 into t2.
+-    """Search tree and translate each occurrence of t1 into t2.
 -    """
 -    tree = t1.conf._get_tree(tree)      # ensure it's a tree, parse if necessary and possible
 -    for subtree, vars in t1.search(tree):
@@ -22430,15 +22407,15 @@ index 03eaa27..0000000
 -    return value.lstrip(_TEMPLATE_MARKER) if value.startswith(_TEMPLATE_MARKER) else None
 diff --git a/src/poetry/core/_vendor/lark/utils.py b/src/poetry/core/_vendor/lark/utils.py
 deleted file mode 100644
-index 6781e6f..0000000
+index b47096f..0000000
 --- a/src/poetry/core/_vendor/lark/utils.py
 +++ /dev/null
-@@ -1,339 +0,0 @@
+@@ -1,330 +0,0 @@
 -import unicodedata
 -import os
--from functools import reduce
+-from itertools import product
 -from collections import deque
--from typing import Callable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, Dict, Any, Sequence
+-from typing import Callable, Iterator, List, Optional, Tuple, Type, TypeVar, Union, Dict, Any, Sequence, Iterable
 -
 -###{standalone
 -import sys, re
@@ -22456,14 +22433,14 @@ index 6781e6f..0000000
 -T = TypeVar("T")
 -
 -
--def classify(seq: Sequence, key: Optional[Callable] = None, value: Optional[Callable] = None) -> Dict:
+-def classify(seq: Iterable, key: Optional[Callable] = None, value: Optional[Callable] = None) -> Dict:
 -    d: Dict[Any, Any] = {}
 -    for item in seq:
 -        k = key(item) if (key is not None) else item
 -        v = value(item) if (value is not None) else item
--        if k in d:
+-        try:
 -            d[k].append(v)
--        else:
+-        except KeyError:
 -            d[k] = [v]
 -    return d
 -
@@ -22624,7 +22601,7 @@ index 6781e6f..0000000
 -    dedup = set()
 -    # This returns None, but that's expected
 -    return [x for x in l if not (x in dedup or dedup.add(x))]  # type: ignore[func-returns-value]
--    # 2x faster (ordered in PyPy and CPython 3.6+, gaurenteed to be ordered in Python 3.7+)
+-    # 2x faster (ordered in PyPy and CPython 3.6+, guaranteed to be ordered in Python 3.7+)
 -    # return list(dict.fromkeys(l))
 -
 -
@@ -22649,7 +22626,7 @@ index 6781e6f..0000000
 -
 -def combine_alternatives(lists):
 -    """
--    Accepts a list of alternatives, and enumerates all their possible concatinations.
+-    Accepts a list of alternatives, and enumerates all their possible concatenations.
 -
 -    Examples:
 -        >>> combine_alternatives([range(2), [4,5]])
@@ -22664,9 +22641,7 @@ index 6781e6f..0000000
 -    if not lists:
 -        return [[]]
 -    assert all(l for l in lists), lists
--    init = [[x] for x in lists[0]]
--    return reduce(lambda a,b: [i+[j] for i in a for j in b], lists[1:], init)
--
+-    return list(product(*lists))
 -
 -try:
 -    import atomicwrites
@@ -22704,15 +22679,8 @@ index 6781e6f..0000000
 -
 -
 -def classify_bool(seq: Sequence, pred: Callable) -> Any:
--    true_elems = []
 -    false_elems = []
--
--    for elem in seq:
--        if pred(elem):
--            true_elems.append(elem)
--        else:
--            false_elems.append(elem)
--
+-    true_elems = [elem for elem in seq if pred(elem) or false_elems.append(elem)]  # type: ignore[func-returns-value]
 -    return true_elems, false_elems
 -
 -
@@ -22775,10 +22743,10 @@ index 6781e6f..0000000
 -    assert False, "Failed to factorize %s" % n
 diff --git a/src/poetry/core/_vendor/lark/visitors.py b/src/poetry/core/_vendor/lark/visitors.py
 deleted file mode 100644
-index 932fbee..0000000
+index f732418..0000000
 --- a/src/poetry/core/_vendor/lark/visitors.py
 +++ /dev/null
-@@ -1,587 +0,0 @@
+@@ -1,593 +0,0 @@
 -from typing import TypeVar, Tuple, List, Callable, Generic, Type, Union, Optional, Any, cast
 -from abc import ABC
 -
@@ -23301,7 +23269,7 @@ index 932fbee..0000000
 -
 -    Parameters:
 -        inline (bool, optional): Children are provided as ``*args`` instead of a list argument (not recommended for very long lists).
--        meta (bool, optional): Provides two arguments: ``children`` and ``meta`` (instead of just the first)
+-        meta (bool, optional): Provides two arguments: ``meta`` and ``children`` (instead of just the latter)
 -        tree (bool, optional): Provides the entire tree as the argument, instead of the children.
 -        wrapper (function, optional): Provide a function to decorate all methods.
 -
@@ -23312,6 +23280,12 @@ index 932fbee..0000000
 -            class SolveArith(Transformer):
 -                def add(self, left, right):
 -                    return left + right
+-
+-                @v_args(meta=True)
+-                def mul(self, meta, children):
+-                    logger.info(f'mul at line {meta.line}')
+-                    left, right = children
+-                    return left * right
 -
 -
 -            class ReverseNotation(Transformer_InPlace):
@@ -33058,2599 +33032,20 @@ index 7632ecf..0000000
 +++ /dev/null
 @@ -1 +0,0 @@
 -# Marker file for PEP 561
-diff --git a/src/poetry/core/_vendor/typing_extensions.LICENSE b/src/poetry/core/_vendor/typing_extensions.LICENSE
-deleted file mode 100644
-index 1df6b3b..0000000
---- a/src/poetry/core/_vendor/typing_extensions.LICENSE
-+++ /dev/null
-@@ -1,254 +0,0 @@
--A. HISTORY OF THE SOFTWARE
--==========================
--
--Python was created in the early 1990s by Guido van Rossum at Stichting
--Mathematisch Centrum (CWI, see http://www.cwi.nl) in the Netherlands
--as a successor of a language called ABC.  Guido remains Python's
--principal author, although it includes many contributions from others.
--
--In 1995, Guido continued his work on Python at the Corporation for
--National Research Initiatives (CNRI, see http://www.cnri.reston.va.us)
--in Reston, Virginia where he released several versions of the
--software.
--
--In May 2000, Guido and the Python core development team moved to
--BeOpen.com to form the BeOpen PythonLabs team.  In October of the same
--year, the PythonLabs team moved to Digital Creations, which became
--Zope Corporation.  In 2001, the Python Software Foundation (PSF, see
--https://www.python.org/psf/) was formed, a non-profit organization
--created specifically to own Python-related Intellectual Property.
--Zope Corporation was a sponsoring member of the PSF.
--
--All Python releases are Open Source (see http://www.opensource.org for
--the Open Source Definition).  Historically, most, but not all, Python
--releases have also been GPL-compatible; the table below summarizes
--the various releases.
--
--    Release         Derived     Year        Owner       GPL-
--                    from                                compatible? (1)
--
--    0.9.0 thru 1.2              1991-1995   CWI         yes
--    1.3 thru 1.5.2  1.2         1995-1999   CNRI        yes
--    1.6             1.5.2       2000        CNRI        no
--    2.0             1.6         2000        BeOpen.com  no
--    1.6.1           1.6         2001        CNRI        yes (2)
--    2.1             2.0+1.6.1   2001        PSF         no
--    2.0.1           2.0+1.6.1   2001        PSF         yes
--    2.1.1           2.1+2.0.1   2001        PSF         yes
--    2.1.2           2.1.1       2002        PSF         yes
--    2.1.3           2.1.2       2002        PSF         yes
--    2.2 and above   2.1.1       2001-now    PSF         yes
--
--Footnotes:
--
--(1) GPL-compatible doesn't mean that we're distributing Python under
--    the GPL.  All Python licenses, unlike the GPL, let you distribute
--    a modified version without making your changes open source.  The
--    GPL-compatible licenses make it possible to combine Python with
--    other software that is released under the GPL; the others don't.
--
--(2) According to Richard Stallman, 1.6.1 is not GPL-compatible,
--    because its license has a choice of law clause.  According to
--    CNRI, however, Stallman's lawyer has told CNRI's lawyer that 1.6.1
--    is "not incompatible" with the GPL.
--
--Thanks to the many outside volunteers who have worked under Guido's
--direction to make these releases possible.
--
--
--B. TERMS AND CONDITIONS FOR ACCESSING OR OTHERWISE USING PYTHON
--===============================================================
--
--PYTHON SOFTWARE FOUNDATION LICENSE VERSION 2
----------------------------------------------
--
--1. This LICENSE AGREEMENT is between the Python Software Foundation
--("PSF"), and the Individual or Organization ("Licensee") accessing and
--otherwise using this software ("Python") in source or binary form and
--its associated documentation.
--
--2. Subject to the terms and conditions of this License Agreement, PSF hereby
--grants Licensee a nonexclusive, royalty-free, world-wide license to reproduce,
--analyze, test, perform and/or display publicly, prepare derivative works,
--distribute, and otherwise use Python alone or in any derivative version,
--provided, however, that PSF's License Agreement and PSF's notice of copyright,
--i.e., "Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
--2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022 Python Software Foundation;
--All Rights Reserved" are retained in Python alone or in any derivative version
--prepared by Licensee.
--
--3. In the event Licensee prepares a derivative work that is based on
--or incorporates Python or any part thereof, and wants to make
--the derivative work available to others as provided herein, then
--Licensee hereby agrees to include in any such work a brief summary of
--the changes made to Python.
--
--4. PSF is making Python available to Licensee on an "AS IS"
--basis.  PSF MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
--IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, PSF MAKES NO AND
--DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
--FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON WILL NOT
--INFRINGE ANY THIRD PARTY RIGHTS.
--
--5. PSF SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
--FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
--A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON,
--OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
--
--6. This License Agreement will automatically terminate upon a material
--breach of its terms and conditions.
--
--7. Nothing in this License Agreement shall be deemed to create any
--relationship of agency, partnership, or joint venture between PSF and
--Licensee.  This License Agreement does not grant permission to use PSF
--trademarks or trade name in a trademark sense to endorse or promote
--products or services of Licensee, or any third party.
--
--8. By copying, installing or otherwise using Python, Licensee
--agrees to be bound by the terms and conditions of this License
--Agreement.
--
--
--BEOPEN.COM LICENSE AGREEMENT FOR PYTHON 2.0
---------------------------------------------
--
--BEOPEN PYTHON OPEN SOURCE LICENSE AGREEMENT VERSION 1
--
--1. This LICENSE AGREEMENT is between BeOpen.com ("BeOpen"), having an
--office at 160 Saratoga Avenue, Santa Clara, CA 95051, and the
--Individual or Organization ("Licensee") accessing and otherwise using
--this software in source or binary form and its associated
--documentation ("the Software").
--
--2. Subject to the terms and conditions of this BeOpen Python License
--Agreement, BeOpen hereby grants Licensee a non-exclusive,
--royalty-free, world-wide license to reproduce, analyze, test, perform
--and/or display publicly, prepare derivative works, distribute, and
--otherwise use the Software alone or in any derivative version,
--provided, however, that the BeOpen Python License is retained in the
--Software, alone or in any derivative version prepared by Licensee.
--
--3. BeOpen is making the Software available to Licensee on an "AS IS"
--basis.  BEOPEN MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
--IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, BEOPEN MAKES NO AND
--DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
--FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE SOFTWARE WILL NOT
--INFRINGE ANY THIRD PARTY RIGHTS.
--
--4. BEOPEN SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF THE
--SOFTWARE FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS
--AS A RESULT OF USING, MODIFYING OR DISTRIBUTING THE SOFTWARE, OR ANY
--DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
--
--5. This License Agreement will automatically terminate upon a material
--breach of its terms and conditions.
--
--6. This License Agreement shall be governed by and interpreted in all
--respects by the law of the State of California, excluding conflict of
--law provisions.  Nothing in this License Agreement shall be deemed to
--create any relationship of agency, partnership, or joint venture
--between BeOpen and Licensee.  This License Agreement does not grant
--permission to use BeOpen trademarks or trade names in a trademark
--sense to endorse or promote products or services of Licensee, or any
--third party.  As an exception, the "BeOpen Python" logos available at
--http://www.pythonlabs.com/logos.html may be used according to the
--permissions granted on that web page.
--
--7. By copying, installing or otherwise using the software, Licensee
--agrees to be bound by the terms and conditions of this License
--Agreement.
--
--
--CNRI LICENSE AGREEMENT FOR PYTHON 1.6.1
-----------------------------------------
--
--1. This LICENSE AGREEMENT is between the Corporation for National
--Research Initiatives, having an office at 1895 Preston White Drive,
--Reston, VA 20191 ("CNRI"), and the Individual or Organization
--("Licensee") accessing and otherwise using Python 1.6.1 software in
--source or binary form and its associated documentation.
--
--2. Subject to the terms and conditions of this License Agreement, CNRI
--hereby grants Licensee a nonexclusive, royalty-free, world-wide
--license to reproduce, analyze, test, perform and/or display publicly,
--prepare derivative works, distribute, and otherwise use Python 1.6.1
--alone or in any derivative version, provided, however, that CNRI's
--License Agreement and CNRI's notice of copyright, i.e., "Copyright (c)
--1995-2001 Corporation for National Research Initiatives; All Rights
--Reserved" are retained in Python 1.6.1 alone or in any derivative
--version prepared by Licensee.  Alternately, in lieu of CNRI's License
--Agreement, Licensee may substitute the following text (omitting the
--quotes): "Python 1.6.1 is made available subject to the terms and
--conditions in CNRI's License Agreement.  This Agreement together with
--Python 1.6.1 may be located on the internet using the following
--unique, persistent identifier (known as a handle): 1895.22/1013.  This
--Agreement may also be obtained from a proxy server on the internet
--using the following URL: http://hdl.handle.net/1895.22/1013".
--
--3. In the event Licensee prepares a derivative work that is based on
--or incorporates Python 1.6.1 or any part thereof, and wants to make
--the derivative work available to others as provided herein, then
--Licensee hereby agrees to include in any such work a brief summary of
--the changes made to Python 1.6.1.
--
--4. CNRI is making Python 1.6.1 available to Licensee on an "AS IS"
--basis.  CNRI MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR
--IMPLIED.  BY WAY OF EXAMPLE, BUT NOT LIMITATION, CNRI MAKES NO AND
--DISCLAIMS ANY REPRESENTATION OR WARRANTY OF MERCHANTABILITY OR FITNESS
--FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF PYTHON 1.6.1 WILL NOT
--INFRINGE ANY THIRD PARTY RIGHTS.
--
--5. CNRI SHALL NOT BE LIABLE TO LICENSEE OR ANY OTHER USERS OF PYTHON
--1.6.1 FOR ANY INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES OR LOSS AS
--A RESULT OF MODIFYING, DISTRIBUTING, OR OTHERWISE USING PYTHON 1.6.1,
--OR ANY DERIVATIVE THEREOF, EVEN IF ADVISED OF THE POSSIBILITY THEREOF.
--
--6. This License Agreement will automatically terminate upon a material
--breach of its terms and conditions.
--
--7. This License Agreement shall be governed by the federal
--intellectual property law of the United States, including without
--limitation the federal copyright law, and, to the extent such
--U.S. federal law does not apply, by the law of the Commonwealth of
--Virginia, excluding Virginia's conflict of law provisions.
--Notwithstanding the foregoing, with regard to derivative works based
--on Python 1.6.1 that incorporate non-separable material that was
--previously distributed under the GNU General Public License (GPL), the
--law of the Commonwealth of Virginia shall govern this License
--Agreement only as to issues arising under or with respect to
--Paragraphs 4, 5, and 7 of this License Agreement.  Nothing in this
--License Agreement shall be deemed to create any relationship of
--agency, partnership, or joint venture between CNRI and Licensee.  This
--License Agreement does not grant permission to use CNRI trademarks or
--trade name in a trademark sense to endorse or promote products or
--services of Licensee, or any third party.
--
--8. By clicking on the "ACCEPT" button where indicated, or by copying,
--installing or otherwise using Python 1.6.1, Licensee agrees to be
--bound by the terms and conditions of this License Agreement.
--
--        ACCEPT
--
--
--CWI LICENSE AGREEMENT FOR PYTHON 0.9.0 THROUGH 1.2
----------------------------------------------------
--
--Copyright (c) 1991 - 1995, Stichting Mathematisch Centrum Amsterdam,
--The Netherlands.  All rights reserved.
--
--Permission to use, copy, modify, and distribute this software and its
--documentation for any purpose and without fee is hereby granted,
--provided that the above copyright notice appear in all copies and that
--both that copyright notice and this permission notice appear in
--supporting documentation, and that the name of Stichting Mathematisch
--Centrum or CWI not be used in advertising or publicity pertaining to
--distribution of the software without specific, written prior
--permission.
--
--STICHTING MATHEMATISCH CENTRUM DISCLAIMS ALL WARRANTIES WITH REGARD TO
--THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
--FITNESS, IN NO EVENT SHALL STICHTING MATHEMATISCH CENTRUM BE LIABLE
--FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
--WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
--ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
--OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-diff --git a/src/poetry/core/_vendor/typing_extensions.py b/src/poetry/core/_vendor/typing_extensions.py
-deleted file mode 100644
-index 6ae0c34..0000000
---- a/src/poetry/core/_vendor/typing_extensions.py
-+++ /dev/null
-@@ -1,2312 +0,0 @@
--import abc
--import collections
--import collections.abc
--import functools
--import inspect
--import operator
--import sys
--import types as _types
--import typing
--import warnings
--
--
--__all__ = [
--    # Super-special typing primitives.
--    'Any',
--    'ClassVar',
--    'Concatenate',
--    'Final',
--    'LiteralString',
--    'ParamSpec',
--    'ParamSpecArgs',
--    'ParamSpecKwargs',
--    'Self',
--    'Type',
--    'TypeVar',
--    'TypeVarTuple',
--    'Unpack',
--
--    # ABCs (from collections.abc).
--    'Awaitable',
--    'AsyncIterator',
--    'AsyncIterable',
--    'Coroutine',
--    'AsyncGenerator',
--    'AsyncContextManager',
--    'ChainMap',
--
--    # Concrete collection types.
--    'ContextManager',
--    'Counter',
--    'Deque',
--    'DefaultDict',
--    'NamedTuple',
--    'OrderedDict',
--    'TypedDict',
--
--    # Structural checks, a.k.a. protocols.
--    'SupportsIndex',
--
--    # One-off things.
--    'Annotated',
--    'assert_never',
--    'assert_type',
--    'clear_overloads',
--    'dataclass_transform',
--    'deprecated',
--    'get_overloads',
--    'final',
--    'get_args',
--    'get_origin',
--    'get_type_hints',
--    'IntVar',
--    'is_typeddict',
--    'Literal',
--    'NewType',
--    'overload',
--    'override',
--    'Protocol',
--    'reveal_type',
--    'runtime',
--    'runtime_checkable',
--    'Text',
--    'TypeAlias',
--    'TypeGuard',
--    'TYPE_CHECKING',
--    'Never',
--    'NoReturn',
--    'Required',
--    'NotRequired',
--]
--
--# for backward compatibility
--PEP_560 = True
--GenericMeta = type
--
--# The functions below are modified copies of typing internal helpers.
--# They are needed by _ProtocolMeta and they provide support for PEP 646.
--
--_marker = object()
--
--
--def _check_generic(cls, parameters, elen=_marker):
--    """Check correct count for parameters of a generic cls (internal helper).
--    This gives a nice error message in case of count mismatch.
--    """
--    if not elen:
--        raise TypeError(f"{cls} is not a generic class")
--    if elen is _marker:
--        if not hasattr(cls, "__parameters__") or not cls.__parameters__:
--            raise TypeError(f"{cls} is not a generic class")
--        elen = len(cls.__parameters__)
--    alen = len(parameters)
--    if alen != elen:
--        if hasattr(cls, "__parameters__"):
--            parameters = [p for p in cls.__parameters__ if not _is_unpack(p)]
--            num_tv_tuples = sum(isinstance(p, TypeVarTuple) for p in parameters)
--            if (num_tv_tuples > 0) and (alen >= elen - num_tv_tuples):
--                return
--        raise TypeError(f"Too {'many' if alen > elen else 'few'} parameters for {cls};"
--                        f" actual {alen}, expected {elen}")
--
--
--if sys.version_info >= (3, 10):
--    def _should_collect_from_parameters(t):
--        return isinstance(
--            t, (typing._GenericAlias, _types.GenericAlias, _types.UnionType)
--        )
--elif sys.version_info >= (3, 9):
--    def _should_collect_from_parameters(t):
--        return isinstance(t, (typing._GenericAlias, _types.GenericAlias))
--else:
--    def _should_collect_from_parameters(t):
--        return isinstance(t, typing._GenericAlias) and not t._special
--
--
--def _collect_type_vars(types, typevar_types=None):
--    """Collect all type variable contained in types in order of
--    first appearance (lexicographic order). For example::
--
--        _collect_type_vars((T, List[S, T])) == (T, S)
--    """
--    if typevar_types is None:
--        typevar_types = typing.TypeVar
--    tvars = []
--    for t in types:
--        if (
--            isinstance(t, typevar_types) and
--            t not in tvars and
--            not _is_unpack(t)
--        ):
--            tvars.append(t)
--        if _should_collect_from_parameters(t):
--            tvars.extend([t for t in t.__parameters__ if t not in tvars])
--    return tuple(tvars)
--
--
--NoReturn = typing.NoReturn
--
--# Some unconstrained type variables.  These are used by the container types.
--# (These are not for export.)
--T = typing.TypeVar('T')  # Any type.
--KT = typing.TypeVar('KT')  # Key type.
--VT = typing.TypeVar('VT')  # Value type.
--T_co = typing.TypeVar('T_co', covariant=True)  # Any type covariant containers.
--T_contra = typing.TypeVar('T_contra', contravariant=True)  # Ditto contravariant.
--
--
--if sys.version_info >= (3, 11):
--    from typing import Any
--else:
--
--    class _AnyMeta(type):
--        def __instancecheck__(self, obj):
--            if self is Any:
--                raise TypeError("typing_extensions.Any cannot be used with isinstance()")
--            return super().__instancecheck__(obj)
--
--        def __repr__(self):
--            if self is Any:
--                return "typing_extensions.Any"
--            return super().__repr__()
--
--    class Any(metaclass=_AnyMeta):
--        """Special type indicating an unconstrained type.
--        - Any is compatible with every type.
--        - Any assumed to have all methods.
--        - All values assumed to be instances of Any.
--        Note that all the above statements are true from the point of view of
--        static type checkers. At runtime, Any should not be used with instance
--        checks.
--        """
--        def __new__(cls, *args, **kwargs):
--            if cls is Any:
--                raise TypeError("Any cannot be instantiated")
--            return super().__new__(cls, *args, **kwargs)
--
--
--ClassVar = typing.ClassVar
--
--# On older versions of typing there is an internal class named "Final".
--# 3.8+
--if hasattr(typing, 'Final') and sys.version_info[:2] >= (3, 7):
--    Final = typing.Final
--# 3.7
--else:
--    class _FinalForm(typing._SpecialForm, _root=True):
--
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--        def __getitem__(self, parameters):
--            item = typing._type_check(parameters,
--                                      f'{self._name} accepts only a single type.')
--            return typing._GenericAlias(self, (item,))
--
--    Final = _FinalForm('Final',
--                       doc="""A special typing construct to indicate that a name
--                       cannot be re-assigned or overridden in a subclass.
--                       For example:
--
--                           MAX_SIZE: Final = 9000
--                           MAX_SIZE += 1  # Error reported by type checker
--
--                           class Connection:
--                               TIMEOUT: Final[int] = 10
--                           class FastConnector(Connection):
--                               TIMEOUT = 1  # Error reported by type checker
--
--                       There is no runtime checking of these properties.""")
--
--if sys.version_info >= (3, 11):
--    final = typing.final
--else:
--    # @final exists in 3.8+, but we backport it for all versions
--    # before 3.11 to keep support for the __final__ attribute.
--    # See https://bugs.python.org/issue46342
--    def final(f):
--        """This decorator can be used to indicate to type checkers that
--        the decorated method cannot be overridden, and decorated class
--        cannot be subclassed. For example:
--
--            class Base:
--                @final
--                def done(self) -> None:
--                    ...
--            class Sub(Base):
--                def done(self) -> None:  # Error reported by type checker
--                    ...
--            @final
--            class Leaf:
--                ...
--            class Other(Leaf):  # Error reported by type checker
--                ...
--
--        There is no runtime checking of these properties. The decorator
--        sets the ``__final__`` attribute to ``True`` on the decorated object
--        to allow runtime introspection.
--        """
--        try:
--            f.__final__ = True
--        except (AttributeError, TypeError):
--            # Skip the attribute silently if it is not writable.
--            # AttributeError happens if the object has __slots__ or a
--            # read-only property, TypeError if it's a builtin class.
--            pass
--        return f
--
--
--def IntVar(name):
--    return typing.TypeVar(name)
--
--
--# 3.8+:
--if hasattr(typing, 'Literal'):
--    Literal = typing.Literal
--# 3.7:
--else:
--    class _LiteralForm(typing._SpecialForm, _root=True):
--
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--        def __getitem__(self, parameters):
--            return typing._GenericAlias(self, parameters)
--
--    Literal = _LiteralForm('Literal',
--                           doc="""A type that can be used to indicate to type checkers
--                           that the corresponding value has a value literally equivalent
--                           to the provided parameter. For example:
--
--                               var: Literal[4] = 4
--
--                           The type checker understands that 'var' is literally equal to
--                           the value 4 and no other value.
--
--                           Literal[...] cannot be subclassed. There is no runtime
--                           checking verifying that the parameter is actually a value
--                           instead of a type.""")
--
--
--_overload_dummy = typing._overload_dummy  # noqa
--
--
--if hasattr(typing, "get_overloads"):  # 3.11+
--    overload = typing.overload
--    get_overloads = typing.get_overloads
--    clear_overloads = typing.clear_overloads
--else:
--    # {module: {qualname: {firstlineno: func}}}
--    _overload_registry = collections.defaultdict(
--        functools.partial(collections.defaultdict, dict)
--    )
--
--    def overload(func):
--        """Decorator for overloaded functions/methods.
--
--        In a stub file, place two or more stub definitions for the same
--        function in a row, each decorated with @overload.  For example:
--
--        @overload
--        def utf8(value: None) -> None: ...
--        @overload
--        def utf8(value: bytes) -> bytes: ...
--        @overload
--        def utf8(value: str) -> bytes: ...
--
--        In a non-stub file (i.e. a regular .py file), do the same but
--        follow it with an implementation.  The implementation should *not*
--        be decorated with @overload.  For example:
--
--        @overload
--        def utf8(value: None) -> None: ...
--        @overload
--        def utf8(value: bytes) -> bytes: ...
--        @overload
--        def utf8(value: str) -> bytes: ...
--        def utf8(value):
--            # implementation goes here
--
--        The overloads for a function can be retrieved at runtime using the
--        get_overloads() function.
--        """
--        # classmethod and staticmethod
--        f = getattr(func, "__func__", func)
--        try:
--            _overload_registry[f.__module__][f.__qualname__][
--                f.__code__.co_firstlineno
--            ] = func
--        except AttributeError:
--            # Not a normal function; ignore.
--            pass
--        return _overload_dummy
--
--    def get_overloads(func):
--        """Return all defined overloads for *func* as a sequence."""
--        # classmethod and staticmethod
--        f = getattr(func, "__func__", func)
--        if f.__module__ not in _overload_registry:
--            return []
--        mod_dict = _overload_registry[f.__module__]
--        if f.__qualname__ not in mod_dict:
--            return []
--        return list(mod_dict[f.__qualname__].values())
--
--    def clear_overloads():
--        """Clear all overloads in the registry."""
--        _overload_registry.clear()
--
--
--# This is not a real generic class.  Don't use outside annotations.
--Type = typing.Type
--
--# Various ABCs mimicking those in collections.abc.
--# A few are simply re-exported for completeness.
--
--
--Awaitable = typing.Awaitable
--Coroutine = typing.Coroutine
--AsyncIterable = typing.AsyncIterable
--AsyncIterator = typing.AsyncIterator
--Deque = typing.Deque
--ContextManager = typing.ContextManager
--AsyncContextManager = typing.AsyncContextManager
--DefaultDict = typing.DefaultDict
--
--# 3.7.2+
--if hasattr(typing, 'OrderedDict'):
--    OrderedDict = typing.OrderedDict
--# 3.7.0-3.7.2
--else:
--    OrderedDict = typing._alias(collections.OrderedDict, (KT, VT))
--
--Counter = typing.Counter
--ChainMap = typing.ChainMap
--AsyncGenerator = typing.AsyncGenerator
--NewType = typing.NewType
--Text = typing.Text
--TYPE_CHECKING = typing.TYPE_CHECKING
--
--
--_PROTO_WHITELIST = ['Callable', 'Awaitable',
--                    'Iterable', 'Iterator', 'AsyncIterable', 'AsyncIterator',
--                    'Hashable', 'Sized', 'Container', 'Collection', 'Reversible',
--                    'ContextManager', 'AsyncContextManager']
--
--
--def _get_protocol_attrs(cls):
--    attrs = set()
--    for base in cls.__mro__[:-1]:  # without object
--        if base.__name__ in ('Protocol', 'Generic'):
--            continue
--        annotations = getattr(base, '__annotations__', {})
--        for attr in list(base.__dict__.keys()) + list(annotations.keys()):
--            if (not attr.startswith('_abc_') and attr not in (
--                    '__abstractmethods__', '__annotations__', '__weakref__',
--                    '_is_protocol', '_is_runtime_protocol', '__dict__',
--                    '__args__', '__slots__',
--                    '__next_in_mro__', '__parameters__', '__origin__',
--                    '__orig_bases__', '__extra__', '__tree_hash__',
--                    '__doc__', '__subclasshook__', '__init__', '__new__',
--                    '__module__', '_MutableMapping__marker', '_gorg')):
--                attrs.add(attr)
--    return attrs
--
--
--def _is_callable_members_only(cls):
--    return all(callable(getattr(cls, attr, None)) for attr in _get_protocol_attrs(cls))
--
--
--def _maybe_adjust_parameters(cls):
--    """Helper function used in Protocol.__init_subclass__ and _TypedDictMeta.__new__.
--
--    The contents of this function are very similar
--    to logic found in typing.Generic.__init_subclass__
--    on the CPython main branch.
--    """
--    tvars = []
--    if '__orig_bases__' in cls.__dict__:
--        tvars = typing._collect_type_vars(cls.__orig_bases__)
--        # Look for Generic[T1, ..., Tn] or Protocol[T1, ..., Tn].
--        # If found, tvars must be a subset of it.
--        # If not found, tvars is it.
--        # Also check for and reject plain Generic,
--        # and reject multiple Generic[...] and/or Protocol[...].
--        gvars = None
--        for base in cls.__orig_bases__:
--            if (isinstance(base, typing._GenericAlias) and
--                    base.__origin__ in (typing.Generic, Protocol)):
--                # for error messages
--                the_base = base.__origin__.__name__
--                if gvars is not None:
--                    raise TypeError(
--                        "Cannot inherit from Generic[...]"
--                        " and/or Protocol[...] multiple types.")
--                gvars = base.__parameters__
--        if gvars is None:
--            gvars = tvars
--        else:
--            tvarset = set(tvars)
--            gvarset = set(gvars)
--            if not tvarset <= gvarset:
--                s_vars = ', '.join(str(t) for t in tvars if t not in gvarset)
--                s_args = ', '.join(str(g) for g in gvars)
--                raise TypeError(f"Some type variables ({s_vars}) are"
--                                f" not listed in {the_base}[{s_args}]")
--            tvars = gvars
--    cls.__parameters__ = tuple(tvars)
--
--
--# 3.8+
--if hasattr(typing, 'Protocol'):
--    Protocol = typing.Protocol
--# 3.7
--else:
--
--    def _no_init(self, *args, **kwargs):
--        if type(self)._is_protocol:
--            raise TypeError('Protocols cannot be instantiated')
--
--    class _ProtocolMeta(abc.ABCMeta):  # noqa: B024
--        # This metaclass is a bit unfortunate and exists only because of the lack
--        # of __instancehook__.
--        def __instancecheck__(cls, instance):
--            # We need this method for situations where attributes are
--            # assigned in __init__.
--            if ((not getattr(cls, '_is_protocol', False) or
--                 _is_callable_members_only(cls)) and
--                    issubclass(instance.__class__, cls)):
--                return True
--            if cls._is_protocol:
--                if all(hasattr(instance, attr) and
--                       (not callable(getattr(cls, attr, None)) or
--                        getattr(instance, attr) is not None)
--                       for attr in _get_protocol_attrs(cls)):
--                    return True
--            return super().__instancecheck__(instance)
--
--    class Protocol(metaclass=_ProtocolMeta):
--        # There is quite a lot of overlapping code with typing.Generic.
--        # Unfortunately it is hard to avoid this while these live in two different
--        # modules. The duplicated code will be removed when Protocol is moved to typing.
--        """Base class for protocol classes. Protocol classes are defined as::
--
--            class Proto(Protocol):
--                def meth(self) -> int:
--                    ...
--
--        Such classes are primarily used with static type checkers that recognize
--        structural subtyping (static duck-typing), for example::
--
--            class C:
--                def meth(self) -> int:
--                    return 0
--
--            def func(x: Proto) -> int:
--                return x.meth()
--
--            func(C())  # Passes static type check
--
--        See PEP 544 for details. Protocol classes decorated with
--        @typing_extensions.runtime act as simple-minded runtime protocol that checks
--        only the presence of given attributes, ignoring their type signatures.
--
--        Protocol classes can be generic, they are defined as::
--
--            class GenProto(Protocol[T]):
--                def meth(self) -> T:
--                    ...
--        """
--        __slots__ = ()
--        _is_protocol = True
--
--        def __new__(cls, *args, **kwds):
--            if cls is Protocol:
--                raise TypeError("Type Protocol cannot be instantiated; "
--                                "it can only be used as a base class")
--            return super().__new__(cls)
--
--        @typing._tp_cache
--        def __class_getitem__(cls, params):
--            if not isinstance(params, tuple):
--                params = (params,)
--            if not params and cls is not typing.Tuple:
--                raise TypeError(
--                    f"Parameter list to {cls.__qualname__}[...] cannot be empty")
--            msg = "Parameters to generic types must be types."
--            params = tuple(typing._type_check(p, msg) for p in params)  # noqa
--            if cls is Protocol:
--                # Generic can only be subscripted with unique type variables.
--                if not all(isinstance(p, typing.TypeVar) for p in params):
--                    i = 0
--                    while isinstance(params[i], typing.TypeVar):
--                        i += 1
--                    raise TypeError(
--                        "Parameters to Protocol[...] must all be type variables."
--                        f" Parameter {i + 1} is {params[i]}")
--                if len(set(params)) != len(params):
--                    raise TypeError(
--                        "Parameters to Protocol[...] must all be unique")
--            else:
--                # Subscripting a regular Generic subclass.
--                _check_generic(cls, params, len(cls.__parameters__))
--            return typing._GenericAlias(cls, params)
--
--        def __init_subclass__(cls, *args, **kwargs):
--            if '__orig_bases__' in cls.__dict__:
--                error = typing.Generic in cls.__orig_bases__
--            else:
--                error = typing.Generic in cls.__bases__
--            if error:
--                raise TypeError("Cannot inherit from plain Generic")
--            _maybe_adjust_parameters(cls)
--
--            # Determine if this is a protocol or a concrete subclass.
--            if not cls.__dict__.get('_is_protocol', None):
--                cls._is_protocol = any(b is Protocol for b in cls.__bases__)
--
--            # Set (or override) the protocol subclass hook.
--            def _proto_hook(other):
--                if not cls.__dict__.get('_is_protocol', None):
--                    return NotImplemented
--                if not getattr(cls, '_is_runtime_protocol', False):
--                    if sys._getframe(2).f_globals['__name__'] in ['abc', 'functools']:
--                        return NotImplemented
--                    raise TypeError("Instance and class checks can only be used with"
--                                    " @runtime protocols")
--                if not _is_callable_members_only(cls):
--                    if sys._getframe(2).f_globals['__name__'] in ['abc', 'functools']:
--                        return NotImplemented
--                    raise TypeError("Protocols with non-method members"
--                                    " don't support issubclass()")
--                if not isinstance(other, type):
--                    # Same error as for issubclass(1, int)
--                    raise TypeError('issubclass() arg 1 must be a class')
--                for attr in _get_protocol_attrs(cls):
--                    for base in other.__mro__:
--                        if attr in base.__dict__:
--                            if base.__dict__[attr] is None:
--                                return NotImplemented
--                            break
--                        annotations = getattr(base, '__annotations__', {})
--                        if (isinstance(annotations, typing.Mapping) and
--                                attr in annotations and
--                                isinstance(other, _ProtocolMeta) and
--                                other._is_protocol):
--                            break
--                    else:
--                        return NotImplemented
--                return True
--            if '__subclasshook__' not in cls.__dict__:
--                cls.__subclasshook__ = _proto_hook
--
--            # We have nothing more to do for non-protocols.
--            if not cls._is_protocol:
--                return
--
--            # Check consistency of bases.
--            for base in cls.__bases__:
--                if not (base in (object, typing.Generic) or
--                        base.__module__ == 'collections.abc' and
--                        base.__name__ in _PROTO_WHITELIST or
--                        isinstance(base, _ProtocolMeta) and base._is_protocol):
--                    raise TypeError('Protocols can only inherit from other'
--                                    f' protocols, got {repr(base)}')
--            cls.__init__ = _no_init
--
--
--# 3.8+
--if hasattr(typing, 'runtime_checkable'):
--    runtime_checkable = typing.runtime_checkable
--# 3.7
--else:
--    def runtime_checkable(cls):
--        """Mark a protocol class as a runtime protocol, so that it
--        can be used with isinstance() and issubclass(). Raise TypeError
--        if applied to a non-protocol class.
--
--        This allows a simple-minded structural check very similar to the
--        one-offs in collections.abc such as Hashable.
--        """
--        if not isinstance(cls, _ProtocolMeta) or not cls._is_protocol:
--            raise TypeError('@runtime_checkable can be only applied to protocol classes,'
--                            f' got {cls!r}')
--        cls._is_runtime_protocol = True
--        return cls
--
--
--# Exists for backwards compatibility.
--runtime = runtime_checkable
--
--
--# 3.8+
--if hasattr(typing, 'SupportsIndex'):
--    SupportsIndex = typing.SupportsIndex
--# 3.7
--else:
--    @runtime_checkable
--    class SupportsIndex(Protocol):
--        __slots__ = ()
--
--        @abc.abstractmethod
--        def __index__(self) -> int:
--            pass
--
--
--if hasattr(typing, "Required"):
--    # The standard library TypedDict in Python 3.8 does not store runtime information
--    # about which (if any) keys are optional.  See https://bugs.python.org/issue38834
--    # The standard library TypedDict in Python 3.9.0/1 does not honour the "total"
--    # keyword with old-style TypedDict().  See https://bugs.python.org/issue42059
--    # The standard library TypedDict below Python 3.11 does not store runtime
--    # information about optional and required keys when using Required or NotRequired.
--    # Generic TypedDicts are also impossible using typing.TypedDict on Python <3.11.
--    TypedDict = typing.TypedDict
--    _TypedDictMeta = typing._TypedDictMeta
--    is_typeddict = typing.is_typeddict
--else:
--    def _check_fails(cls, other):
--        try:
--            if sys._getframe(1).f_globals['__name__'] not in ['abc',
--                                                              'functools',
--                                                              'typing']:
--                # Typed dicts are only for static structural subtyping.
--                raise TypeError('TypedDict does not support instance and class checks')
--        except (AttributeError, ValueError):
--            pass
--        return False
--
--    def _dict_new(*args, **kwargs):
--        if not args:
--            raise TypeError('TypedDict.__new__(): not enough arguments')
--        _, args = args[0], args[1:]  # allow the "cls" keyword be passed
--        return dict(*args, **kwargs)
--
--    _dict_new.__text_signature__ = '($cls, _typename, _fields=None, /, **kwargs)'
--
--    def _typeddict_new(*args, total=True, **kwargs):
--        if not args:
--            raise TypeError('TypedDict.__new__(): not enough arguments')
--        _, args = args[0], args[1:]  # allow the "cls" keyword be passed
--        if args:
--            typename, args = args[0], args[1:]  # allow the "_typename" keyword be passed
--        elif '_typename' in kwargs:
--            typename = kwargs.pop('_typename')
--            import warnings
--            warnings.warn("Passing '_typename' as keyword argument is deprecated",
--                          DeprecationWarning, stacklevel=2)
--        else:
--            raise TypeError("TypedDict.__new__() missing 1 required positional "
--                            "argument: '_typename'")
--        if args:
--            try:
--                fields, = args  # allow the "_fields" keyword be passed
--            except ValueError:
--                raise TypeError('TypedDict.__new__() takes from 2 to 3 '
--                                f'positional arguments but {len(args) + 2} '
--                                'were given')
--        elif '_fields' in kwargs and len(kwargs) == 1:
--            fields = kwargs.pop('_fields')
--            import warnings
--            warnings.warn("Passing '_fields' as keyword argument is deprecated",
--                          DeprecationWarning, stacklevel=2)
--        else:
--            fields = None
--
--        if fields is None:
--            fields = kwargs
--        elif kwargs:
--            raise TypeError("TypedDict takes either a dict or keyword arguments,"
--                            " but not both")
--
--        ns = {'__annotations__': dict(fields)}
--        try:
--            # Setting correct module is necessary to make typed dict classes pickleable.
--            ns['__module__'] = sys._getframe(1).f_globals.get('__name__', '__main__')
--        except (AttributeError, ValueError):
--            pass
--
--        return _TypedDictMeta(typename, (), ns, total=total)
--
--    _typeddict_new.__text_signature__ = ('($cls, _typename, _fields=None,'
--                                         ' /, *, total=True, **kwargs)')
--
--    _TAKES_MODULE = "module" in inspect.signature(typing._type_check).parameters
--
--    class _TypedDictMeta(type):
--        def __init__(cls, name, bases, ns, total=True):
--            super().__init__(name, bases, ns)
--
--        def __new__(cls, name, bases, ns, total=True):
--            # Create new typed dict class object.
--            # This method is called directly when TypedDict is subclassed,
--            # or via _typeddict_new when TypedDict is instantiated. This way
--            # TypedDict supports all three syntaxes described in its docstring.
--            # Subclasses and instances of TypedDict return actual dictionaries
--            # via _dict_new.
--            ns['__new__'] = _typeddict_new if name == 'TypedDict' else _dict_new
--            # Don't insert typing.Generic into __bases__ here,
--            # or Generic.__init_subclass__ will raise TypeError
--            # in the super().__new__() call.
--            # Instead, monkey-patch __bases__ onto the class after it's been created.
--            tp_dict = super().__new__(cls, name, (dict,), ns)
--
--            if any(issubclass(base, typing.Generic) for base in bases):
--                tp_dict.__bases__ = (typing.Generic, dict)
--                _maybe_adjust_parameters(tp_dict)
--
--            annotations = {}
--            own_annotations = ns.get('__annotations__', {})
--            msg = "TypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type"
--            kwds = {"module": tp_dict.__module__} if _TAKES_MODULE else {}
--            own_annotations = {
--                n: typing._type_check(tp, msg, **kwds)
--                for n, tp in own_annotations.items()
--            }
--            required_keys = set()
--            optional_keys = set()
--
--            for base in bases:
--                annotations.update(base.__dict__.get('__annotations__', {}))
--                required_keys.update(base.__dict__.get('__required_keys__', ()))
--                optional_keys.update(base.__dict__.get('__optional_keys__', ()))
--
--            annotations.update(own_annotations)
--            for annotation_key, annotation_type in own_annotations.items():
--                annotation_origin = get_origin(annotation_type)
--                if annotation_origin is Annotated:
--                    annotation_args = get_args(annotation_type)
--                    if annotation_args:
--                        annotation_type = annotation_args[0]
--                        annotation_origin = get_origin(annotation_type)
--
--                if annotation_origin is Required:
--                    required_keys.add(annotation_key)
--                elif annotation_origin is NotRequired:
--                    optional_keys.add(annotation_key)
--                elif total:
--                    required_keys.add(annotation_key)
--                else:
--                    optional_keys.add(annotation_key)
--
--            tp_dict.__annotations__ = annotations
--            tp_dict.__required_keys__ = frozenset(required_keys)
--            tp_dict.__optional_keys__ = frozenset(optional_keys)
--            if not hasattr(tp_dict, '__total__'):
--                tp_dict.__total__ = total
--            return tp_dict
--
--        __instancecheck__ = __subclasscheck__ = _check_fails
--
--    TypedDict = _TypedDictMeta('TypedDict', (dict,), {})
--    TypedDict.__module__ = __name__
--    TypedDict.__doc__ = \
--        """A simple typed name space. At runtime it is equivalent to a plain dict.
--
--        TypedDict creates a dictionary type that expects all of its
--        instances to have a certain set of keys, with each key
--        associated with a value of a consistent type. This expectation
--        is not checked at runtime but is only enforced by type checkers.
--        Usage::
--
--            class Point2D(TypedDict):
--                x: int
--                y: int
--                label: str
--
--            a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK
--            b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check
--
--            assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')
--
--        The type info can be accessed via the Point2D.__annotations__ dict, and
--        the Point2D.__required_keys__ and Point2D.__optional_keys__ frozensets.
--        TypedDict supports two additional equivalent forms::
--
--            Point2D = TypedDict('Point2D', x=int, y=int, label=str)
--            Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})
--
--        The class syntax is only supported in Python 3.6+, while two other
--        syntax forms work for Python 2.7 and 3.2+
--        """
--
--    if hasattr(typing, "_TypedDictMeta"):
--        _TYPEDDICT_TYPES = (typing._TypedDictMeta, _TypedDictMeta)
--    else:
--        _TYPEDDICT_TYPES = (_TypedDictMeta,)
--
--    def is_typeddict(tp):
--        """Check if an annotation is a TypedDict class
--
--        For example::
--            class Film(TypedDict):
--                title: str
--                year: int
--
--            is_typeddict(Film)  # => True
--            is_typeddict(Union[list, str])  # => False
--        """
--        return isinstance(tp, tuple(_TYPEDDICT_TYPES))
--
--
--if hasattr(typing, "assert_type"):
--    assert_type = typing.assert_type
--
--else:
--    def assert_type(__val, __typ):
--        """Assert (to the type checker) that the value is of the given type.
--
--        When the type checker encounters a call to assert_type(), it
--        emits an error if the value is not of the specified type::
--
--            def greet(name: str) -> None:
--                assert_type(name, str)  # ok
--                assert_type(name, int)  # type checker error
--
--        At runtime this returns the first argument unchanged and otherwise
--        does nothing.
--        """
--        return __val
--
--
--if hasattr(typing, "Required"):
--    get_type_hints = typing.get_type_hints
--else:
--    import functools
--    import types
--
--    # replaces _strip_annotations()
--    def _strip_extras(t):
--        """Strips Annotated, Required and NotRequired from a given type."""
--        if isinstance(t, _AnnotatedAlias):
--            return _strip_extras(t.__origin__)
--        if hasattr(t, "__origin__") and t.__origin__ in (Required, NotRequired):
--            return _strip_extras(t.__args__[0])
--        if isinstance(t, typing._GenericAlias):
--            stripped_args = tuple(_strip_extras(a) for a in t.__args__)
--            if stripped_args == t.__args__:
--                return t
--            return t.copy_with(stripped_args)
--        if hasattr(types, "GenericAlias") and isinstance(t, types.GenericAlias):
--            stripped_args = tuple(_strip_extras(a) for a in t.__args__)
--            if stripped_args == t.__args__:
--                return t
--            return types.GenericAlias(t.__origin__, stripped_args)
--        if hasattr(types, "UnionType") and isinstance(t, types.UnionType):
--            stripped_args = tuple(_strip_extras(a) for a in t.__args__)
--            if stripped_args == t.__args__:
--                return t
--            return functools.reduce(operator.or_, stripped_args)
--
--        return t
--
--    def get_type_hints(obj, globalns=None, localns=None, include_extras=False):
--        """Return type hints for an object.
--
--        This is often the same as obj.__annotations__, but it handles
--        forward references encoded as string literals, adds Optional[t] if a
--        default value equal to None is set and recursively replaces all
--        'Annotated[T, ...]', 'Required[T]' or 'NotRequired[T]' with 'T'
--        (unless 'include_extras=True').
--
--        The argument may be a module, class, method, or function. The annotations
--        are returned as a dictionary. For classes, annotations include also
--        inherited members.
--
--        TypeError is raised if the argument is not of a type that can contain
--        annotations, and an empty dictionary is returned if no annotations are
--        present.
--
--        BEWARE -- the behavior of globalns and localns is counterintuitive
--        (unless you are familiar with how eval() and exec() work).  The
--        search order is locals first, then globals.
--
--        - If no dict arguments are passed, an attempt is made to use the
--          globals from obj (or the respective module's globals for classes),
--          and these are also used as the locals.  If the object does not appear
--          to have globals, an empty dictionary is used.
--
--        - If one dict argument is passed, it is used for both globals and
--          locals.
--
--        - If two dict arguments are passed, they specify globals and
--          locals, respectively.
--        """
--        if hasattr(typing, "Annotated"):
--            hint = typing.get_type_hints(
--                obj, globalns=globalns, localns=localns, include_extras=True
--            )
--        else:
--            hint = typing.get_type_hints(obj, globalns=globalns, localns=localns)
--        if include_extras:
--            return hint
--        return {k: _strip_extras(t) for k, t in hint.items()}
--
--
--# Python 3.9+ has PEP 593 (Annotated)
--if hasattr(typing, 'Annotated'):
--    Annotated = typing.Annotated
--    # Not exported and not a public API, but needed for get_origin() and get_args()
--    # to work.
--    _AnnotatedAlias = typing._AnnotatedAlias
--# 3.7-3.8
--else:
--    class _AnnotatedAlias(typing._GenericAlias, _root=True):
--        """Runtime representation of an annotated type.
--
--        At its core 'Annotated[t, dec1, dec2, ...]' is an alias for the type 't'
--        with extra annotations. The alias behaves like a normal typing alias,
--        instantiating is the same as instantiating the underlying type, binding
--        it to types is also the same.
--        """
--        def __init__(self, origin, metadata):
--            if isinstance(origin, _AnnotatedAlias):
--                metadata = origin.__metadata__ + metadata
--                origin = origin.__origin__
--            super().__init__(origin, origin)
--            self.__metadata__ = metadata
--
--        def copy_with(self, params):
--            assert len(params) == 1
--            new_type = params[0]
--            return _AnnotatedAlias(new_type, self.__metadata__)
--
--        def __repr__(self):
--            return (f"typing_extensions.Annotated[{typing._type_repr(self.__origin__)}, "
--                    f"{', '.join(repr(a) for a in self.__metadata__)}]")
--
--        def __reduce__(self):
--            return operator.getitem, (
--                Annotated, (self.__origin__,) + self.__metadata__
--            )
--
--        def __eq__(self, other):
--            if not isinstance(other, _AnnotatedAlias):
--                return NotImplemented
--            if self.__origin__ != other.__origin__:
--                return False
--            return self.__metadata__ == other.__metadata__
--
--        def __hash__(self):
--            return hash((self.__origin__, self.__metadata__))
--
--    class Annotated:
--        """Add context specific metadata to a type.
--
--        Example: Annotated[int, runtime_check.Unsigned] indicates to the
--        hypothetical runtime_check module that this type is an unsigned int.
--        Every other consumer of this type can ignore this metadata and treat
--        this type as int.
--
--        The first argument to Annotated must be a valid type (and will be in
--        the __origin__ field), the remaining arguments are kept as a tuple in
--        the __extra__ field.
--
--        Details:
--
--        - It's an error to call `Annotated` with less than two arguments.
--        - Nested Annotated are flattened::
--
--            Annotated[Annotated[T, Ann1, Ann2], Ann3] == Annotated[T, Ann1, Ann2, Ann3]
--
--        - Instantiating an annotated type is equivalent to instantiating the
--        underlying type::
--
--            Annotated[C, Ann1](5) == C(5)
--
--        - Annotated can be used as a generic type alias::
--
--            Optimized = Annotated[T, runtime.Optimize()]
--            Optimized[int] == Annotated[int, runtime.Optimize()]
--
--            OptimizedList = Annotated[List[T], runtime.Optimize()]
--            OptimizedList[int] == Annotated[List[int], runtime.Optimize()]
--        """
--
--        __slots__ = ()
--
--        def __new__(cls, *args, **kwargs):
--            raise TypeError("Type Annotated cannot be instantiated.")
--
--        @typing._tp_cache
--        def __class_getitem__(cls, params):
--            if not isinstance(params, tuple) or len(params) < 2:
--                raise TypeError("Annotated[...] should be used "
--                                "with at least two arguments (a type and an "
--                                "annotation).")
--            allowed_special_forms = (ClassVar, Final)
--            if get_origin(params[0]) in allowed_special_forms:
--                origin = params[0]
--            else:
--                msg = "Annotated[t, ...]: t must be a type."
--                origin = typing._type_check(params[0], msg)
--            metadata = tuple(params[1:])
--            return _AnnotatedAlias(origin, metadata)
--
--        def __init_subclass__(cls, *args, **kwargs):
--            raise TypeError(
--                f"Cannot subclass {cls.__module__}.Annotated"
--            )
--
--# Python 3.8 has get_origin() and get_args() but those implementations aren't
--# Annotated-aware, so we can't use those. Python 3.9's versions don't support
--# ParamSpecArgs and ParamSpecKwargs, so only Python 3.10's versions will do.
--if sys.version_info[:2] >= (3, 10):
--    get_origin = typing.get_origin
--    get_args = typing.get_args
--# 3.7-3.9
--else:
--    try:
--        # 3.9+
--        from typing import _BaseGenericAlias
--    except ImportError:
--        _BaseGenericAlias = typing._GenericAlias
--    try:
--        # 3.9+
--        from typing import GenericAlias as _typing_GenericAlias
--    except ImportError:
--        _typing_GenericAlias = typing._GenericAlias
--
--    def get_origin(tp):
--        """Get the unsubscripted version of a type.
--
--        This supports generic types, Callable, Tuple, Union, Literal, Final, ClassVar
--        and Annotated. Return None for unsupported types. Examples::
--
--            get_origin(Literal[42]) is Literal
--            get_origin(int) is None
--            get_origin(ClassVar[int]) is ClassVar
--            get_origin(Generic) is Generic
--            get_origin(Generic[T]) is Generic
--            get_origin(Union[T, int]) is Union
--            get_origin(List[Tuple[T, T]][int]) == list
--            get_origin(P.args) is P
--        """
--        if isinstance(tp, _AnnotatedAlias):
--            return Annotated
--        if isinstance(tp, (typing._GenericAlias, _typing_GenericAlias, _BaseGenericAlias,
--                           ParamSpecArgs, ParamSpecKwargs)):
--            return tp.__origin__
--        if tp is typing.Generic:
--            return typing.Generic
--        return None
--
--    def get_args(tp):
--        """Get type arguments with all substitutions performed.
--
--        For unions, basic simplifications used by Union constructor are performed.
--        Examples::
--            get_args(Dict[str, int]) == (str, int)
--            get_args(int) == ()
--            get_args(Union[int, Union[T, int], str][int]) == (int, str)
--            get_args(Union[int, Tuple[T, int]][str]) == (int, Tuple[str, int])
--            get_args(Callable[[], T][int]) == ([], int)
--        """
--        if isinstance(tp, _AnnotatedAlias):
--            return (tp.__origin__,) + tp.__metadata__
--        if isinstance(tp, (typing._GenericAlias, _typing_GenericAlias)):
--            if getattr(tp, "_special", False):
--                return ()
--            res = tp.__args__
--            if get_origin(tp) is collections.abc.Callable and res[0] is not Ellipsis:
--                res = (list(res[:-1]), res[-1])
--            return res
--        return ()
--
--
--# 3.10+
--if hasattr(typing, 'TypeAlias'):
--    TypeAlias = typing.TypeAlias
--# 3.9
--elif sys.version_info[:2] >= (3, 9):
--    class _TypeAliasForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--    @_TypeAliasForm
--    def TypeAlias(self, parameters):
--        """Special marker indicating that an assignment should
--        be recognized as a proper type alias definition by type
--        checkers.
--
--        For example::
--
--            Predicate: TypeAlias = Callable[..., bool]
--
--        It's invalid when used anywhere except as in the example above.
--        """
--        raise TypeError(f"{self} is not subscriptable")
--# 3.7-3.8
--else:
--    class _TypeAliasForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--    TypeAlias = _TypeAliasForm('TypeAlias',
--                               doc="""Special marker indicating that an assignment should
--                               be recognized as a proper type alias definition by type
--                               checkers.
--
--                               For example::
--
--                                   Predicate: TypeAlias = Callable[..., bool]
--
--                               It's invalid when used anywhere except as in the example
--                               above.""")
--
--
--class _DefaultMixin:
--    """Mixin for TypeVarLike defaults."""
--
--    __slots__ = ()
--
--    def __init__(self, default):
--        if isinstance(default, (tuple, list)):
--            self.__default__ = tuple((typing._type_check(d, "Default must be a type")
--                                      for d in default))
--        elif default != _marker:
--            self.__default__ = typing._type_check(default, "Default must be a type")
--        else:
--            self.__default__ = None
--
--
--# Add default and infer_variance parameters from PEP 696 and 695
--class TypeVar(typing.TypeVar, _DefaultMixin, _root=True):
--    """Type variable."""
--
--    __module__ = 'typing'
--
--    def __init__(self, name, *constraints, bound=None,
--                 covariant=False, contravariant=False,
--                 default=_marker, infer_variance=False):
--        super().__init__(name, *constraints, bound=bound, covariant=covariant,
--                         contravariant=contravariant)
--        _DefaultMixin.__init__(self, default)
--        self.__infer_variance__ = infer_variance
--
--        # for pickling:
--        try:
--            def_mod = sys._getframe(1).f_globals.get('__name__', '__main__')
--        except (AttributeError, ValueError):
--            def_mod = None
--        if def_mod != 'typing_extensions':
--            self.__module__ = def_mod
--
--
--# Python 3.10+ has PEP 612
--if hasattr(typing, 'ParamSpecArgs'):
--    ParamSpecArgs = typing.ParamSpecArgs
--    ParamSpecKwargs = typing.ParamSpecKwargs
--# 3.7-3.9
--else:
--    class _Immutable:
--        """Mixin to indicate that object should not be copied."""
--        __slots__ = ()
--
--        def __copy__(self):
--            return self
--
--        def __deepcopy__(self, memo):
--            return self
--
--    class ParamSpecArgs(_Immutable):
--        """The args for a ParamSpec object.
--
--        Given a ParamSpec object P, P.args is an instance of ParamSpecArgs.
--
--        ParamSpecArgs objects have a reference back to their ParamSpec:
--
--        P.args.__origin__ is P
--
--        This type is meant for runtime introspection and has no special meaning to
--        static type checkers.
--        """
--        def __init__(self, origin):
--            self.__origin__ = origin
--
--        def __repr__(self):
--            return f"{self.__origin__.__name__}.args"
--
--        def __eq__(self, other):
--            if not isinstance(other, ParamSpecArgs):
--                return NotImplemented
--            return self.__origin__ == other.__origin__
--
--    class ParamSpecKwargs(_Immutable):
--        """The kwargs for a ParamSpec object.
--
--        Given a ParamSpec object P, P.kwargs is an instance of ParamSpecKwargs.
--
--        ParamSpecKwargs objects have a reference back to their ParamSpec:
--
--        P.kwargs.__origin__ is P
--
--        This type is meant for runtime introspection and has no special meaning to
--        static type checkers.
--        """
--        def __init__(self, origin):
--            self.__origin__ = origin
--
--        def __repr__(self):
--            return f"{self.__origin__.__name__}.kwargs"
--
--        def __eq__(self, other):
--            if not isinstance(other, ParamSpecKwargs):
--                return NotImplemented
--            return self.__origin__ == other.__origin__
--
--# 3.10+
--if hasattr(typing, 'ParamSpec'):
--
--    # Add default Parameter - PEP 696
--    class ParamSpec(typing.ParamSpec, _DefaultMixin, _root=True):
--        """Parameter specification variable."""
--
--        __module__ = 'typing'
--
--        def __init__(self, name, *, bound=None, covariant=False, contravariant=False,
--                     default=_marker):
--            super().__init__(name, bound=bound, covariant=covariant,
--                             contravariant=contravariant)
--            _DefaultMixin.__init__(self, default)
--
--            # for pickling:
--            try:
--                def_mod = sys._getframe(1).f_globals.get('__name__', '__main__')
--            except (AttributeError, ValueError):
--                def_mod = None
--            if def_mod != 'typing_extensions':
--                self.__module__ = def_mod
--
--# 3.7-3.9
--else:
--
--    # Inherits from list as a workaround for Callable checks in Python < 3.9.2.
--    class ParamSpec(list, _DefaultMixin):
--        """Parameter specification variable.
--
--        Usage::
--
--           P = ParamSpec('P')
--
--        Parameter specification variables exist primarily for the benefit of static
--        type checkers.  They are used to forward the parameter types of one
--        callable to another callable, a pattern commonly found in higher order
--        functions and decorators.  They are only valid when used in ``Concatenate``,
--        or s the first argument to ``Callable``. In Python 3.10 and higher,
--        they are also supported in user-defined Generics at runtime.
--        See class Generic for more information on generic types.  An
--        example for annotating a decorator::
--
--           T = TypeVar('T')
--           P = ParamSpec('P')
--
--           def add_logging(f: Callable[P, T]) -> Callable[P, T]:
--               '''A type-safe decorator to add logging to a function.'''
--               def inner(*args: P.args, **kwargs: P.kwargs) -> T:
--                   logging.info(f'{f.__name__} was called')
--                   return f(*args, **kwargs)
--               return inner
--
--           @add_logging
--           def add_two(x: float, y: float) -> float:
--               '''Add two numbers together.'''
--               return x + y
--
--        Parameter specification variables defined with covariant=True or
--        contravariant=True can be used to declare covariant or contravariant
--        generic types.  These keyword arguments are valid, but their actual semantics
--        are yet to be decided.  See PEP 612 for details.
--
--        Parameter specification variables can be introspected. e.g.:
--
--           P.__name__ == 'T'
--           P.__bound__ == None
--           P.__covariant__ == False
--           P.__contravariant__ == False
--
--        Note that only parameter specification variables defined in global scope can
--        be pickled.
--        """
--
--        # Trick Generic __parameters__.
--        __class__ = typing.TypeVar
--
--        @property
--        def args(self):
--            return ParamSpecArgs(self)
--
--        @property
--        def kwargs(self):
--            return ParamSpecKwargs(self)
--
--        def __init__(self, name, *, bound=None, covariant=False, contravariant=False,
--                     default=_marker):
--            super().__init__([self])
--            self.__name__ = name
--            self.__covariant__ = bool(covariant)
--            self.__contravariant__ = bool(contravariant)
--            if bound:
--                self.__bound__ = typing._type_check(bound, 'Bound must be a type.')
--            else:
--                self.__bound__ = None
--            _DefaultMixin.__init__(self, default)
--
--            # for pickling:
--            try:
--                def_mod = sys._getframe(1).f_globals.get('__name__', '__main__')
--            except (AttributeError, ValueError):
--                def_mod = None
--            if def_mod != 'typing_extensions':
--                self.__module__ = def_mod
--
--        def __repr__(self):
--            if self.__covariant__:
--                prefix = '+'
--            elif self.__contravariant__:
--                prefix = '-'
--            else:
--                prefix = '~'
--            return prefix + self.__name__
--
--        def __hash__(self):
--            return object.__hash__(self)
--
--        def __eq__(self, other):
--            return self is other
--
--        def __reduce__(self):
--            return self.__name__
--
--        # Hack to get typing._type_check to pass.
--        def __call__(self, *args, **kwargs):
--            pass
--
--
--# 3.7-3.9
--if not hasattr(typing, 'Concatenate'):
--    # Inherits from list as a workaround for Callable checks in Python < 3.9.2.
--    class _ConcatenateGenericAlias(list):
--
--        # Trick Generic into looking into this for __parameters__.
--        __class__ = typing._GenericAlias
--
--        # Flag in 3.8.
--        _special = False
--
--        def __init__(self, origin, args):
--            super().__init__(args)
--            self.__origin__ = origin
--            self.__args__ = args
--
--        def __repr__(self):
--            _type_repr = typing._type_repr
--            return (f'{_type_repr(self.__origin__)}'
--                    f'[{", ".join(_type_repr(arg) for arg in self.__args__)}]')
--
--        def __hash__(self):
--            return hash((self.__origin__, self.__args__))
--
--        # Hack to get typing._type_check to pass in Generic.
--        def __call__(self, *args, **kwargs):
--            pass
--
--        @property
--        def __parameters__(self):
--            return tuple(
--                tp for tp in self.__args__ if isinstance(tp, (typing.TypeVar, ParamSpec))
--            )
--
--
--# 3.7-3.9
--@typing._tp_cache
--def _concatenate_getitem(self, parameters):
--    if parameters == ():
--        raise TypeError("Cannot take a Concatenate of no types.")
--    if not isinstance(parameters, tuple):
--        parameters = (parameters,)
--    if not isinstance(parameters[-1], ParamSpec):
--        raise TypeError("The last parameter to Concatenate should be a "
--                        "ParamSpec variable.")
--    msg = "Concatenate[arg, ...]: each arg must be a type."
--    parameters = tuple(typing._type_check(p, msg) for p in parameters)
--    return _ConcatenateGenericAlias(self, parameters)
--
--
--# 3.10+
--if hasattr(typing, 'Concatenate'):
--    Concatenate = typing.Concatenate
--    _ConcatenateGenericAlias = typing._ConcatenateGenericAlias # noqa
--# 3.9
--elif sys.version_info[:2] >= (3, 9):
--    @_TypeAliasForm
--    def Concatenate(self, parameters):
--        """Used in conjunction with ``ParamSpec`` and ``Callable`` to represent a
--        higher order function which adds, removes or transforms parameters of a
--        callable.
--
--        For example::
--
--           Callable[Concatenate[int, P], int]
--
--        See PEP 612 for detailed information.
--        """
--        return _concatenate_getitem(self, parameters)
--# 3.7-8
--else:
--    class _ConcatenateForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--        def __getitem__(self, parameters):
--            return _concatenate_getitem(self, parameters)
--
--    Concatenate = _ConcatenateForm(
--        'Concatenate',
--        doc="""Used in conjunction with ``ParamSpec`` and ``Callable`` to represent a
--        higher order function which adds, removes or transforms parameters of a
--        callable.
--
--        For example::
--
--           Callable[Concatenate[int, P], int]
--
--        See PEP 612 for detailed information.
--        """)
--
--# 3.10+
--if hasattr(typing, 'TypeGuard'):
--    TypeGuard = typing.TypeGuard
--# 3.9
--elif sys.version_info[:2] >= (3, 9):
--    class _TypeGuardForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--    @_TypeGuardForm
--    def TypeGuard(self, parameters):
--        """Special typing form used to annotate the return type of a user-defined
--        type guard function.  ``TypeGuard`` only accepts a single type argument.
--        At runtime, functions marked this way should return a boolean.
--
--        ``TypeGuard`` aims to benefit *type narrowing* -- a technique used by static
--        type checkers to determine a more precise type of an expression within a
--        program's code flow.  Usually type narrowing is done by analyzing
--        conditional code flow and applying the narrowing to a block of code.  The
--        conditional expression here is sometimes referred to as a "type guard".
--
--        Sometimes it would be convenient to use a user-defined boolean function
--        as a type guard.  Such a function should use ``TypeGuard[...]`` as its
--        return type to alert static type checkers to this intention.
--
--        Using  ``-> TypeGuard`` tells the static type checker that for a given
--        function:
--
--        1. The return value is a boolean.
--        2. If the return value is ``True``, the type of its argument
--        is the type inside ``TypeGuard``.
--
--        For example::
--
--            def is_str(val: Union[str, float]):
--                # "isinstance" type guard
--                if isinstance(val, str):
--                    # Type of ``val`` is narrowed to ``str``
--                    ...
--                else:
--                    # Else, type of ``val`` is narrowed to ``float``.
--                    ...
--
--        Strict type narrowing is not enforced -- ``TypeB`` need not be a narrower
--        form of ``TypeA`` (it can even be a wider form) and this may lead to
--        type-unsafe results.  The main reason is to allow for things like
--        narrowing ``List[object]`` to ``List[str]`` even though the latter is not
--        a subtype of the former, since ``List`` is invariant.  The responsibility of
--        writing type-safe type guards is left to the user.
--
--        ``TypeGuard`` also works with type variables.  For more information, see
--        PEP 647 (User-Defined Type Guards).
--        """
--        item = typing._type_check(parameters, f'{self} accepts only a single type.')
--        return typing._GenericAlias(self, (item,))
--# 3.7-3.8
--else:
--    class _TypeGuardForm(typing._SpecialForm, _root=True):
--
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--        def __getitem__(self, parameters):
--            item = typing._type_check(parameters,
--                                      f'{self._name} accepts only a single type')
--            return typing._GenericAlias(self, (item,))
--
--    TypeGuard = _TypeGuardForm(
--        'TypeGuard',
--        doc="""Special typing form used to annotate the return type of a user-defined
--        type guard function.  ``TypeGuard`` only accepts a single type argument.
--        At runtime, functions marked this way should return a boolean.
--
--        ``TypeGuard`` aims to benefit *type narrowing* -- a technique used by static
--        type checkers to determine a more precise type of an expression within a
--        program's code flow.  Usually type narrowing is done by analyzing
--        conditional code flow and applying the narrowing to a block of code.  The
--        conditional expression here is sometimes referred to as a "type guard".
--
--        Sometimes it would be convenient to use a user-defined boolean function
--        as a type guard.  Such a function should use ``TypeGuard[...]`` as its
--        return type to alert static type checkers to this intention.
--
--        Using  ``-> TypeGuard`` tells the static type checker that for a given
--        function:
--
--        1. The return value is a boolean.
--        2. If the return value is ``True``, the type of its argument
--        is the type inside ``TypeGuard``.
--
--        For example::
--
--            def is_str(val: Union[str, float]):
--                # "isinstance" type guard
--                if isinstance(val, str):
--                    # Type of ``val`` is narrowed to ``str``
--                    ...
--                else:
--                    # Else, type of ``val`` is narrowed to ``float``.
--                    ...
--
--        Strict type narrowing is not enforced -- ``TypeB`` need not be a narrower
--        form of ``TypeA`` (it can even be a wider form) and this may lead to
--        type-unsafe results.  The main reason is to allow for things like
--        narrowing ``List[object]`` to ``List[str]`` even though the latter is not
--        a subtype of the former, since ``List`` is invariant.  The responsibility of
--        writing type-safe type guards is left to the user.
--
--        ``TypeGuard`` also works with type variables.  For more information, see
--        PEP 647 (User-Defined Type Guards).
--        """)
--
--
--# Vendored from cpython typing._SpecialFrom
--class _SpecialForm(typing._Final, _root=True):
--    __slots__ = ('_name', '__doc__', '_getitem')
--
--    def __init__(self, getitem):
--        self._getitem = getitem
--        self._name = getitem.__name__
--        self.__doc__ = getitem.__doc__
--
--    def __getattr__(self, item):
--        if item in {'__name__', '__qualname__'}:
--            return self._name
--
--        raise AttributeError(item)
--
--    def __mro_entries__(self, bases):
--        raise TypeError(f"Cannot subclass {self!r}")
--
--    def __repr__(self):
--        return f'typing_extensions.{self._name}'
--
--    def __reduce__(self):
--        return self._name
--
--    def __call__(self, *args, **kwds):
--        raise TypeError(f"Cannot instantiate {self!r}")
--
--    def __or__(self, other):
--        return typing.Union[self, other]
--
--    def __ror__(self, other):
--        return typing.Union[other, self]
--
--    def __instancecheck__(self, obj):
--        raise TypeError(f"{self} cannot be used with isinstance()")
--
--    def __subclasscheck__(self, cls):
--        raise TypeError(f"{self} cannot be used with issubclass()")
--
--    @typing._tp_cache
--    def __getitem__(self, parameters):
--        return self._getitem(self, parameters)
--
--
--if hasattr(typing, "LiteralString"):
--    LiteralString = typing.LiteralString
--else:
--    @_SpecialForm
--    def LiteralString(self, params):
--        """Represents an arbitrary literal string.
--
--        Example::
--
--          from typing_extensions import LiteralString
--
--          def query(sql: LiteralString) -> ...:
--              ...
--
--          query("SELECT * FROM table")  # ok
--          query(f"SELECT * FROM {input()}")  # not ok
--
--        See PEP 675 for details.
--
--        """
--        raise TypeError(f"{self} is not subscriptable")
--
--
--if hasattr(typing, "Self"):
--    Self = typing.Self
--else:
--    @_SpecialForm
--    def Self(self, params):
--        """Used to spell the type of "self" in classes.
--
--        Example::
--
--          from typing import Self
--
--          class ReturnsSelf:
--              def parse(self, data: bytes) -> Self:
--                  ...
--                  return self
--
--        """
--
--        raise TypeError(f"{self} is not subscriptable")
--
--
--if hasattr(typing, "Never"):
--    Never = typing.Never
--else:
--    @_SpecialForm
--    def Never(self, params):
--        """The bottom type, a type that has no members.
--
--        This can be used to define a function that should never be
--        called, or a function that never returns::
--
--            from typing_extensions import Never
--
--            def never_call_me(arg: Never) -> None:
--                pass
--
--            def int_or_str(arg: int | str) -> None:
--                never_call_me(arg)  # type checker error
--                match arg:
--                    case int():
--                        print("It's an int")
--                    case str():
--                        print("It's a str")
--                    case _:
--                        never_call_me(arg)  # ok, arg is of type Never
--
--        """
--
--        raise TypeError(f"{self} is not subscriptable")
--
--
--if hasattr(typing, 'Required'):
--    Required = typing.Required
--    NotRequired = typing.NotRequired
--elif sys.version_info[:2] >= (3, 9):
--    class _ExtensionsSpecialForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--    @_ExtensionsSpecialForm
--    def Required(self, parameters):
--        """A special typing construct to mark a key of a total=False TypedDict
--        as required. For example:
--
--            class Movie(TypedDict, total=False):
--                title: Required[str]
--                year: int
--
--            m = Movie(
--                title='The Matrix',  # typechecker error if key is omitted
--                year=1999,
--            )
--
--        There is no runtime checking that a required key is actually provided
--        when instantiating a related TypedDict.
--        """
--        item = typing._type_check(parameters, f'{self._name} accepts only a single type.')
--        return typing._GenericAlias(self, (item,))
--
--    @_ExtensionsSpecialForm
--    def NotRequired(self, parameters):
--        """A special typing construct to mark a key of a TypedDict as
--        potentially missing. For example:
--
--            class Movie(TypedDict):
--                title: str
--                year: NotRequired[int]
--
--            m = Movie(
--                title='The Matrix',  # typechecker error if key is omitted
--                year=1999,
--            )
--        """
--        item = typing._type_check(parameters, f'{self._name} accepts only a single type.')
--        return typing._GenericAlias(self, (item,))
--
--else:
--    class _RequiredForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--        def __getitem__(self, parameters):
--            item = typing._type_check(parameters,
--                                      f'{self._name} accepts only a single type.')
--            return typing._GenericAlias(self, (item,))
--
--    Required = _RequiredForm(
--        'Required',
--        doc="""A special typing construct to mark a key of a total=False TypedDict
--        as required. For example:
--
--            class Movie(TypedDict, total=False):
--                title: Required[str]
--                year: int
--
--            m = Movie(
--                title='The Matrix',  # typechecker error if key is omitted
--                year=1999,
--            )
--
--        There is no runtime checking that a required key is actually provided
--        when instantiating a related TypedDict.
--        """)
--    NotRequired = _RequiredForm(
--        'NotRequired',
--        doc="""A special typing construct to mark a key of a TypedDict as
--        potentially missing. For example:
--
--            class Movie(TypedDict):
--                title: str
--                year: NotRequired[int]
--
--            m = Movie(
--                title='The Matrix',  # typechecker error if key is omitted
--                year=1999,
--            )
--        """)
--
--
--if hasattr(typing, "Unpack"):  # 3.11+
--    Unpack = typing.Unpack
--elif sys.version_info[:2] >= (3, 9):
--    class _UnpackSpecialForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--    class _UnpackAlias(typing._GenericAlias, _root=True):
--        __class__ = typing.TypeVar
--
--    @_UnpackSpecialForm
--    def Unpack(self, parameters):
--        """A special typing construct to unpack a variadic type. For example:
--
--            Shape = TypeVarTuple('Shape')
--            Batch = NewType('Batch', int)
--
--            def add_batch_axis(
--                x: Array[Unpack[Shape]]
--            ) -> Array[Batch, Unpack[Shape]]: ...
--
--        """
--        item = typing._type_check(parameters, f'{self._name} accepts only a single type.')
--        return _UnpackAlias(self, (item,))
--
--    def _is_unpack(obj):
--        return isinstance(obj, _UnpackAlias)
--
--else:
--    class _UnpackAlias(typing._GenericAlias, _root=True):
--        __class__ = typing.TypeVar
--
--    class _UnpackForm(typing._SpecialForm, _root=True):
--        def __repr__(self):
--            return 'typing_extensions.' + self._name
--
--        def __getitem__(self, parameters):
--            item = typing._type_check(parameters,
--                                      f'{self._name} accepts only a single type.')
--            return _UnpackAlias(self, (item,))
--
--    Unpack = _UnpackForm(
--        'Unpack',
--        doc="""A special typing construct to unpack a variadic type. For example:
--
--            Shape = TypeVarTuple('Shape')
--            Batch = NewType('Batch', int)
--
--            def add_batch_axis(
--                x: Array[Unpack[Shape]]
--            ) -> Array[Batch, Unpack[Shape]]: ...
--
--        """)
--
--    def _is_unpack(obj):
--        return isinstance(obj, _UnpackAlias)
--
--
--if hasattr(typing, "TypeVarTuple"):  # 3.11+
--
--    # Add default Parameter - PEP 696
--    class TypeVarTuple(typing.TypeVarTuple, _DefaultMixin, _root=True):
--        """Type variable tuple."""
--
--        def __init__(self, name, *, default=_marker):
--            super().__init__(name)
--            _DefaultMixin.__init__(self, default)
--
--            # for pickling:
--            try:
--                def_mod = sys._getframe(1).f_globals.get('__name__', '__main__')
--            except (AttributeError, ValueError):
--                def_mod = None
--            if def_mod != 'typing_extensions':
--                self.__module__ = def_mod
--
--else:
--    class TypeVarTuple(_DefaultMixin):
--        """Type variable tuple.
--
--        Usage::
--
--            Ts = TypeVarTuple('Ts')
--
--        In the same way that a normal type variable is a stand-in for a single
--        type such as ``int``, a type variable *tuple* is a stand-in for a *tuple*
--        type such as ``Tuple[int, str]``.
--
--        Type variable tuples can be used in ``Generic`` declarations.
--        Consider the following example::
--
--            class Array(Generic[*Ts]): ...
--
--        The ``Ts`` type variable tuple here behaves like ``tuple[T1, T2]``,
--        where ``T1`` and ``T2`` are type variables. To use these type variables
--        as type parameters of ``Array``, we must *unpack* the type variable tuple using
--        the star operator: ``*Ts``. The signature of ``Array`` then behaves
--        as if we had simply written ``class Array(Generic[T1, T2]): ...``.
--        In contrast to ``Generic[T1, T2]``, however, ``Generic[*Shape]`` allows
--        us to parameterise the class with an *arbitrary* number of type parameters.
--
--        Type variable tuples can be used anywhere a normal ``TypeVar`` can.
--        This includes class definitions, as shown above, as well as function
--        signatures and variable annotations::
--
--            class Array(Generic[*Ts]):
--
--                def __init__(self, shape: Tuple[*Ts]):
--                    self._shape: Tuple[*Ts] = shape
--
--                def get_shape(self) -> Tuple[*Ts]:
--                    return self._shape
--
--            shape = (Height(480), Width(640))
--            x: Array[Height, Width] = Array(shape)
--            y = abs(x)  # Inferred type is Array[Height, Width]
--            z = x + x   #        ...    is Array[Height, Width]
--            x.get_shape()  #     ...    is tuple[Height, Width]
--
--        """
--
--        # Trick Generic __parameters__.
--        __class__ = typing.TypeVar
--
--        def __iter__(self):
--            yield self.__unpacked__
--
--        def __init__(self, name, *, default=_marker):
--            self.__name__ = name
--            _DefaultMixin.__init__(self, default)
--
--            # for pickling:
--            try:
--                def_mod = sys._getframe(1).f_globals.get('__name__', '__main__')
--            except (AttributeError, ValueError):
--                def_mod = None
--            if def_mod != 'typing_extensions':
--                self.__module__ = def_mod
--
--            self.__unpacked__ = Unpack[self]
--
--        def __repr__(self):
--            return self.__name__
--
--        def __hash__(self):
--            return object.__hash__(self)
--
--        def __eq__(self, other):
--            return self is other
--
--        def __reduce__(self):
--            return self.__name__
--
--        def __init_subclass__(self, *args, **kwds):
--            if '_root' not in kwds:
--                raise TypeError("Cannot subclass special typing classes")
--
--
--if hasattr(typing, "reveal_type"):
--    reveal_type = typing.reveal_type
--else:
--    def reveal_type(__obj: T) -> T:
--        """Reveal the inferred type of a variable.
--
--        When a static type checker encounters a call to ``reveal_type()``,
--        it will emit the inferred type of the argument::
--
--            x: int = 1
--            reveal_type(x)
--
--        Running a static type checker (e.g., ``mypy``) on this example
--        will produce output similar to 'Revealed type is "builtins.int"'.
--
--        At runtime, the function prints the runtime type of the
--        argument and returns it unchanged.
--
--        """
--        print(f"Runtime type is {type(__obj).__name__!r}", file=sys.stderr)
--        return __obj
--
--
--if hasattr(typing, "assert_never"):
--    assert_never = typing.assert_never
--else:
--    def assert_never(__arg: Never) -> Never:
--        """Assert to the type checker that a line of code is unreachable.
--
--        Example::
--
--            def int_or_str(arg: int | str) -> None:
--                match arg:
--                    case int():
--                        print("It's an int")
--                    case str():
--                        print("It's a str")
--                    case _:
--                        assert_never(arg)
--
--        If a type checker finds that a call to assert_never() is
--        reachable, it will emit an error.
--
--        At runtime, this throws an exception when called.
--
--        """
--        raise AssertionError("Expected code to be unreachable")
--
--
--if sys.version_info >= (3, 12):
--    # dataclass_transform exists in 3.11 but lacks the frozen_default parameter
--    dataclass_transform = typing.dataclass_transform
--else:
--    def dataclass_transform(
--        *,
--        eq_default: bool = True,
--        order_default: bool = False,
--        kw_only_default: bool = False,
--        frozen_default: bool = False,
--        field_specifiers: typing.Tuple[
--            typing.Union[typing.Type[typing.Any], typing.Callable[..., typing.Any]],
--            ...
--        ] = (),
--        **kwargs: typing.Any,
--    ) -> typing.Callable[[T], T]:
--        """Decorator that marks a function, class, or metaclass as providing
--        dataclass-like behavior.
--
--        Example:
--
--            from typing_extensions import dataclass_transform
--
--            _T = TypeVar("_T")
--
--            # Used on a decorator function
--            @dataclass_transform()
--            def create_model(cls: type[_T]) -> type[_T]:
--                ...
--                return cls
--
--            @create_model
--            class CustomerModel:
--                id: int
--                name: str
--
--            # Used on a base class
--            @dataclass_transform()
--            class ModelBase: ...
--
--            class CustomerModel(ModelBase):
--                id: int
--                name: str
--
--            # Used on a metaclass
--            @dataclass_transform()
--            class ModelMeta(type): ...
--
--            class ModelBase(metaclass=ModelMeta): ...
--
--            class CustomerModel(ModelBase):
--                id: int
--                name: str
--
--        Each of the ``CustomerModel`` classes defined in this example will now
--        behave similarly to a dataclass created with the ``@dataclasses.dataclass``
--        decorator. For example, the type checker will synthesize an ``__init__``
--        method.
--
--        The arguments to this decorator can be used to customize this behavior:
--        - ``eq_default`` indicates whether the ``eq`` parameter is assumed to be
--          True or False if it is omitted by the caller.
--        - ``order_default`` indicates whether the ``order`` parameter is
--          assumed to be True or False if it is omitted by the caller.
--        - ``kw_only_default`` indicates whether the ``kw_only`` parameter is
--          assumed to be True or False if it is omitted by the caller.
--        - ``frozen_default`` indicates whether the ``frozen`` parameter is
--          assumed to be True or False if it is omitted by the caller.
--        - ``field_specifiers`` specifies a static list of supported classes
--          or functions that describe fields, similar to ``dataclasses.field()``.
--
--        At runtime, this decorator records its arguments in the
--        ``__dataclass_transform__`` attribute on the decorated object.
--
--        See PEP 681 for details.
--
--        """
--        def decorator(cls_or_fn):
--            cls_or_fn.__dataclass_transform__ = {
--                "eq_default": eq_default,
--                "order_default": order_default,
--                "kw_only_default": kw_only_default,
--                "frozen_default": frozen_default,
--                "field_specifiers": field_specifiers,
--                "kwargs": kwargs,
--            }
--            return cls_or_fn
--        return decorator
--
--
--if hasattr(typing, "override"):
--    override = typing.override
--else:
--    _F = typing.TypeVar("_F", bound=typing.Callable[..., typing.Any])
--
--    def override(__arg: _F) -> _F:
--        """Indicate that a method is intended to override a method in a base class.
--
--        Usage:
--
--            class Base:
--                def method(self) -> None: ...
--                    pass
--
--            class Child(Base):
--                @override
--                def method(self) -> None:
--                    super().method()
--
--        When this decorator is applied to a method, the type checker will
--        validate that it overrides a method with the same name on a base class.
--        This helps prevent bugs that may occur when a base class is changed
--        without an equivalent change to a child class.
--
--        There is no runtime checking of these properties. The decorator
--        sets the ``__override__`` attribute to ``True`` on the decorated object
--        to allow runtime introspection.
--
--        See PEP 698 for details.
--
--        """
--        try:
--            __arg.__override__ = True
--        except (AttributeError, TypeError):
--            # Skip the attribute silently if it is not writable.
--            # AttributeError happens if the object has __slots__ or a
--            # read-only property, TypeError if it's a builtin class.
--            pass
--        return __arg
--
--
--if hasattr(typing, "deprecated"):
--    deprecated = typing.deprecated
--else:
--    _T = typing.TypeVar("_T")
--
--    def deprecated(
--        __msg: str,
--        *,
--        category: typing.Optional[typing.Type[Warning]] = DeprecationWarning,
--        stacklevel: int = 1,
--    ) -> typing.Callable[[_T], _T]:
--        """Indicate that a class, function or overload is deprecated.
--
--        Usage:
--
--            @deprecated("Use B instead")
--            class A:
--                pass
--
--            @deprecated("Use g instead")
--            def f():
--                pass
--
--            @overload
--            @deprecated("int support is deprecated")
--            def g(x: int) -> int: ...
--            @overload
--            def g(x: str) -> int: ...
--
--        When this decorator is applied to an object, the type checker
--        will generate a diagnostic on usage of the deprecated object.
--
--        No runtime warning is issued. The decorator sets the ``__deprecated__``
--        attribute on the decorated object to the deprecation message
--        passed to the decorator. If applied to an overload, the decorator
--        must be after the ``@overload`` decorator for the attribute to
--        exist on the overload as returned by ``get_overloads()``.
--
--        See PEP 702 for details.
--
--        """
--        def decorator(__arg: _T) -> _T:
--            if category is None:
--                __arg.__deprecated__ = __msg
--                return __arg
--            elif isinstance(__arg, type):
--                original_new = __arg.__new__
--                has_init = __arg.__init__ is not object.__init__
--
--                @functools.wraps(original_new)
--                def __new__(cls, *args, **kwargs):
--                    warnings.warn(__msg, category=category, stacklevel=stacklevel + 1)
--                    # Mirrors a similar check in object.__new__.
--                    if not has_init and (args or kwargs):
--                        raise TypeError(f"{cls.__name__}() takes no arguments")
--                    if original_new is not object.__new__:
--                        return original_new(cls, *args, **kwargs)
--                    else:
--                        return original_new(cls)
--
--                __arg.__new__ = staticmethod(__new__)
--                __arg.__deprecated__ = __new__.__deprecated__ = __msg
--                return __arg
--            elif callable(__arg):
--                @functools.wraps(__arg)
--                def wrapper(*args, **kwargs):
--                    warnings.warn(__msg, category=category, stacklevel=stacklevel + 1)
--                    return __arg(*args, **kwargs)
--
--                __arg.__deprecated__ = wrapper.__deprecated__ = __msg
--                return wrapper
--            else:
--                raise TypeError(
--                    "@deprecated decorator with non-None category must be applied to "
--                    f"a class or callable, not {__arg!r}"
--                )
--
--        return decorator
--
--
--# We have to do some monkey patching to deal with the dual nature of
--# Unpack/TypeVarTuple:
--# - We want Unpack to be a kind of TypeVar so it gets accepted in
--#   Generic[Unpack[Ts]]
--# - We want it to *not* be treated as a TypeVar for the purposes of
--#   counting generic parameters, so that when we subscript a generic,
--#   the runtime doesn't try to substitute the Unpack with the subscripted type.
--if not hasattr(typing, "TypeVarTuple"):
--    typing._collect_type_vars = _collect_type_vars
--    typing._check_generic = _check_generic
--
--
--# Backport typing.NamedTuple as it exists in Python 3.11.
--# In 3.11, the ability to define generic `NamedTuple`s was supported.
--# This was explicitly disallowed in 3.9-3.10, and only half-worked in <=3.8.
--if sys.version_info >= (3, 11):
--    NamedTuple = typing.NamedTuple
--else:
--    def _caller():
--        try:
--            return sys._getframe(2).f_globals.get('__name__', '__main__')
--        except (AttributeError, ValueError):  # For platforms without _getframe()
--            return None
--
--    def _make_nmtuple(name, types, module, defaults=()):
--        fields = [n for n, t in types]
--        annotations = {n: typing._type_check(t, f"field {n} annotation must be a type")
--                       for n, t in types}
--        nm_tpl = collections.namedtuple(name, fields,
--                                        defaults=defaults, module=module)
--        nm_tpl.__annotations__ = nm_tpl.__new__.__annotations__ = annotations
--        # The `_field_types` attribute was removed in 3.9;
--        # in earlier versions, it is the same as the `__annotations__` attribute
--        if sys.version_info < (3, 9):
--            nm_tpl._field_types = annotations
--        return nm_tpl
--
--    _prohibited_namedtuple_fields = typing._prohibited
--    _special_namedtuple_fields = frozenset({'__module__', '__name__', '__annotations__'})
--
--    class _NamedTupleMeta(type):
--        def __new__(cls, typename, bases, ns):
--            assert _NamedTuple in bases
--            for base in bases:
--                if base is not _NamedTuple and base is not typing.Generic:
--                    raise TypeError(
--                        'can only inherit from a NamedTuple type and Generic')
--            bases = tuple(tuple if base is _NamedTuple else base for base in bases)
--            types = ns.get('__annotations__', {})
--            default_names = []
--            for field_name in types:
--                if field_name in ns:
--                    default_names.append(field_name)
--                elif default_names:
--                    raise TypeError(f"Non-default namedtuple field {field_name} "
--                                    f"cannot follow default field"
--                                    f"{'s' if len(default_names) > 1 else ''} "
--                                    f"{', '.join(default_names)}")
--            nm_tpl = _make_nmtuple(
--                typename, types.items(),
--                defaults=[ns[n] for n in default_names],
--                module=ns['__module__']
--            )
--            nm_tpl.__bases__ = bases
--            if typing.Generic in bases:
--                class_getitem = typing.Generic.__class_getitem__.__func__
--                nm_tpl.__class_getitem__ = classmethod(class_getitem)
--            # update from user namespace without overriding special namedtuple attributes
--            for key in ns:
--                if key in _prohibited_namedtuple_fields:
--                    raise AttributeError("Cannot overwrite NamedTuple attribute " + key)
--                elif key not in _special_namedtuple_fields and key not in nm_tpl._fields:
--                    setattr(nm_tpl, key, ns[key])
--            if typing.Generic in bases:
--                nm_tpl.__init_subclass__()
--            return nm_tpl
--
--    def NamedTuple(__typename, __fields=None, **kwargs):
--        if __fields is None:
--            __fields = kwargs.items()
--        elif kwargs:
--            raise TypeError("Either list of fields or keywords"
--                            " can be provided to NamedTuple, not both")
--        return _make_nmtuple(__typename, __fields, module=_caller())
--
--    NamedTuple.__doc__ = typing.NamedTuple.__doc__
--    _NamedTuple = type.__new__(_NamedTupleMeta, 'NamedTuple', (), {})
--
--    # On 3.8+, alter the signature so that it matches typing.NamedTuple.
--    # The signature of typing.NamedTuple on >=3.8 is invalid syntax in Python 3.7,
--    # so just leave the signature as it is on 3.7.
--    if sys.version_info >= (3, 8):
--        NamedTuple.__text_signature__ = '(typename, fields=None, /, **kwargs)'
--
--    def _namedtuple_mro_entries(bases):
--        assert NamedTuple in bases
--        return (_NamedTuple,)
--
--    NamedTuple.__mro_entries__ = _namedtuple_mro_entries
 diff --git a/src/poetry/core/_vendor/vendor.txt b/src/poetry/core/_vendor/vendor.txt
 deleted file mode 100644
-index 70de92a..0000000
+index 1cf68fc..0000000
 --- a/src/poetry/core/_vendor/vendor.txt
 +++ /dev/null
-@@ -1,7 +0,0 @@
--attrs==23.1.0 ; python_version >= "3.7" and python_version < "4.0"
--jsonschema==4.17.3 ; python_version >= "3.7" and python_version < "4.0"
--lark==1.1.5 ; python_version >= "3.7" and python_version < "4.0"
--packaging==23.1 ; python_version >= "3.7" and python_version < "4.0"
--pyrsistent==0.19.3 ; python_version >= "3.7" and python_version < "4.0"
--tomli==2.0.1 ; python_version >= "3.7" and python_version < "4.0"
--typing-extensions==4.5.0 ; python_version >= "3.7" and python_version < "4.0"
+@@ -1,6 +0,0 @@
+-attrs==23.1.0 ; python_version >= "3.8" and python_version < "4.0"
+-jsonschema==4.17.3 ; python_version >= "3.8" and python_version < "4.0"
+-lark==1.1.7 ; python_version >= "3.8" and python_version < "4.0"
+-packaging==23.1 ; python_version >= "3.8" and python_version < "4.0"
+-pyrsistent==0.19.3 ; python_version >= "3.8" and python_version < "4.0"
+-tomli==2.0.1 ; python_version >= "3.8" and python_version < "4.0"
 diff --git a/src/poetry/core/json/__init__.py b/src/poetry/core/json/__init__.py
-index c32cc78..7e4574d 100644
+index e71cba5..2670d54 100644
 --- a/src/poetry/core/json/__init__.py
 +++ b/src/poetry/core/json/__init__.py
 @@ -2,26 +2,22 @@ from __future__ import annotations
@@ -35695,7 +33090,7 @@ similarity index 100%
 rename from src/poetry/core/_vendor/lark/parsers/__init__.py
 rename to src/poetry/core/spdx/data/__init__.py
 diff --git a/src/poetry/core/spdx/helpers.py b/src/poetry/core/spdx/helpers.py
-index f77745b..70e3e8f 100644
+index a58a5f6..73f7c5f 100644
 --- a/src/poetry/core/spdx/helpers.py
 +++ b/src/poetry/core/spdx/helpers.py
 @@ -3,7 +3,7 @@ from __future__ import annotations
@@ -35709,7 +33104,7 @@ index f77745b..70e3e8f 100644
  
 @@ -20,11 +20,9 @@ def license_by_id(identifier: str) -> License:
  
- @functools.lru_cache()
+ @functools.lru_cache
  def _load_licenses() -> dict[str, License]:
 +    from . import __name__
      licenses = {}

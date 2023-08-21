@@ -137,6 +137,7 @@ def test_to_pep_508_with_patch_python_version(
     expected = f"Django (>=1.23,<2.0) ; {marker}"
 
     assert dependency.to_pep_508() == expected
+    assert dependency.to_pep_508(resolved=True) == expected
     assert str(dependency.marker) == marker
 
 
@@ -353,6 +354,11 @@ def test_marker_properly_unsets_python_constraint() -> None:
 def test_create_from_pep_508_url_with_activated_extras() -> None:
     dependency = Dependency.create_from_pep_508("name [fred,bar] @ http://foo.com")
     assert dependency.extras == {"fred", "bar"}
+
+
+def test_create_from_pep_508_starting_with_digit() -> None:
+    dependency = Dependency.create_from_pep_508("2captcha-python")
+    assert dependency.name == "2captcha-python"
 
 
 @pytest.mark.parametrize(

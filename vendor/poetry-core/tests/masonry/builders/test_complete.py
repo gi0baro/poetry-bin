@@ -19,6 +19,7 @@ import pytest
 from poetry.core import __version__
 from poetry.core.factory import Factory
 from poetry.core.masonry.builder import Builder
+from tests.masonry.builders.test_wheel import WHEEL_TAG_REGEX
 
 
 if TYPE_CHECKING:
@@ -65,7 +66,7 @@ def test_wheel_c_extension(project: str, exptected_c_dir: str) -> None:
         assert "extended-0.1/build.py" in tar.getnames()
         assert f"extended-0.1/{exptected_c_dir}/extended.c" in tar.getnames()
 
-    whl = list((module_path / "dist").glob("extended-0.1-cp*-cp*-*.whl"))[0]
+    whl = next(iter((module_path / "dist").glob("extended-0.1-cp*-cp*-*.whl")))
     assert whl.exists()
 
     with zipfile.ZipFile(whl) as zipf:
@@ -82,7 +83,7 @@ def test_wheel_c_extension(project: str, exptected_c_dir: str) -> None:
 Wheel-Version: 1.0
 Generator: poetry-core {__version__}
 Root-Is-Purelib: false
-Tag: cp[23]_?\\d+-cp[23]_?\\d+m?u?-.+
+Tag: {WHEEL_TAG_REGEX}
 $""",
                 wheel_data,
             )
@@ -135,7 +136,8 @@ def test_complete(no_vcs: bool) -> None:
             ],
             key=lambda x: Path(x),
         ),
-    ] + ["my_package-1.2.3.dist-info/RECORD"]
+        "my_package-1.2.3.dist-info/RECORD",
+    ]
 
     with zipfile.ZipFile(str(whl)) as zipf:
         assert zipf.namelist() == expected_name_list

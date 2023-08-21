@@ -106,10 +106,8 @@ class Dependency(PackageSpecification):
 
     def set_constraint(self, constraint: str | VersionConstraint) -> None:
         warnings.warn(
-            (
-                "Calling method 'set_constraint' is deprecated and will be removed. "
-                "It has been replaced by the property 'constraint' for consistency."
-            ),
+            "Calling method 'set_constraint' is deprecated and will be removed. "
+            "It has been replaced by the property 'constraint' for consistency.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -258,6 +256,10 @@ class Dependency(PackageSpecification):
 
         return requirement
 
+    @property
+    def base_pep_508_name_resolved(self) -> str:
+        return self.base_pep_508_name
+
     def allows_prereleases(self) -> bool:
         return self._allows_prereleases
 
@@ -279,10 +281,13 @@ class Dependency(PackageSpecification):
     def is_url(self) -> bool:
         return False
 
-    def to_pep_508(self, with_extras: bool = True) -> str:
+    def to_pep_508(self, with_extras: bool = True, *, resolved: bool = False) -> str:
         from poetry.core.packages.utils.utils import convert_markers
 
-        requirement = self.base_pep_508_name
+        if resolved:
+            requirement = self.base_pep_508_name_resolved
+        else:
+            requirement = self.base_pep_508_name
 
         markers = []
         has_extras = False

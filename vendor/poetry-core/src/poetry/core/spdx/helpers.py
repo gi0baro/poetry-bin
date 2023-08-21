@@ -18,7 +18,7 @@ def license_by_id(identifier: str) -> License:
     )
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def _load_licenses() -> dict[str, License]:
     from . import __name__
     licenses = {}
