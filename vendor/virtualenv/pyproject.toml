@@ -1,7 +1,7 @@
 [build-system]
 build-backend = "hatchling.build"
 requires = [
-  "hatchling>=1.14",
+  "hatchling>=1.17.1",
 ]
 
 [project]
@@ -23,43 +23,48 @@ classifiers = [
   "Operating System :: MacOS :: MacOS X",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX",
-  "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
   "Topic :: Software Development :: Libraries",
   "Topic :: Software Development :: Testing",
   "Topic :: Utilities",
 ]
-version = "20.23.0"
+version = "20.24.3"
 dependencies = [
-  "distlib<1,>=0.3.6",
-  "filelock<4,>=3.11",
-  'importlib-metadata>=6.4.1; python_version < "3.8"',
-  "platformdirs<4,>=3.2",
+  "distlib<1,>=0.3.7",
+  "filelock<4,>=3.12.2",
+  'importlib-metadata>=6.6; python_version < "3.8"',
+  "platformdirs<4,>=3.9.1",
 ]
 optional-dependencies.docs = [
-  "furo>=2023.3.27",
+  "furo>=2023.5.20",
   "proselint>=0.13",
-  "sphinx>=6.1.3",
+  "sphinx>=7.0.1",
   "sphinx-argparse>=0.4",
   "sphinxcontrib-towncrier>=0.2.1a0",
-  "towncrier>=22.12",
+  "towncrier>=23.6",
 ]
 optional-dependencies.test = [
   "covdefaults>=2.3",
-  "coverage>=7.2.3",
+  "coverage>=7.2.7",
   "coverage-enable-subprocess>=1",
   "flaky>=3.7",
   "packaging>=23.1",
-  "pytest>=7.3.1",
-  "pytest-env>=0.8.1",
-  'pytest-freezegun>=0.4.2; platform_python_implementation == "PyPy"',
-  "pytest-mock>=3.10",
+  "pytest>=7.4",
+  "pytest-env>=0.8.2",
+  'pytest-freezer>=0.4.8; platform_python_implementation == "PyPy"',
+  "pytest-mock>=3.11.1",
   "pytest-randomly>=3.12",
   "pytest-timeout>=2.1",
-  "setuptools>=67.7.1",
-  'time-machine>=2.9; platform_python_implementation == "CPython"',
+  "setuptools>=68",
+  'time-machine>=2.10; platform_python_implementation == "CPython"',
 ]
 urls.Documentation = "https://virtualenv.pypa.io"
 urls.Homepage = "https://github.com/pypa/virtualenv"
@@ -88,26 +93,34 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
 pip = "virtualenv.seed.embed.pip_invoke:PipInvoke"
 
 [tool.hatch]
-build.targets.sdist.include = ["/src", "/tests", "/tox.ini"]
+build.targets.sdist.include = ["/src", "/tests", "/tasks", "/tox.ini"]
 
 [tool.black]
 line-length = 120
 
-[tool.isort]
-profile = "black"
-known_first_party = ["virtualenv"]
-add_imports = ["from __future__ import annotations"]
-
-[tool.flake8]
-max-complexity = 22
-max-line-length = 120
-unused-arguments-ignore-abstract-functions = true
-noqa-require-code = true
-dictionaries = ["en_US", "python", "technical", "django"]
+[tool.ruff]
+select = ["ALL"]
+line-length = 120
+target-version = "py37"
+isort = {known-first-party = ["virtualenv"], required-imports = ["from __future__ import annotations"]}
 ignore = [
-  "E203", #  whitespace before ':'
-  "C901", # is too complex
-  "W503", # line break before binary operator
+    "ANN",  # no type checking added yet
+    "D10",  # no docstrings
+    "D40",  # no imperative mode for docstrings
+    "PTH",  # no pathlib, <=39 has problems on Windows with absolute/resolve, can revisit once we no longer need 39
+    "INP001",  # ignore implicit namespace packages
+    "D203",  # `one-blank-line-before-class` (D203) and `no-blank-line-before-class` (D211) are incompatible
+    "D212",  # `multi-line-summary-first-line` (D212) and `multi-line-summary-second-line` (D213) are incompatible
+    "S104",  # Possible binding to all interface
+]
+[tool.ruff.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",  # asserts allowed in tests...
+    "FBT",  # don"t care about booleans as positional arguments in tests
+    "INP001", # no implicit namespace
+    "D",  # don"t care about documentation in tests
+    "S603",  # `subprocess` call: check for execution of untrusted input
+    "PLR2004",  # Magic value used in comparison, consider replacing with a constant variable
 ]
 
 [tool.pytest.ini_options]
@@ -133,9 +146,6 @@ run.dynamic_context = "test_function"
 run.parallel = true
 run.plugins = ["covdefaults"]
 run.relative_files = true
-
-[tool.pep8]
-max-line-length = "120"
 
 [tool.towncrier]
 name = "tox"

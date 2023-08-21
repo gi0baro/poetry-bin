@@ -20,7 +20,7 @@ class PluginLoader:
 
 
 class ComponentBuilder(PluginLoader):
-    def __init__(self, interpreter, parser, name, possible):
+    def __init__(self, interpreter, parser, name, possible) -> None:
         self.interpreter = interpreter
         self.name = name
         self._impl_class = None
@@ -34,13 +34,14 @@ class ComponentBuilder(PluginLoader):
             cls._OPTIONS = cls.entry_points_for(key)
         return cls._OPTIONS
 
-    def add_selector_arg_parse(self, name, choices):  # noqa: U100
+    def add_selector_arg_parse(self, name, choices):
         raise NotImplementedError
 
     def handle_selected_arg_parse(self, options):
         selected = getattr(options, self.name)
         if selected not in self.possible:
-            raise RuntimeError(f"No implementation for {self.interpreter}")
+            msg = f"No implementation for {self.interpreter}"
+            raise RuntimeError(msg)
         self._impl_class = self.possible[selected]
         self.populate_selected_argparse(selected, options.app_data)
         return selected

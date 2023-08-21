@@ -11,7 +11,7 @@ index b799ed2..837bb1c 100644
  .python-version
  
 diff --git a/pyproject.toml b/pyproject.toml
-index 5a883da..fe7d18c 100644
+index 61af41f..b8c0dd4 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -1,7 +1,6 @@
@@ -19,26 +19,26 @@ index 5a883da..fe7d18c 100644
  build-backend = "hatchling.build"
  requires = [
 -  "hatch-vcs>=0.3",
-   "hatchling>=1.14",
+   "hatchling>=1.17.1",
  ]
  
-@@ -32,9 +31,7 @@ classifiers = [
+@@ -37,9 +36,7 @@ classifiers = [
    "Topic :: Software Development :: Testing",
    "Topic :: Utilities",
  ]
 -dynamic = [
 -  "version",
 -]
-+version = "20.23.0"
++version = "20.24.3"
  dependencies = [
-   "distlib<1,>=0.3.6",
-   "filelock<4,>=3.11",
-@@ -91,9 +88,7 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
+   "distlib<1,>=0.3.7",
+   "filelock<4,>=3.12.2",
+@@ -96,9 +93,7 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
  pip = "virtualenv.seed.embed.pip_invoke:PipInvoke"
  
  [tool.hatch]
 -build.hooks.vcs.version-file = "src/virtualenv/version.py"
- build.targets.sdist.include = ["/src", "/tests", "/tox.ini"]
+ build.targets.sdist.include = ["/src", "/tests", "/tasks", "/tox.ini"]
 -version.source = "vcs"
  
  [tool.black]
@@ -100,10 +100,10 @@ index 0000000..56d7087
 +
 +setattr(_res_patch_target, "finder", finder)
 diff --git a/src/virtualenv/activation/python/__init__.py b/src/virtualenv/activation/python/__init__.py
-index ed220dc..44621b6 100644
+index 3126a39..e9f00ac 100644
 --- a/src/virtualenv/activation/python/__init__.py
 +++ b/src/virtualenv/activation/python/__init__.py
-@@ -8,7 +8,17 @@ from ..via_template import ViaTemplateActivator
+@@ -8,7 +8,17 @@ from virtualenv.activation.via_template import ViaTemplateActivator
  
  class PythonActivator(ViaTemplateActivator):
      def templates(self):
@@ -127,7 +127,7 @@ similarity index 100%
 rename from src/virtualenv/activation/python/activate_this.py
 rename to src/virtualenv/activation/python/activate_this.py.template
 diff --git a/src/virtualenv/activation/via_template.py b/src/virtualenv/activation/via_template.py
-index facd705..f588d8c 100644
+index 239318c..fa15f0a 100644
 --- a/src/virtualenv/activation/via_template.py
 +++ b/src/virtualenv/activation/via_template.py
 @@ -6,14 +6,7 @@ from abc import ABCMeta, abstractmethod
@@ -160,7 +160,7 @@ index e69de29..7e40c92 100644
 +    Path(__path__[0])
 +)
 diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
-index 12d7424..c7212f5 100644
+index 06f9d39..19c92ad 100644
 --- a/src/virtualenv/create/creator.py
 +++ b/src/virtualenv/create/creator.py
 @@ -10,15 +10,17 @@ from ast import literal_eval
@@ -188,7 +188,7 @@ similarity index 100%
 rename from src/virtualenv/create/via_global_ref/_virtualenv.py
 rename to src/virtualenv/create/via_global_ref/_virtualenv.py.template
 diff --git a/src/virtualenv/create/via_global_ref/api.py b/src/virtualenv/create/via_global_ref/api.py
-index 79d707c..0c09561 100644
+index 0d36265..3cfa787 100644
 --- a/src/virtualenv/create/via_global_ref/api.py
 +++ b/src/virtualenv/create/via_global_ref/api.py
 @@ -3,7 +3,7 @@ from __future__ import annotations
@@ -198,12 +198,12 @@ index 79d707c..0c09561 100644
 -from pathlib import Path
 +from importlib.resources import read_text
  
+ from virtualenv.create.creator import Creator, CreatorMeta
  from virtualenv.info import fs_supports_symlink
- 
 @@ -96,9 +96,9 @@ class ViaGlobalRefApi(Creator, metaclass=ABCMeta):
  
      def env_patch_text(self):
-         """Patch the distutils package to not be derailed by its configuration files"""
+         """Patch the distutils package to not be derailed by its configuration files."""
 -        with self.app_data.ensure_extracted(Path(__file__).parent / "_virtualenv.py") as resolved_path:
 -            text = resolved_path.read_text(encoding="utf-8")
 -            return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
@@ -212,7 +212,7 @@ index 79d707c..0c09561 100644
 +        return text.replace('"__SCRIPT_DIR__"', repr(os.path.relpath(str(self.script_dir), str(self.purelib))))
  
      def _args(self):
-         return super()._args() + [("global", self.enable_system_site_package)]
+         return [*super()._args(), ("global", self.enable_system_site_package)]
 diff --git a/src/virtualenv/discovery/__init__.py b/src/virtualenv/discovery/__init__.py
 index e69de29..84bc7a4 100644
 --- a/src/virtualenv/discovery/__init__.py
@@ -227,10 +227,10 @@ index e69de29..84bc7a4 100644
 +    Path(__path__[0])
 +)
 diff --git a/src/virtualenv/discovery/builtin.py b/src/virtualenv/discovery/builtin.py
-index 58a912d..65ac5c7 100644
+index 92d96a9..1924a77 100644
 --- a/src/virtualenv/discovery/builtin.py
 +++ b/src/virtualenv/discovery/builtin.py
-@@ -93,8 +93,8 @@ def propose_interpreters(spec, try_first_with, app_data, env=None):
+@@ -94,8 +94,8 @@ def propose_interpreters(spec, try_first_with, app_data, env=None):  # noqa: C90
          if spec.is_abs:
              return
      else:
@@ -242,7 +242,7 @@ index 58a912d..65ac5c7 100644
          # 3. otherwise fallback to platform default logic
          if IS_WIN:
 diff --git a/src/virtualenv/discovery/cached_py_info.py b/src/virtualenv/discovery/cached_py_info.py
-index e8cc34c..457d5ad 100644
+index 19e938f..b8c3270 100644
 --- a/src/virtualenv/discovery/cached_py_info.py
 +++ b/src/virtualenv/discovery/cached_py_info.py
 @@ -21,6 +21,8 @@ from virtualenv.app_data import AppDataDisabled
@@ -254,7 +254,7 @@ index e8cc34c..457d5ad 100644
  _CACHE = OrderedDict()
  _CACHE[Path(sys.executable)] = PythonInfo()
  
-@@ -91,7 +93,7 @@ def gen_cookie():
+@@ -92,7 +94,7 @@ def gen_cookie():
  
  
  def _run_subprocess(cls, exe, app_data, env):
@@ -264,7 +264,7 @@ index e8cc34c..457d5ad 100644
      # generated by something else. The right way to deal with it is to create an anonymous pipe and pass its descriptor
      # to the child and output to it. But AFAIK all of them are either not cross-platform or too big to implement and are
 diff --git a/src/virtualenv/info.py b/src/virtualenv/info.py
-index 1562ff2..64eb9be 100644
+index e097776..df3d2c0 100644
 --- a/src/virtualenv/info.py
 +++ b/src/virtualenv/info.py
 @@ -6,13 +6,15 @@ import platform
@@ -286,10 +286,10 @@ index 1562ff2..64eb9be 100644
  _CAN_SYMLINK = _FS_CASE_SENSITIVE = _CFG_DIR = _DATA_DIR = None
  
 diff --git a/src/virtualenv/run/__init__.py b/src/virtualenv/run/__init__.py
-index ea2a40c..57d7f7c 100644
+index ed0d6d0..ee8c2c0 100644
 --- a/src/virtualenv/run/__init__.py
 +++ b/src/virtualenv/run/__init__.py
-@@ -130,7 +130,7 @@ def add_version_flag(parser):
+@@ -138,7 +138,7 @@ def add_version_flag(parser):
      parser.add_argument(
          "--version",
          action="version",
@@ -299,7 +299,7 @@ index ea2a40c..57d7f7c 100644
      )
  
 diff --git a/src/virtualenv/run/plugin/activators.py b/src/virtualenv/run/plugin/activators.py
-index 0d4fd8f..0f6aad1 100644
+index a0e8669..64c3516 100644
 --- a/src/virtualenv/run/plugin/activators.py
 +++ b/src/virtualenv/run/plugin/activators.py
 @@ -2,11 +2,30 @@ from __future__ import annotations
@@ -330,11 +330,11 @@ index 0d4fd8f..0f6aad1 100644
 +        ]
 +    }
 +
-     def __init__(self, interpreter, parser):
+     def __init__(self, interpreter, parser) -> None:
          self.default = None
          possible = OrderedDict(
 diff --git a/src/virtualenv/run/plugin/base.py b/src/virtualenv/run/plugin/base.py
-index ddb2369..b757fa5 100644
+index 71ce5c4..940fcbd 100644
 --- a/src/virtualenv/run/plugin/base.py
 +++ b/src/virtualenv/run/plugin/base.py
 @@ -1,16 +1,7 @@
@@ -355,21 +355,19 @@ index ddb2369..b757fa5 100644
  
  
  class PluginLoader:
-@@ -19,16 +10,13 @@ class PluginLoader:
+@@ -19,15 +10,13 @@ class PluginLoader:
  
      @classmethod
      def entry_points_for(cls, key):
 -        if sys.version_info >= (3, 10) or importlib_metadata_version >= (3, 6):
 -            return OrderedDict((e.name, e.load()) for e in cls.entry_points().select(group=key))
--        else:
--            return OrderedDict((e.name, e.load()) for e in cls.entry_points().get(key, {}))
-+        return OrderedDict((e.name, e.load()) for e in cls.entry_points().get(key, {}))
+         return OrderedDict((e.name, e.load()) for e in cls.entry_points().get(key, {}))
  
 -    @staticmethod
 -    def entry_points():
--        if PluginLoader._ENTRY_POINTS is None:
--            PluginLoader._ENTRY_POINTS = entry_points()
--        return PluginLoader._ENTRY_POINTS
+-        if PluginLoader._ENTRY_POINTS is None:  # noqa: SLF001
+-            PluginLoader._ENTRY_POINTS = entry_points()  # noqa: SLF001
+-        return PluginLoader._ENTRY_POINTS  # noqa: SLF001
 +    @classmethod
 +    def entry_points(cls):
 +        if cls._ENTRY_POINTS is None:
@@ -379,7 +377,7 @@ index ddb2369..b757fa5 100644
  
  class ComponentBuilder(PluginLoader):
 diff --git a/src/virtualenv/run/plugin/creators.py b/src/virtualenv/run/plugin/creators.py
-index fd47db2..9e9174c 100644
+index e5f8d68..b0382d7 100644
 --- a/src/virtualenv/run/plugin/creators.py
 +++ b/src/virtualenv/run/plugin/creators.py
 @@ -1,6 +1,7 @@
@@ -411,11 +409,11 @@ index fd47db2..9e9174c 100644
 +        ]
 +    }
 +
-     def __init__(self, interpreter, parser):
+     def __init__(self, interpreter, parser) -> None:
          creators, self.key_to_meta, self.describe, self.builtin_key = self.for_interpreter(interpreter)
          super().__init__(interpreter, parser, "creator", creators)
 diff --git a/src/virtualenv/run/plugin/discovery.py b/src/virtualenv/run/plugin/discovery.py
-index caabc95..93724b6 100644
+index c9e4564..f67974f 100644
 --- a/src/virtualenv/run/plugin/discovery.py
 +++ b/src/virtualenv/run/plugin/discovery.py
 @@ -1,10 +1,23 @@
@@ -427,7 +425,7 @@ index caabc95..93724b6 100644
  
  
  class Discovery(PluginLoader):
-     """Discovery plugins"""
+     """Discovery plugins."""
 +    _ENTRY_POINTS = {
 +        "virtualenv.discovery": [
 +            EntryPoint(
@@ -443,7 +441,7 @@ index caabc95..93724b6 100644
  
  def get_discover(parser, args):
 diff --git a/src/virtualenv/run/plugin/seeders.py b/src/virtualenv/run/plugin/seeders.py
-index f1cd605..e6dce97 100644
+index b1da34c..feea879 100644
 --- a/src/virtualenv/run/plugin/seeders.py
 +++ b/src/virtualenv/run/plugin/seeders.py
 @@ -1,9 +1,24 @@
@@ -468,11 +466,11 @@ index f1cd605..e6dce97 100644
 +        ]
 +    }
 +
-     def __init__(self, interpreter, parser):
+     def __init__(self, interpreter, parser) -> None:
          possible = self.options("virtualenv.seed")
          super().__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index ff3f412..efcb534 100644
+index 0d87e4b..ed36cc9 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -2,9 +2,14 @@ from __future__ import annotations
@@ -490,14 +488,14 @@ index ff3f412..efcb534 100644
 +
  BUNDLE_SUPPORT = {
      "3.7": {
-         "pip": "pip-23.1.2-py3-none-any.whl",
+         "pip": "pip-23.2.1-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
-index 0000000..a268928
+index 0000000..fc3f798
 --- /dev/null
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
-+__version__ = "20.19.0"
++__version__ = "20.24.3"
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index b6b58df..17d040a 100644
 --- a/tests/unit/create/test_interpreters.py
@@ -509,7 +507,7 @@ index b6b58df..17d040a 100644
 -    assert repr(context.value) == repr(RuntimeError(f"No virtualenv implementation for {PythonInfo.current_system()}"))
 +    assert repr(context.value).startswith('RuntimeError("No virtualenv implementation for')
 diff --git a/tests/unit/discovery/py_info/test_py_info.py b/tests/unit/discovery/py_info/test_py_info.py
-index f839e22..b146f64 100644
+index 89c98df..6fe53c3 100644
 --- a/tests/unit/discovery/py_info/test_py_info.py
 +++ b/tests/unit/discovery/py_info/test_py_info.py
 @@ -38,20 +38,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):

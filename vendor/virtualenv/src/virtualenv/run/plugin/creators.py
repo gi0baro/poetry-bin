@@ -29,7 +29,7 @@ class CreatorSelector(ComponentBuilder):
         ]
     }
 
-    def __init__(self, interpreter, parser):
+    def __init__(self, interpreter, parser) -> None:
         creators, self.key_to_meta, self.describe, self.builtin_key = self.for_interpreter(interpreter)
         super().__init__(interpreter, parser, "creator", creators)
 
@@ -39,7 +39,8 @@ class CreatorSelector(ComponentBuilder):
         errors = defaultdict(list)
         for key, creator_class in cls.options("virtualenv.create").items():
             if key == "builtin":
-                raise RuntimeError("builtin creator is a reserved name")
+                msg = "builtin creator is a reserved name"
+                raise RuntimeError(msg)
             meta = creator_class.can_create(interpreter)
             if meta:
                 if meta.error:
@@ -57,8 +58,8 @@ class CreatorSelector(ComponentBuilder):
             if errors:
                 rows = [f"{k} for creators {', '.join(i.__name__ for i in v)}" for k, v in errors.items()]
                 raise RuntimeError("\n".join(rows))
-            else:
-                raise RuntimeError(f"No virtualenv implementation for {interpreter}")
+            msg = f"No virtualenv implementation for {interpreter}"
+            raise RuntimeError(msg)
         return CreatorInfo(
             key_to_class=key_to_class,
             key_to_meta=key_to_meta,

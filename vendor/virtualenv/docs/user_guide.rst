@@ -1,6 +1,26 @@
 User Guide
 ==========
 
+Quick start
+-----------
+Create the environment (creates a folder in your current directory)
+    .. code-block:: console
+
+        virtualenv env_name
+In Linux or Mac, activate the new python environment
+    .. code-block:: console
+
+        source env_name/bin/activate
+Or in Windows
+    .. code-block:: console
+
+        .\env_name\Scripts\activate
+Confirm that the env is successfully selected
+    .. code-block:: console
+
+        which python3
+
+
 Introduction
 ------------
 
@@ -222,8 +242,10 @@ Note that you don't have to activate a virtual environment to use it. You can in
 executables, rather than relying on your shell to resolve them to your virtual environment.
 
 Activator scripts also modify your shell prompt to indicate which environment is currently active, by prepending the
-environment name in brackets, like ``(venv)``. You can disable this behaviour by setting the environment variable
-``VIRTUAL_ENV_DISABLE_PROMPT`` to any value.
+environment name (or the name specified by ``--prompt`` when initially creating the environment) in brackets, like
+``(venv)``. You can disable this behaviour by setting the environment variable ``VIRTUAL_ENV_DISABLE_PROMPT`` to any
+value. You can also get the environment name via the environment variable ``VIRTUAL_ENV_PROMPT`` if you want to
+customize your prompt, for example.
 
 The scripts also provision a ``deactivate`` command that will allow you to undo the operation:
 

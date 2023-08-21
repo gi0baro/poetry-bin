@@ -6,7 +6,7 @@ from .base import PluginLoader
 
 
 class Discovery(PluginLoader):
-    """Discovery plugins"""
+    """Discovery plugins."""
     _ENTRY_POINTS = {
         "virtualenv.discovery": [
             EntryPoint(
@@ -40,8 +40,7 @@ def get_discover(parser, args):
     discover_class = discover_types[options.discovery]
     discover_class.add_parser_arguments(discovery_parser)
     options, _ = parser.parse_known_args(args, namespace=options)
-    discover = discover_class(options)
-    return discover
+    return discover_class(options)
 
 
 def _get_default_discovery(discover_types):

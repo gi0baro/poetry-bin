@@ -5,6 +5,69 @@ Release History
 
 .. towncrier release notes start
 
+v20.24.3 (2023-08-11)
+---------------------
+
+Bugfixes - 20.24.3
+~~~~~~~~~~~~~~~~~~
+- Fixed ResourceWarning on exit caused by periodic update subprocess (:issue:`2472`)
+- Upgrade embedded wheels:
+
+  * wheel to ``0.41.1`` from ``0.41.0`` (:issue:`2622`)
+
+Misc - 20.24.3
+~~~~~~~~~~~~~~
+- :issue:`2610`
+
+
+v20.24.2 (2023-07-24)
+---------------------
+
+Bugfixes - 20.24.2
+~~~~~~~~~~~~~~~~~~
+- Upgrade embedded wheels:
+
+  * pip to ``23.2.1`` from ``23.2``
+  * wheel to ``0.41.0`` from ``0.40.0`` (:issue:`2614`)
+
+
+v20.24.1 (2023-07-19)
+---------------------
+
+Bugfixes - 20.24.1
+~~~~~~~~~~~~~~~~~~
+- Upgrade embedded wheels:
+
+  * pip to ``23.2`` from ``23.1.2`` - by :user:`arielkirkwood` (:issue:`2611`)
+
+
+v20.24.0 (2023-07-14)
+---------------------
+
+Features - 20.24.0
+~~~~~~~~~~~~~~~~~~
+- Export the prompt prefix as ``VIRTUAL_ENV_PROMPT`` when activating a virtual
+  environment - by :user:`jimporter`. (:issue:`2194`)
+
+Bugfixes - 20.24.0
+~~~~~~~~~~~~~~~~~~
+- Fix test suite - by :user:`gaborbernat`. (:issue:`2592`)
+- Upgrade embedded wheels:
+
+  * setuptools to ``68.0.0`` from ``67.8.0`` (:issue:`2607`)
+
+
+v20.23.1 (2023-06-16)
+---------------------
+
+Bugfixes - 20.23.1
+~~~~~~~~~~~~~~~~~~
+- update and simplify nushell activation script, fixes an issue on Windows resulting in consecutive command not found - by :user:`melMass`. (:issue:`2572`)
+- Upgrade embedded wheels:
+
+  * setuptools to ``67.8.0`` from ``67.7.2`` (:issue:`2588`)
+
+
 v20.23.0 (2023-04-27)
 ---------------------
 
