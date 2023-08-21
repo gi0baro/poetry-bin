@@ -29,3 +29,28 @@ index 90401ad..361f113 100644
              except IOError as e:
                  err = e
                  continue
+diff --git a/pyproject.toml b/pyproject.toml
+index d49a9f6..a2c1615 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -19,7 +19,7 @@ classifiers = [
+ ]
+ requires-python = ">=3.6"
+ dependencies = []
+-dynamic = ["version"]
++version = "1.1.7"
+ 
+ [project.readme]
+ text = """
+@@ -68,10 +68,7 @@ packages = [
+ include-package-data = true
+ 
+ [tool.setuptools.package-data]
+-lark = ["py.typed"]
+-
+-[tool.setuptools.dynamic]
+-version = {attr = "lark.__version__"}
++lark = ["grammars/*.lark", "py.typed"]
+ 
+ [tool.mypy]
+ files = "lark"
