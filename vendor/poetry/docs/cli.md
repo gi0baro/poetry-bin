@@ -698,8 +698,17 @@ The table below illustrates the effect of these rules with concrete examples.
 | prerelease | 1.0.3a0 | 1.0.3a1 |
 | prerelease | 1.0.3b0 | 1.0.3b1 |
 
+The option `--next-phase` allows the increment of prerelease phase versions.
+
+| rule                    | before   | after    |
+|-------------------------|----------|----------|
+| prerelease --next-phase | 1.0.3a0  | 1.0.3b0  |
+| prerelease --next-phase | 1.0.3b0  | 1.0.3rc0 |
+| prerelease --next-phase | 1.0.3rc0 | 1.0.3    |
+
 ### Options
 
+* `--next-phase`: Increment the phase of the current version.
 * `--short (-s)`: Output the version number only.
 * `--dry-run`: Do not update pyproject.toml file.
 
@@ -711,9 +720,17 @@ This command exports the lock file to other formats.
 poetry export -f requirements.txt --output requirements.txt
 ```
 
+{{% warning %}}
+This command is provided by the [Export Poetry Plugin](https://github.com/python-poetry/poetry-plugin-export).
+In a future version of Poetry this plugin will not be installed by default anymore.
+In order to avoid a breaking change and make your automation forward-compatible,
+please install poetry-plugin-export explicitly.
+See [Using plugins]({{< relref "plugins#using-plugins" >}}) for details on how to install a plugin.
+{{% /warning %}}
+
 {{% note %}}
-This command is provided by the [Export Poetry Plugin](https://github.com/python-poetry/poetry-plugin-export)
-and is also available as a pre-commit hook. See [pre-commit hooks]({{< relref "pre-commit-hooks#poetry-export" >}}) for more information.
+This command is also available as a pre-commit hook.
+See [pre-commit hooks]({{< relref "pre-commit-hooks#poetry-export" >}}) for more information.
 {{% /note %}}
 
 {{% note %}}
@@ -879,6 +896,13 @@ The `self` namespace regroups sub commands to manage the Poetry installation its
 Use of these commands will create the required `pyproject.toml` and `poetry.lock` files in your
 [configuration directory]({{< relref "configuration" >}}).
 {{% /note %}}
+
+{{% warning %}}
+Especially on Windows, `self` commands that update or remove packages may be problematic
+so that other methods for installing plugins and updating Poetry are recommended.
+See [Using plugins]({{< relref "plugins#using-plugins" >}}) and
+[Installing Poetry]({{< relref "docs#installation" >}}) for more information.
+{{% /warning %}}
 
 ### self add
 

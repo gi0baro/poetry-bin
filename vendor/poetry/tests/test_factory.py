@@ -9,7 +9,9 @@ import pytest
 from cleo.io.buffered_io import BufferedIO
 from deepdiff import DeepDiff
 from packaging.utils import canonicalize_name
+from poetry.core.constraints.version import Version
 from poetry.core.constraints.version import parse_constraint
+from poetry.core.packages.package import Package
 from poetry.core.packages.vcs_dependency import VCSDependency
 
 from poetry.exceptions import PoetryException
@@ -131,15 +133,18 @@ def test_create_poetry(fixture_dir: FixtureDirGetter) -> None:
 
     assert package.all_classifiers == [
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
+        *(
+            f"Programming Language :: Python :: {version}"
+            for version in sorted(
+                Package.AVAILABLE_PYTHONS,
+                key=lambda x: tuple(map(int, x.split("."))),
+            )
+            if package.python_constraint.allows_any(
+                parse_constraint(version + ".*")
+                if len(version) == 1
+                else Version.parse(version)
+            )
+        ),
         "Topic :: Software Development :: Build Tools",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ]
@@ -519,12 +524,20 @@ def test_create_poetry_fails_on_invalid_configuration(
     with pytest.raises(RuntimeError) as e:
         Factory().create_poetry(fixture_dir("invalid_pyproject") / "pyproject.toml")
 
-    expected = """\
+    jsonschema_error = "'description' is a required property"
+    fastjsonschema_error = "data must contain ['description'] properties"
+
+    expected_template = """\
 The Poetry configuration is invalid:
-  - 'description' is a required property
+  - {schema_error}
   - Project name (invalid) is same as one of its dependencies
 """
-    assert str(e.value) == expected
+    expected = {
+        expected_template.format(schema_error=schema_error)
+        for schema_error in (jsonschema_error, fastjsonschema_error)
+    }
+
+    assert str(e.value) in expected
 
 
 def test_create_poetry_with_local_config(fixture_dir: FixtureDirGetter) -> None:

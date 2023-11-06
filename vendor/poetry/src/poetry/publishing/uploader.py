@@ -31,17 +31,20 @@ if TYPE_CHECKING:
 class UploadError(Exception):
     def __init__(self, error: ConnectionError | HTTPError | str) -> None:
         if isinstance(error, HTTPError):
-            message = (
-                f"HTTP Error {error.response.status_code}: {error.response.reason} |"
-                f" {error.response.content!r}"
-            )
+            if error.response is None:
+                message = "HTTP Error connecting to the repository"
+            else:
+                message = (
+                    f"HTTP Error {error.response.status_code}: "
+                    f"{error.response.reason} | {error.response.content!r}"
+                )
         elif isinstance(error, ConnectionError):
             message = (
                 "Connection Error: We were unable to connect to the repository, "
                 "ensure the url is correct and can be reached."
             )
         else:
-            message = str(error)
+            message = error
         super().__init__(message)
 
 
@@ -74,7 +77,7 @@ class Uploader:
         self._password = password
 
     def make_session(self) -> requests.Session:
-        session = requests.session()
+        session = requests.Session()
         auth = self.get_auth()
         if auth is not None:
             session.auth = auth
@@ -103,10 +106,8 @@ class Uploader:
         if client_cert:
             session.cert = str(client_cert)
 
-        try:
+        with session:
             self._upload(session, url, dry_run, skip_existing)
-        finally:
-            session.close()
 
     def post_data(self, file: Path) -> dict[str, Any]:
         meta = Metadata.from_package(self._package)
@@ -321,7 +322,7 @@ class Uploader:
         raise ValueError("Unknown distribution format " + "".join(exts))
 
     def _is_file_exists_error(self, response: requests.Response) -> bool:
-        # based on https://github.com/pypa/twine/blob/a6dd69c79f7b5abfb79022092a5d3776a499e31b/twine/commands/upload.py#L32  # noqa: E501
+        # based on https://github.com/pypa/twine/blob/a6dd69c79f7b5abfb79022092a5d3776a499e31b/twine/commands/upload.py#L32
         status = response.status_code
         reason = response.reason.lower()
         text = response.text.lower()

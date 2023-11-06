@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import json
 
 from pathlib import Path
@@ -45,8 +44,6 @@ if TYPE_CHECKING:
     from poetry.utils.env import Env
     from tests.conftest import Config
     from tests.types import FixtureDirGetter
-
-RESERVED_PACKAGES = ("pip", "setuptools", "wheel")
 
 
 class Executor(BaseExecutor):
@@ -485,7 +482,7 @@ def test_run_install_does_not_remove_locked_packages_if_installed_but_not_requir
     assert installer.executor.removals_count == 0
 
 
-def test_run_install_removes_locked_packages_if_installed_and_synchronization_is_required(  # noqa: E501
+def test_run_install_removes_locked_packages_if_installed_and_synchronization_is_required(
     installer: Installer,
     locker: Locker,
     repo: Repository,
@@ -628,12 +625,7 @@ def test_run_install_removes_no_longer_locked_packages_if_installed(
 
 @pytest.mark.parametrize(
     "managed_reserved_package_names",
-    itertools.chain(
-        [()],
-        itertools.permutations(RESERVED_PACKAGES, 1),
-        itertools.permutations(RESERVED_PACKAGES, 2),
-        [RESERVED_PACKAGES],
-    ),
+    [(), ("pip",)],
 )
 def test_run_install_with_synchronization(
     managed_reserved_package_names: tuple[str, ...],
@@ -647,16 +639,12 @@ def test_run_install_with_synchronization(
     package_b = get_package("b", "1.1")
     package_c = get_package("c", "1.2")
     package_pip = get_package("pip", "20.0.0")
-    package_setuptools = get_package("setuptools", "20.0.0")
-    package_wheel = get_package("wheel", "20.0.0")
 
     all_packages = [
         package_a,
         package_b,
         package_c,
         package_pip,
-        package_setuptools,
-        package_wheel,
     ]
 
     managed_reserved_packages = [
@@ -1152,6 +1140,7 @@ def test_run_installs_extras_with_deps_if_requested_locked(
     assert installer.executor.installations_count == 4  # A, B, C, D
 
 
+@pytest.mark.network
 @pytest.mark.skip
 def test_installer_with_pypi_repository(
     package: ProjectPackage,
@@ -1852,7 +1841,7 @@ def test_run_install_duplicate_dependencies_different_constraints_with_lock_upda
 @pytest.mark.skip(
     "This is not working at the moment due to limitations in the resolver"
 )
-def test_installer_test_solver_finds_compatible_package_for_dependency_python_not_fully_compatible_with_package_python(  # noqa: E501
+def test_installer_test_solver_finds_compatible_package_for_dependency_python_not_fully_compatible_with_package_python(
     installer: Installer,
     locker: Locker,
     repo: Repository,
@@ -1881,7 +1870,7 @@ def test_installer_test_solver_finds_compatible_package_for_dependency_python_no
     assert installer.executor.installations_count == 1
 
 
-def test_installer_required_extras_should_not_be_removed_when_updating_single_dependency(  # noqa: E501
+def test_installer_required_extras_should_not_be_removed_when_updating_single_dependency(
     installer: Installer,
     locker: Locker,
     repo: Repository,
@@ -1948,7 +1937,7 @@ def test_installer_required_extras_should_not_be_removed_when_updating_single_de
     assert installer.executor.removals_count == 0
 
 
-def test_installer_required_extras_should_not_be_removed_when_updating_single_dependency_pypi_repository(  # noqa: E501
+def test_installer_required_extras_should_not_be_removed_when_updating_single_dependency_pypi_repository(
     locker: Locker,
     repo: Repository,
     package: ProjectPackage,

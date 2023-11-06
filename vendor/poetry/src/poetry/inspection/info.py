@@ -5,8 +5,6 @@ import functools
 import glob
 import logging
 import os
-import tarfile
-import zipfile
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -25,13 +23,12 @@ from poetry.core.version.requirements import InvalidRequirement
 from poetry.pyproject.toml import PyProjectTOML
 from poetry.utils.env import EnvCommandError
 from poetry.utils.env import ephemeral_environment
+from poetry.utils.helpers import extractall
 from poetry.utils.setup_reader import SetupReader
 
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from collections.abc import Iterator
-    from contextlib import AbstractContextManager
 
     from poetry.core.packages.project_package import ProjectPackage
 
@@ -46,11 +43,10 @@ import pyproject_hooks
 source = '{source}'
 dest = '{dest}'
 
-with build.env.IsolatedEnvBuilder() as env:
+with build.env.DefaultIsolatedEnv() as env:
     builder = build.ProjectBuilder(
-        srcdir=source,
-        scripts_dir=env.scripts_dir,
-        python_executable=env.executable,
+        source_dir=source,
+        python_executable=env.python_executable,
         runner=pyproject_hooks.quiet_subprocess_runner,
     )
     env.install(builder.build_system_requires)
@@ -58,7 +54,7 @@ with build.env.IsolatedEnvBuilder() as env:
     builder.metadata_path(dest)
 """
 
-PEP517_META_BUILD_DEPS = ["build==0.10.0", "pyproject_hooks==1.0.0"]
+PEP517_META_BUILD_DEPS = ["build==1.0.3", "pyproject_hooks==1.0.0"]
 
 
 class PackageInfoError(ValueError):
@@ -292,26 +288,18 @@ class PackageInfo:
         # Still not dependencies found
         # So, we unpack and introspect
         suffix = path.suffix
+        zip = suffix == ".zip"
 
-        context: Callable[
-            [str], AbstractContextManager[zipfile.ZipFile | tarfile.TarFile]
-        ]
-        if suffix == ".zip":
-            context = zipfile.ZipFile
-        else:
-            if suffix == ".bz2":
-                suffixes = path.suffixes
-                if len(suffixes) > 1 and suffixes[-2] == ".tar":
-                    suffix = ".tar.bz2"
-            else:
-                suffix = ".tar.gz"
-
-            context = tarfile.open
+        if suffix == ".bz2":
+            suffixes = path.suffixes
+            if len(suffixes) > 1 and suffixes[-2] == ".tar":
+                suffix = ".tar.bz2"
+        elif not zip:
+            suffix = ".tar.gz"
 
         with temporary_directory() as tmp_str:
             tmp = Path(tmp_str)
-            with context(path.as_posix()) as archive:
-                archive.extractall(tmp.as_posix())
+            extractall(source=path, dest=tmp, zip=zip)
 
             # a little bit of guess work to determine the directory we care about
             elements = list(tmp.glob("*"))
@@ -580,7 +568,7 @@ def get_pep517_metadata(path: Path) -> PackageInfo:
             return info
 
     with ephemeral_environment(
-        flags={"no-pip": False, "no-setuptools": False, "no-wheel": False}
+        flags={"no-pip": False, "setuptools": "bundle", "wheel": "bundle"}
     ) as venv:
         # TODO: cache PEP 517 build environment corresponding to each project venv
         dest_dir = venv.path.parent / "dist"
@@ -598,11 +586,7 @@ def get_pep517_metadata(path: Path) -> PackageInfo:
                 "--no-input",
                 *PEP517_META_BUILD_DEPS,
             )
-            venv.run(
-                "python",
-                "-",
-                input_=pep517_meta_build_script,
-            )
+            venv.run_python_script(pep517_meta_build_script)
             info = PackageInfo.from_metadata(dest_dir)
         except EnvCommandError as e:
             # something went wrong while attempting pep517 metadata build

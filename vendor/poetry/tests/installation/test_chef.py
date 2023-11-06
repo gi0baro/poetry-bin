@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
 
 from pathlib import Path
@@ -13,12 +14,19 @@ from poetry.core.packages.utils.link import Link
 
 from poetry.factory import Factory
 from poetry.installation.chef import Chef
+from poetry.installation.chef import ChefInstallError
+from poetry.installation.chef import IsolatedEnv
+from poetry.puzzle.exceptions import SolverProblemError
+from poetry.puzzle.provider import IncompatibleConstraintsError
 from poetry.repositories import RepositoryPool
 from poetry.utils.env import EnvManager
+from poetry.utils.env import ephemeral_environment
 from tests.repositories.test_pypi_repository import MockRepository
 
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from pytest_mock import MockerFixture
 
     from poetry.utils.cache import ArtifactCache
@@ -40,6 +48,42 @@ def setup(mocker: MockerFixture, pool: RepositoryPool) -> None:
     mocker.patch.object(Factory, "create_pool", return_value=pool)
 
 
+def test_isolated_env_install_success(pool: RepositoryPool) -> None:
+    with ephemeral_environment(Path(sys.executable)) as venv:
+        env = IsolatedEnv(venv, pool)
+        assert "poetry-core" not in venv.run("pip", "freeze")
+        env.install({"poetry-core"})
+        assert "poetry-core" in venv.run("pip", "freeze")
+
+
+@pytest.mark.parametrize(
+    ("requirements", "exception"),
+    [
+        ({"poetry-core==1.5.0", "poetry-core==1.6.0"}, IncompatibleConstraintsError),
+        ({"black==19.10b0", "attrs==17.4.0"}, SolverProblemError),
+    ],
+)
+def test_isolated_env_install_error(
+    requirements: Collection[str], exception: type[Exception], pool: RepositoryPool
+) -> None:
+    with ephemeral_environment(Path(sys.executable)) as venv:
+        env = IsolatedEnv(venv, pool)
+        with pytest.raises(exception):
+            env.install(requirements)
+
+
+def test_isolated_env_install_failure(
+    pool: RepositoryPool, mocker: MockerFixture
+) -> None:
+    mocker.patch("poetry.installation.installer.Installer.run", return_value=1)
+    with ephemeral_environment(Path(sys.executable)) as venv:
+        env = IsolatedEnv(venv, pool)
+        with pytest.raises(ChefInstallError) as e:
+            env.install({"a", "b>1"})
+        assert e.value.requirements == {"a", "b>1"}
+
+
+@pytest.mark.network
 def test_prepare_sdist(
     config: Config,
     config_cache_dir: Path,
@@ -58,6 +102,7 @@ def test_prepare_sdist(
     assert wheel.name == "demo-0.1.0-py3-none-any.whl"
 
 
+@pytest.mark.network
 def test_prepare_directory(
     config: Config,
     config_cache_dir: Path,
@@ -78,6 +123,7 @@ def test_prepare_directory(
     os.unlink(wheel)
 
 
+@pytest.mark.network
 def test_prepare_directory_with_extensions(
     config: Config,
     config_cache_dir: Path,
@@ -97,6 +143,7 @@ def test_prepare_directory_with_extensions(
     os.unlink(wheel)
 
 
+@pytest.mark.network
 def test_prepare_directory_editable(
     config: Config,
     config_cache_dir: Path,

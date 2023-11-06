@@ -67,6 +67,7 @@ virtualenvs.options.system-site-packages = false
 virtualenvs.path = {venv_path}  # {config_cache_dir / 'virtualenvs'}
 virtualenvs.prefer-active-python = false
 virtualenvs.prompt = "{{project_name}}-py{{python_version}}"
+warnings.export = true
 """
 
     assert tester.io.fetch_output() == expected
@@ -96,6 +97,7 @@ virtualenvs.options.system-site-packages = false
 virtualenvs.path = {venv_path}  # {config_cache_dir / 'virtualenvs'}
 virtualenvs.prefer-active-python = false
 virtualenvs.prompt = "{{project_name}}-py{{python_version}}"
+warnings.export = true
 """
 
     assert config.set_config_source.call_count == 0  # type: ignore[attr-defined]
@@ -146,6 +148,7 @@ virtualenvs.options.system-site-packages = false
 virtualenvs.path = {venv_path}  # {config_cache_dir / 'virtualenvs'}
 virtualenvs.prefer-active-python = false
 virtualenvs.prompt = "{{project_name}}-py{{python_version}}"
+warnings.export = true
 """
     assert config.set_config_source.call_count == 0  # type: ignore[attr-defined]
     assert tester.io.fetch_output() == expected
@@ -174,6 +177,7 @@ virtualenvs.options.system-site-packages = false
 virtualenvs.path = {venv_path}  # {config_cache_dir / 'virtualenvs'}
 virtualenvs.prefer-active-python = false
 virtualenvs.prompt = "{{project_name}}-py{{python_version}}"
+warnings.export = true
 """
     assert config.set_config_source.call_count == 0  # type: ignore[attr-defined]
     assert tester.io.fetch_output() == expected
@@ -301,6 +305,7 @@ virtualenvs.options.system-site-packages = false
 virtualenvs.path = {venv_path}  # {config_cache_dir / 'virtualenvs'}
 virtualenvs.prefer-active-python = false
 virtualenvs.prompt = "{{project_name}}-py{{python_version}}"
+warnings.export = true
 """
 
     assert config.set_config_source.call_count == 1  # type: ignore[attr-defined]
@@ -338,6 +343,7 @@ virtualenvs.options.system-site-packages = false
 virtualenvs.path = {venv_path}  # {config_cache_dir / 'virtualenvs'}
 virtualenvs.prefer-active-python = false
 virtualenvs.prompt = "{{project_name}}-py{{python_version}}"
+warnings.export = true
 """
 
     assert tester.io.fetch_output() == expected
@@ -400,6 +406,15 @@ def test_set_pypi_token_unsuccessful_multiple_values(
         tester.execute("pypi-token.pypi mytoken mytoken")
 
     assert str(e.value) == "Expected only one argument (token), got 2"
+
+
+def test_set_pypi_token_no_values(
+    tester: CommandTester,
+) -> None:
+    with pytest.raises(ValueError) as e:
+        tester.execute("pypi-token.pypi")
+
+    assert str(e.value) == "Expected a value for pypi-token.pypi setting."
 
 
 def test_set_client_cert(

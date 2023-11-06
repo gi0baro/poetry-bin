@@ -1,5 +1,5 @@
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..e4adfb83 100644
+index 13fa08fc..14d9d2f5 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -19,9 +19,9 @@ index 13fa08fc..e4adfb83 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.6.0"
++__version__ = "1.7.0"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
-index 8d325efd..f4fea71f 100644
+index 3286c73f..5c189821 100644
 --- a/src/poetry/console/application.py
 +++ b/src/poetry/console/application.py
 @@ -79,13 +79,13 @@ COMMANDS = [
@@ -58,10 +58,10 @@ index 2aba4e6b..ddba654d 100644
  
      def reset_poetry(self) -> None:
 diff --git a/src/poetry/json/__init__.py b/src/poetry/json/__init__.py
-index 06ee0102..82aa62ba 100644
+index de4f1789..a3f43dc5 100644
 --- a/src/poetry/json/__init__.py
 +++ b/src/poetry/json/__init__.py
-@@ -2,24 +2,18 @@ from __future__ import annotations
+@@ -2,16 +2,12 @@ from __future__ import annotations
  
  import json
  
@@ -69,16 +69,17 @@ index 06ee0102..82aa62ba 100644
 +from importlib import resources
  from typing import Any
  
- import jsonschema
+ import fastjsonschema
  
+ from fastjsonschema.exceptions import JsonSchemaException
 -from poetry.core.json import SCHEMA_DIR as CORE_SCHEMA_DIR
 -
 -
 -SCHEMA_DIR = Path(__file__).parent / "schemas"
--
+ 
  
  class ValidationError(ValueError):
-     pass
+@@ -19,8 +15,7 @@ class ValidationError(ValueError):
  
  
  def validate_object(obj: dict[str, Any]) -> list[str]:
@@ -86,10 +87,10 @@ index 06ee0102..82aa62ba 100644
 -    schema = json.loads(schema_file.read_text(encoding="utf-8"))
 +    schema = json.loads(resources.read_text(f"{__name__}.schemas", "poetry.json"))
  
-     validator = jsonschema.Draft7Validator(schema)
-     validation_errors = sorted(validator.iter_errors(obj), key=lambda e: e.path)
-@@ -35,7 +29,7 @@ def validate_object(obj: dict[str, Any]) -> list[str]:
-         errors.append(message)
+     validate = fastjsonschema.compile(schema)
+ 
+@@ -31,7 +26,7 @@ def validate_object(obj: dict[str, Any]) -> list[str]:
+         errors = [e.message]
  
      core_schema = json.loads(
 -        (CORE_SCHEMA_DIR / "poetry-schema.json").read_text(encoding="utf-8")
@@ -128,7 +129,7 @@ index be1194c7..c0d47683 100644
  
  
 diff --git a/src/poetry/utils/env/env_manager.py b/src/poetry/utils/env/env_manager.py
-index 1fa70afa..b35f851d 100644
+index e7b0cc75..4dc686db 100644
 --- a/src/poetry/utils/env/env_manager.py
 +++ b/src/poetry/utils/env/env_manager.py
 @@ -3,7 +3,6 @@ from __future__ import annotations
@@ -278,7 +279,7 @@ index 1fa70afa..b35f851d 100644
          return VirtualEnv(venv)
  
      @classmethod
-@@ -648,7 +598,7 @@ class EnvManager:
+@@ -653,7 +603,7 @@ class EnvManager:
              "--no-download",
              "--no-periodic-update",
              "--python",
@@ -287,7 +288,7 @@ index 1fa70afa..b35f851d 100644
          ]
  
          if prompt is not None:
-@@ -662,17 +612,6 @@ class EnvManager:
+@@ -670,17 +620,6 @@ class EnvManager:
  
          cli_result = virtualenv.cli_run(args)
  
@@ -305,7 +306,7 @@ index 1fa70afa..b35f851d 100644
          return cli_result
  
      @classmethod
-@@ -710,9 +649,13 @@ class EnvManager:
+@@ -718,9 +657,13 @@ class EnvManager:
          want to retrieve Poetry's custom virtual environment
          (e.g. plugin installation or self update).
          """
@@ -322,7 +323,7 @@ index 1fa70afa..b35f851d 100644
              if prefix.joinpath("poetry_env").exists():
                  env = GenericEnv(base_prefix, child_env=env)
              else:
-@@ -748,3 +691,59 @@ class EnvManager:
+@@ -756,3 +699,59 @@ class EnvManager:
          h_str = base64.urlsafe_b64encode(h_bytes).decode()[:8]
  
          return f"{sanitized_name}-{h_str}"
@@ -1495,18 +1496,19 @@ index 24664986..4dfdcb24 100644
  GET_ENVIRONMENT_INFO = """\
  import json
 diff --git a/src/poetry/utils/env/system_env.py b/src/poetry/utils/env/system_env.py
-index 81ec7400..b816ed58 100644
+index e088e684..909b6305 100644
 --- a/src/poetry/utils/env/system_env.py
 +++ b/src/poetry/utils/env/system_env.py
-@@ -1,20 +1,17 @@
+@@ -1,21 +1,18 @@
  from __future__ import annotations
  
 -import os
 -import platform
--import sys
--import sysconfig
 +import json
 +import re
+ import site
+-import sys
+-import sysconfig
  
  from pathlib import Path
  from typing import Any
@@ -1523,7 +1525,7 @@ index 81ec7400..b816ed58 100644
  
  
  class SystemEnv(Env):
-@@ -22,68 +19,47 @@ class SystemEnv(Env):
+@@ -23,68 +20,47 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -2543,18 +2545,18 @@ index 9bbef7ff..925cbbab 100644
          output: str = orig_check_output(cmd, *_, **__)
          return output
 diff --git a/tests/installation/test_executor.py b/tests/installation/test_executor.py
-index 3a3fc357..6abcfe77 100644
+index 3b2aec4e..9341acdd 100644
 --- a/tests/installation/test_executor.py
 +++ b/tests/installation/test_executor.py
-@@ -1237,6 +1237,7 @@ Package operations: 1 install, 0 updates, 0 removals
-     assert mock_pip_install.call_args[1].get("editable") is False
- 
- 
-+@pytest.mark.skip
- @pytest.mark.parametrize("failing_method", ["build", "get_requires_for_build"])
+@@ -1252,6 +1252,7 @@ Package operations: 1 install, 0 updates, 0 removals
+     ],
+ )
  @pytest.mark.parametrize("editable", [False, True])
++@pytest.mark.skip
  def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess(
-@@ -1308,6 +1309,7 @@ PEP 517 builds. You can verify this by running '{pip_command} "{requirement}"'.
+     failing_method: str,
+     exception: Exception,
+@@ -1320,6 +1321,7 @@ PEP 517 builds. You can verify this by running '{pip_command} "{requirement}"'.
      assert output.endswith(expected_end)
  
  
@@ -2562,7 +2564,7 @@ index 3a3fc357..6abcfe77 100644
  @pytest.mark.parametrize("encoding", ["utf-8", "latin-1"])
  @pytest.mark.parametrize("stderr", [None, "Errör on stderr"])
  def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess_encoding(
-@@ -1349,6 +1351,7 @@ def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess_enc
+@@ -1361,6 +1363,7 @@ def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess_enc
      assert (stderr or stdout) in io.fetch_output()
  
  
@@ -2571,22 +2573,22 @@ index 3a3fc357..6abcfe77 100644
      config: Config,
      pool: RepositoryPool,
 diff --git a/tests/installation/test_installer.py b/tests/installation/test_installer.py
-index 0d4ec364..a695abdd 100644
+index fca6307b..65c07d87 100644
 --- a/tests/installation/test_installer.py
 +++ b/tests/installation/test_installer.py
-@@ -1152,6 +1152,7 @@ def test_run_installs_extras_with_deps_if_requested_locked(
-     assert installer.executor.installations_count == 4  # A, B, C, D
+@@ -1141,6 +1141,7 @@ def test_run_installs_extras_with_deps_if_requested_locked(
  
  
+ @pytest.mark.network
 +@pytest.mark.skip
  def test_installer_with_pypi_repository(
      package: ProjectPackage,
      locker: Locker,
 diff --git a/tests/repositories/test_installed_repository.py b/tests/repositories/test_installed_repository.py
-index b69df38b..fa3f698c 100644
+index 2dbf0141..a03b34a5 100644
 --- a/tests/repositories/test_installed_repository.py
 +++ b/tests/repositories/test_installed_repository.py
-@@ -127,11 +127,6 @@ def test_load_successful_with_invalid_distribution(
+@@ -139,11 +139,6 @@ def test_load_successful_with_invalid_distribution(
      assert str(invalid_dist_info) in message
  
  
@@ -2599,10 +2601,10 @@ index b69df38b..fa3f698c 100644
      cleo = get_package_from_repository("cleo", repository)
      assert cleo is not None
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index 269287de..f44f23af 100644
+index de2f90d3..08d1ba3e 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
-@@ -58,6 +58,11 @@ print("nullpackage loaded"),
+@@ -60,6 +60,11 @@ print("nullpackage loaded"),
  """
  
  
@@ -2614,7 +2616,7 @@ index 269287de..f44f23af 100644
  class MockVirtualEnv(VirtualEnv):
      def __init__(
          self,
-@@ -99,7 +104,7 @@ def test_virtualenvs_with_spaces_in_their_path_work_as_expected(
+@@ -101,7 +106,7 @@ def test_virtualenvs_with_spaces_in_their_path_work_as_expected(
      assert venv.run("python", "-V").startswith("Python")
  
  
@@ -2623,7 +2625,7 @@ index 269287de..f44f23af 100644
  def test_venv_backup_exclusion(tmp_path: Path, manager: EnvManager) -> None:
      import xattr
  
-@@ -254,6 +259,7 @@ def test_activate_in_project_venv_no_explicit_config(
+@@ -246,6 +251,7 @@ def test_activate_in_project_venv_no_explicit_config(
      assert not envs_file.exists()
  
  
@@ -2631,16 +2633,7 @@ index 269287de..f44f23af 100644
  def test_activate_activates_non_existing_virtualenv_no_envs_file(
      tmp_path: Path,
      manager: EnvManager,
-@@ -275,7 +281,7 @@ def test_activate_activates_non_existing_virtualenv_no_envs_file(
-     )
-     mocker.patch(
-         "subprocess.Popen.communicate",
--        side_effect=[("/prefix", None), ("/prefix", None)],
-+        side_effect=[("/prefix", None), ("/prefix", None), ("/prefix", None)],
-     )
-     m = mocker.patch("poetry.utils.env.EnvManager.build_venv", side_effect=build_venv)
- 
-@@ -590,7 +596,7 @@ def test_deactivate_non_activated_but_existing(
+@@ -552,7 +558,7 @@ def test_deactivate_non_activated_but_existing(
  
      mocker.patch(
          "subprocess.check_output",
@@ -2649,7 +2642,7 @@ index 269287de..f44f23af 100644
      )
  
      manager.deactivate()
-@@ -627,7 +633,7 @@ def test_deactivate_activated(
+@@ -589,7 +595,7 @@ def test_deactivate_activated(
  
      mocker.patch(
          "subprocess.check_output",
@@ -2658,15 +2651,7 @@ index 269287de..f44f23af 100644
      )
  
      manager.deactivate()
-@@ -1121,6 +1127,7 @@ def test_run_python_script_only_stdout(tmp_path: Path, tmp_venv: VirtualEnv) ->
-     assert "some warning" not in output
- 
- 
-+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
- def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_ones_first(  # noqa: E501
-     manager: EnvManager,
-     poetry: Poetry,
-@@ -1149,7 +1156,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
+@@ -1066,7 +1072,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
  
      m.assert_called_with(
          config_virtualenvs_path / f"{venv_name}-py3.7",
@@ -2675,39 +2660,7 @@ index 269287de..f44f23af 100644
          flags=venv_flags_default,
          prompt="simple-project-py3.7",
      )
-@@ -1197,12 +1204,26 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
- 
-     poetry.package.python_versions = "^3.6"
- 
--    mocker.patch("sys.version_info", (2, 7, 16))
-+    orig_check_output = subprocess.check_output
-+    pyversions = ["3.5.3", "3.5.3", "3.9.0"]
-+
-+    orig_run = subprocess.run
-+
-+    def mock_run(cmd: str, *_: Any, **__: Any) -> str:
-+        if "/usr/bin/python3.9" in cmd:
-+            return MockSubprocRun("/usr/local")
-+        return orig_run(cmd, *_, **__)
-+
-+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
-+        if GET_PYTHON_VERSION_ONELINER in cmd:
-+            return pyversions.pop(0)
-+        if "import sys; print(sys.executable)" in cmd:
-+            return "/usr/bin/python3.9"
-+        return orig_check_output(cmd, *_, **__)
-+
-     mocker.patch("shutil.which", side_effect=lambda py: f"/usr/bin/{py}")
--    mocker.patch(
--        "subprocess.check_output",
--        side_effect=["/usr/bin/python3", "3.5.3", "/usr/bin/python3.9", "3.9.0"],
--    )
-+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
-+    mocker.patch("subprocess.run", side_effect=mock_run)
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-     )
-@@ -1225,7 +1246,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
+@@ -1148,7 +1154,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
  
      poetry.package.python_versions = "^4.8"
  
@@ -2716,7 +2669,7 @@ index 269287de..f44f23af 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -1251,7 +1272,16 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
+@@ -1174,7 +1180,16 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
  
      poetry.package.python_versions = "^4.8"
  
@@ -2734,47 +2687,7 @@ index 269287de..f44f23af 100644
      m = mocker.patch(
          "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
      )
-@@ -1287,26 +1317,32 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
-     )
- 
-     assert version.patch is not None
--    mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
--    check_output = mocker.patch(
--        "subprocess.check_output",
--        side_effect=check_output_wrapper(Version.parse("3.6.9")),
--    )
-+
-+    orig_check_output = subprocess.check_output
-+
-+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
-+        if GET_PYTHON_VERSION_ONELINER in cmd:
-+            return f"{version.major}.{version.minor}.{version.patch + 1}"
-+        if "import sys; print(sys.executable)" in cmd:
-+            return "python3"
-+        return orig_check_output(cmd, *_, **__)
-+
-+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-     )
- 
-     manager.create_venv()
- 
--    assert not check_output.called
-     m.assert_called_with(
-         config_virtualenvs_path / f"{venv_name}-py{version.major}.{version.minor}",
--        executable=None,
-+        executable=Path("python3"),
-         flags=venv_flags_default,
-         prompt=f"simple-project-py{version.major}.{version.minor}",
-     )
- 
- 
-+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
- def test_create_venv_uses_patch_version_to_detect_compatibility_with_executable(
-     manager: EnvManager,
-     poetry: Poetry,
-@@ -1375,6 +1411,7 @@ def test_create_venv_fails_if_current_python_version_is_not_supported(
+@@ -1297,6 +1312,7 @@ def test_create_venv_fails_if_current_python_version_is_not_supported(
      assert expected_message == str(e.value)
  
  
@@ -2782,7 +2695,7 @@ index 269287de..f44f23af 100644
  def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
      manager: EnvManager,
      poetry: Poetry,
-@@ -1420,7 +1457,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
+@@ -1338,7 +1354,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
  
  
  def test_system_env_has_correct_paths() -> None:
@@ -2791,7 +2704,7 @@ index 269287de..f44f23af 100644
  
      paths = env.paths
  
-@@ -1431,6 +1468,7 @@ def test_system_env_has_correct_paths() -> None:
+@@ -1349,6 +1365,7 @@ def test_system_env_has_correct_paths() -> None:
      assert paths["include"] is not None
  
  
@@ -2799,7 +2712,7 @@ index 269287de..f44f23af 100644
  @pytest.mark.parametrize(
      "enabled",
      [True, False],
-@@ -1626,6 +1664,13 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
+@@ -1572,6 +1589,13 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
  
      poetry.package.python_versions = "~3.5.1"
  
@@ -2813,7 +2726,7 @@ index 269287de..f44f23af 100644
      def mock_check_output(cmd: str, *args: Any, **kwargs: Any) -> str:
          if GET_PYTHON_VERSION_ONELINER in cmd:
              executable = cmd[0]
-@@ -1637,6 +1682,7 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
+@@ -1583,6 +1607,7 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
              return "/usr/bin/python3.5"
  
      mocker.patch("shutil.which", side_effect=lambda py: f"/usr/bin/{py}")
@@ -2821,7 +2734,7 @@ index 269287de..f44f23af 100644
      check_output = mocker.patch(
          "subprocess.check_output",
          side_effect=mock_check_output,
-@@ -1704,7 +1750,7 @@ def test_build_environment_called_build_script_specified(
+@@ -1650,7 +1675,7 @@ def test_build_environment_called_build_script_specified(
          assert env.executed == [  # type: ignore[attr-defined]
              [
                  str(sys.executable),
@@ -2830,7 +2743,7 @@ index 269287de..f44f23af 100644
                  "install",
                  "--disable-pip-version-check",
                  "--ignore-installed",
-@@ -1729,6 +1775,7 @@ def test_build_environment_not_called_without_build_script_specified(
+@@ -1675,6 +1700,7 @@ def test_build_environment_not_called_without_build_script_specified(
          assert not env.executed  # type: ignore[attr-defined]
  
  
@@ -2838,7 +2751,7 @@ index 269287de..f44f23af 100644
  def test_create_venv_project_name_empty_sets_correct_prompt(
      fixture_dir: FixtureDirGetter,
      project_factory: ProjectFactory,
-@@ -1759,7 +1806,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
+@@ -1705,7 +1731,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
  
      m.assert_called_with(
          config_virtualenvs_path / f"{venv_name}-py3.7",

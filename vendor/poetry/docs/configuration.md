@@ -375,6 +375,12 @@ If set to `true` the `--no-setuptools` parameter is passed to `virtualenv` on cr
 means when a new virtual environment is created, `setuptools` will not be installed in the environment. Poetry, for its
 internal operations, does not require `setuptools` and this can safely be set to `true`.
 
+For environments using python 3.12 or later, `virtualenv` defaults to not
+installing `setuptools` when creating a virtual environment.
+In such environments this poetry configuration option therefore has no effect:
+`setuptools` is not installed either way.
+If your project relies on `setuptools`, you should declare it as a dependency.
+
 {{% warning %}}
 Some development tools like IDEs, make an assumption that `setuptools` (and other) packages are always present and
 available within a virtual environment. This can cause some features in these tools to not work as expected.
@@ -431,19 +437,21 @@ If set to `false`, Python version used during Poetry installation is used.
 Format string defining the prompt to be displayed when the virtual environment is activated.
 The variables `project_name` and `python_version` are available for formatting.
 
-### `repositories.<name>`
+### `repositories.<name>.url`
 
 **Type**: `string`
 
-**Environment Variable**: `POETRY_REPOSITORIES_<NAME>`
+**Environment Variable**: `POETRY_REPOSITORIES_<NAME>_URL`
 
-Set a new alternative repository. See [Repositories]({{< relref "repositories" >}}) for more information.
+Set the repository URL for `<name>`.
 
-### `http-basic.<name>`:
+See [Publishable Repositories]({{< relref "repositories#publishable-repositories" >}}) for more information.
 
-**Type**: `(string, string)`
+### `http-basic.<name>.[username|password]`:
 
-**Environment Variable**: `POETRY_HTTP_BASIC_<NAME>`
+**Type**: `string`
+
+**Environment Variables**: `POETRY_HTTP_BASIC_<NAME>_USERNAME`, `POETRY_HTTP_BASIC_<NAME>_PASSWORD`
 
 Set repository credentials (`username` and `password`) for `<name>`.
 See [Repositories - Configuring credentials]({{< relref "repositories#configuring-credentials" >}})
