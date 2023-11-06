@@ -167,6 +167,7 @@ Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
 Classifier: Topic :: Software Development :: Build Tools
 Classifier: Topic :: Software Development :: Libraries :: Python Modules
 Provides-Extra: time
@@ -181,7 +182,7 @@ Description-Content-Type: text/x-rst
 My Package
 ==========
 
-"""  # noqa: E501
+"""
     with temporary_directory() as tmp_dir, cwd(os.path.join(fixtures, "complete")):
         dirname = api.prepare_metadata_for_build_wheel(tmp_dir)
 
@@ -251,7 +252,7 @@ def test_build_wheel_with_metadata_directory() -> None:
 
         with temporary_directory() as wheel_tmp_dir:
             dist_info_path = Path(metadata_tmp_dir) / metadata_directory
-            open(dist_info_path / "CUSTOM", "w").close()  # noqa: SIM115
+            (dist_info_path / "CUSTOM").touch()
             filename = api.build_wheel(
                 wheel_tmp_dir, metadata_directory=str(dist_info_path)
             )
@@ -278,7 +279,7 @@ def test_build_editable_wheel_with_metadata_directory() -> None:
 
         with temporary_directory() as wheel_tmp_dir:
             dist_info_path = Path(metadata_tmp_dir) / metadata_directory
-            open(dist_info_path / "CUSTOM", "w").close()  # noqa: SIM115
+            (dist_info_path / "CUSTOM").touch()
             filename = api.build_editable(
                 wheel_tmp_dir, metadata_directory=str(dist_info_path)
             )
