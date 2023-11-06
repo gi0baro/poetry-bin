@@ -11,7 +11,7 @@ index b799ed2..837bb1c 100644
  .python-version
  
 diff --git a/pyproject.toml b/pyproject.toml
-index 61af41f..b8c0dd4 100644
+index 6efae4f..d7a0d79 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -1,7 +1,6 @@
@@ -29,11 +29,11 @@ index 61af41f..b8c0dd4 100644
 -dynamic = [
 -  "version",
 -]
-+version = "20.24.3"
++version = "20.24.6"
  dependencies = [
    "distlib<1,>=0.3.7",
    "filelock<4,>=3.12.2",
-@@ -96,9 +93,7 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
+@@ -97,9 +94,7 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
  pip = "virtualenv.seed.embed.pip_invoke:PipInvoke"
  
  [tool.hatch]
@@ -160,7 +160,7 @@ index e69de29..7e40c92 100644
 +    Path(__path__[0])
 +)
 diff --git a/src/virtualenv/create/creator.py b/src/virtualenv/create/creator.py
-index 06f9d39..19c92ad 100644
+index 8ff5416..7125e6f 100644
 --- a/src/virtualenv/create/creator.py
 +++ b/src/virtualenv/create/creator.py
 @@ -10,15 +10,17 @@ from ast import literal_eval
@@ -188,7 +188,7 @@ similarity index 100%
 rename from src/virtualenv/create/via_global_ref/_virtualenv.py
 rename to src/virtualenv/create/via_global_ref/_virtualenv.py.template
 diff --git a/src/virtualenv/create/via_global_ref/api.py b/src/virtualenv/create/via_global_ref/api.py
-index 0d36265..3cfa787 100644
+index 22a5a91..46a4e11 100644
 --- a/src/virtualenv/create/via_global_ref/api.py
 +++ b/src/virtualenv/create/via_global_ref/api.py
 @@ -3,7 +3,7 @@ from __future__ import annotations
@@ -334,7 +334,7 @@ index a0e8669..64c3516 100644
          self.default = None
          possible = OrderedDict(
 diff --git a/src/virtualenv/run/plugin/base.py b/src/virtualenv/run/plugin/base.py
-index 71ce5c4..940fcbd 100644
+index 16114f6..940fcbd 100644
 --- a/src/virtualenv/run/plugin/base.py
 +++ b/src/virtualenv/run/plugin/base.py
 @@ -1,16 +1,7 @@
@@ -365,9 +365,9 @@ index 71ce5c4..940fcbd 100644
  
 -    @staticmethod
 -    def entry_points():
--        if PluginLoader._ENTRY_POINTS is None:  # noqa: SLF001
--            PluginLoader._ENTRY_POINTS = entry_points()  # noqa: SLF001
--        return PluginLoader._ENTRY_POINTS  # noqa: SLF001
+-        if PluginLoader._ENTRY_POINTS is None:
+-            PluginLoader._ENTRY_POINTS = entry_points()
+-        return PluginLoader._ENTRY_POINTS
 +    @classmethod
 +    def entry_points(cls):
 +        if cls._ENTRY_POINTS is None:
@@ -377,18 +377,18 @@ index 71ce5c4..940fcbd 100644
  
  class ComponentBuilder(PluginLoader):
 diff --git a/src/virtualenv/run/plugin/creators.py b/src/virtualenv/run/plugin/creators.py
-index e5f8d68..b0382d7 100644
+index a0bcb02..35226f1 100644
 --- a/src/virtualenv/run/plugin/creators.py
 +++ b/src/virtualenv/run/plugin/creators.py
 @@ -1,6 +1,7 @@
  from __future__ import annotations
  
- from collections import OrderedDict, defaultdict, namedtuple
+ from collections import OrderedDict, defaultdict
 +from importlib.metadata import EntryPoint
+ from typing import TYPE_CHECKING, NamedTuple
  
  from virtualenv.create.describe import Describe
- from virtualenv.create.via_global_ref.builtin.builtin_way import VirtualenvBuiltin
-@@ -11,6 +12,23 @@ CreatorInfo = namedtuple("CreatorInfo", ["key_to_class", "key_to_meta", "describ
+@@ -20,6 +21,23 @@ class CreatorInfo(NamedTuple):
  
  
  class CreatorSelector(ComponentBuilder):
@@ -470,7 +470,7 @@ index b1da34c..feea879 100644
          possible = self.options("virtualenv.seed")
          super().__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index 0d87e4b..ed36cc9 100644
+index 46a7fc1..b1b6c08 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -2,9 +2,14 @@ from __future__ import annotations
@@ -488,14 +488,14 @@ index 0d87e4b..ed36cc9 100644
 +
  BUNDLE_SUPPORT = {
      "3.7": {
-         "pip": "pip-23.2.1-py3-none-any.whl",
+         "pip": "pip-23.3.1-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
-index 0000000..fc3f798
+index 0000000..806f7cb
 --- /dev/null
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
-+__version__ = "20.24.3"
++__version__ = "20.24.6"
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index b6b58df..17d040a 100644
 --- a/tests/unit/create/test_interpreters.py
@@ -507,7 +507,7 @@ index b6b58df..17d040a 100644
 -    assert repr(context.value) == repr(RuntimeError(f"No virtualenv implementation for {PythonInfo.current_system()}"))
 +    assert repr(context.value).startswith('RuntimeError("No virtualenv implementation for')
 diff --git a/tests/unit/discovery/py_info/test_py_info.py b/tests/unit/discovery/py_info/test_py_info.py
-index 89c98df..6fe53c3 100644
+index b122630..46c14ba 100644
 --- a/tests/unit/discovery/py_info/test_py_info.py
 +++ b/tests/unit/discovery/py_info/test_py_info.py
 @@ -38,20 +38,20 @@ def test_bad_exe_py_info_raise(tmp_path, session_app_data):

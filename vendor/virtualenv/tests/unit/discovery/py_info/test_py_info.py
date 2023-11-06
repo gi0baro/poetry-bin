@@ -8,9 +8,9 @@ import logging
 import os
 import sys
 import sysconfig
-from collections import namedtuple
 from pathlib import Path
 from textwrap import dedent
+from typing import NamedTuple
 
 import pytest
 
@@ -144,7 +144,12 @@ def test_py_info_cache_clear(mocker, session_app_data):
     assert spy.call_count >= 2 * count
 
 
-@pytest.mark.xfail(IS_PYPY and IS_WIN and sys.version_info[0:2] == (3, 9), reason="symlink is not supported")
+@pytest.mark.skipif(not fs_supports_symlink(), reason="symlink is not supported")
+@pytest.mark.xfail(
+    # https://doc.pypy.org/en/latest/install.html?highlight=symlink#download-a-pre-built-pypy
+    IS_PYPY and IS_WIN and sys.version_info[0:2] >= (3, 9),
+    reason="symlink is not supported",
+)
 @pytest.mark.skipif(not fs_supports_symlink(), reason="symlink is not supported")
 def test_py_info_cached_symlink(mocker, tmp_path, session_app_data):
     spy = mocker.spy(cached_py_info, "_run_subprocess")
@@ -166,7 +171,10 @@ def test_py_info_cached_symlink(mocker, tmp_path, session_app_data):
     assert spy.call_count == count + 1  # no longer needed the host invocation, but the new symlink is must
 
 
-PyInfoMock = namedtuple("PyInfoMock", ["implementation", "architecture", "version_info"])
+class PyInfoMock(NamedTuple):
+    implementation: str
+    architecture: int
+    version_info: VersionInfo
 
 
 @pytest.mark.parametrize(

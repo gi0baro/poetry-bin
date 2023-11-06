@@ -5,6 +5,41 @@ Release History
 
 .. towncrier release notes start
 
+v20.24.6 (2023-10-23)
+---------------------
+
+Bugfixes - 20.24.6
+~~~~~~~~~~~~~~~~~~
+- Use get_hookimpls method instead of the private attribute in tests. (:issue:`2649`)
+- Upgrade embedded wheels:
+
+  * setuptools to ``68.2.2`` from ``68.2.0``
+  * pip to ``23.3.1`` from ``23.2.1`` (:issue:`2656`)
+
+
+v20.24.5 (2023-09-08)
+---------------------
+
+Bugfixes - 20.24.5
+~~~~~~~~~~~~~~~~~~
+- Declare PyPy 3.10 support - by :user:`cclauss`. (:issue:`2638`)
+- Brew on macOS no longer allows copy builds - disallow choosing this by :user:`gaborbernat`. (:issue:`2640`)
+- Upgrade embedded wheels:
+
+  * setuptools to ``68.2.0`` from ``68.1.2`` (:issue:`2642`)
+
+
+v20.24.4 (2023-08-30)
+---------------------
+
+Bugfixes - 20.24.4
+~~~~~~~~~~~~~~~~~~
+- Upgrade embedded wheels:
+
+  * setuptools to ``68.1.2`` from ``68.1.0`` on ``3.8+``
+  * wheel to ``0.41.2`` from ``0.41.1``  on ``3.7+`` (:issue:`2628`)
+
+
 v20.24.3 (2023-08-11)
 ---------------------
 
