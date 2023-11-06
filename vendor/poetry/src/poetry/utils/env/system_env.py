@@ -25,8 +25,7 @@ class SystemEnv(Env):
         if auto_path and path:
             path = Path(
                 self._run(
-                    [str(path), "-W", "ignore", "-"],
-                    input_=GET_BASE_PREFIX
+                    [str(path), "-W", "ignore", "-c", GET_BASE_PREFIX],
                 ).strip()
             )
         super().__init__(path, base=base)

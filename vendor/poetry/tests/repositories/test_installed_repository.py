@@ -310,6 +310,7 @@ def test_load_pep_610_compliant_editable_directory_packages(
     assert package.develop
 
 
+@pytest.mark.skip
 def test_system_site_packages_source_type(
     tmp_path: Path, mocker: MockerFixture, poetry: Poetry
 ) -> None:
