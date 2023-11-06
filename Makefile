@@ -67,7 +67,7 @@ tests:
 	@cd vendor/poetry-core && \
 		python -m venv .venv && \
 		.venv/bin/pip install -r vendors/deps.txt && \
-		.venv/bin/pip install ../lark . && \
+		.venv/bin/pip install ../lark ../virtualenv . && \
 		.venv/bin/pip install build pytest pytest-mock tomli-w && \
 		.venv/bin/pytest && \
 		rm -r .venv
