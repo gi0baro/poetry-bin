@@ -79,7 +79,7 @@ main() {
     ensure mkdir -p "$_path_dest"
     ensure tar xzf "$_dir/$_file" --directory "$_path_dest"
     ignore rm "$_path_bin/poetry"
-    ensure ln -s "$_path_dest/bin/poetry" "$_path_bin/poetry"
+    ensure ln -s "$_path_dest/poetry" "$_path_bin/poetry"
 
     ignore rm "$_dir/$_file"
     ignore rmdir "$_dir"
