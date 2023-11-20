@@ -1,5 +1,5 @@
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..14d9d2f5 100644
+index 13fa08fc..3c1e9cbd 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -19,7 +19,7 @@ index 13fa08fc..14d9d2f5 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.7.0"
++__version__ = "1.7.1"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
 index 3286c73f..5c189821 100644
 --- a/src/poetry/console/application.py
@@ -2478,7 +2478,7 @@ index d2c6ef0c..00000000
 -
 -    assert tester.io.fetch_output() == expected_output
 diff --git a/tests/console/commands/test_init.py b/tests/console/commands/test_init.py
-index 2a0a9bca..2f98ba6b 100644
+index 44e472fb..a363ee5b 100644
 --- a/tests/console/commands/test_init.py
 +++ b/tests/console/commands/test_init.py
 @@ -1046,15 +1046,16 @@ def test_package_include(
@@ -2616,7 +2616,7 @@ index 2dbf0141..c8419ddf 100644
      tmp_path: Path, mocker: MockerFixture, poetry: Poetry
  ) -> None:
 diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index de2f90d3..edd87a8f 100644
+index c8cb98ea..2b8d3475 100644
 --- a/tests/utils/test_env.py
 +++ b/tests/utils/test_env.py
 @@ -60,6 +60,11 @@ print("nullpackage loaded"),
@@ -2785,15 +2785,15 @@ index de2f90d3..edd87a8f 100644
  @pytest.mark.parametrize(
      "enabled",
      [True, False],
-@@ -1386,6 +1409,7 @@ def test_env_system_packages(tmp_path: Path, poetry: Poetry) -> None:
-     assert env.includes_system_site_packages
+@@ -1400,6 +1423,7 @@ def test_generic_env_system_packages(poetry: Poetry) -> None:
+     assert not env.includes_system_site_packages
  
  
 +@pytest.mark.skip
+ @pytest.mark.parametrize("with_system_site_packages", [True, False])
  def test_env_system_packages_are_relative_to_lib(
-     tmp_path: Path, poetry: Poetry
- ) -> None:
-@@ -1572,6 +1596,13 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
+     tmp_path: Path, poetry: Poetry, with_system_site_packages: bool
+@@ -1592,6 +1616,13 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
  
      poetry.package.python_versions = "~3.5.1"
  
@@ -2807,7 +2807,7 @@ index de2f90d3..edd87a8f 100644
      def mock_check_output(cmd: str, *args: Any, **kwargs: Any) -> str:
          if GET_PYTHON_VERSION_ONELINER in cmd:
              executable = cmd[0]
-@@ -1583,6 +1614,7 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
+@@ -1603,6 +1634,7 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
              return "/usr/bin/python3.5"
  
      mocker.patch("shutil.which", side_effect=lambda py: f"/usr/bin/{py}")
@@ -2815,7 +2815,7 @@ index de2f90d3..edd87a8f 100644
      check_output = mocker.patch(
          "subprocess.check_output",
          side_effect=mock_check_output,
-@@ -1650,7 +1682,7 @@ def test_build_environment_called_build_script_specified(
+@@ -1670,7 +1702,7 @@ def test_build_environment_called_build_script_specified(
          assert env.executed == [  # type: ignore[attr-defined]
              [
                  str(sys.executable),
@@ -2824,7 +2824,7 @@ index de2f90d3..edd87a8f 100644
                  "install",
                  "--disable-pip-version-check",
                  "--ignore-installed",
-@@ -1675,6 +1707,7 @@ def test_build_environment_not_called_without_build_script_specified(
+@@ -1695,6 +1727,7 @@ def test_build_environment_not_called_without_build_script_specified(
          assert not env.executed  # type: ignore[attr-defined]
  
  
@@ -2832,7 +2832,7 @@ index de2f90d3..edd87a8f 100644
  def test_create_venv_project_name_empty_sets_correct_prompt(
      fixture_dir: FixtureDirGetter,
      project_factory: ProjectFactory,
-@@ -1705,7 +1738,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
+@@ -1725,7 +1758,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
  
      m.assert_called_with(
          config_virtualenvs_path / f"{venv_name}-py3.7",
