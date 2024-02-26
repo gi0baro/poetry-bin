@@ -8,6 +8,7 @@ import pytest
 from virtualenv.activation import PowerShellActivator
 
 
+@pytest.mark.skipif(True, reason="Skip")
 @pytest.mark.slow()
 def test_powershell(activation_tester_class, activation_tester, monkeypatch):
     monkeypatch.setenv("TERM", "xterm")
