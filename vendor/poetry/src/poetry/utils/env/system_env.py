@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import json
-import re
-import site
 
 from pathlib import Path
 from typing import Any
 
 from packaging.tags import Tag
 
-from poetry.core.constraints.version import Version
 from poetry.utils._compat import WINDOWS
 from poetry.utils.env.base_env import Env
 from poetry.utils.env.script_strings import GET_BASE_PREFIX, GET_SYS_PATH, GET_PYTHON_VERSION, GET_PATHS, GET_SYS_TAGS, GET_ENVIRONMENT_INFO
@@ -54,15 +51,5 @@ class SystemEnv(Env):
         output = self.run_python_script(GET_ENVIRONMENT_INFO)
         return json.loads(output)
 
-    def get_pip_version(self) -> Version:
-        output = self.run_pip("--version").strip()
-        m = re.match("pip (.+?)(?: from .+)?$", output)
-        if not m:
-            return Version.parse("0.0")
-        return Version.parse(m.group(1))
-
     def is_venv(self) -> bool:
         return self._path != self._base
-
-    def _get_lib_dirs(self) -> list[Path]:
-        return super()._get_lib_dirs() + [Path(d) for d in site.getsitepackages()]
