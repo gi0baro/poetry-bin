@@ -22,7 +22,7 @@ index 362a845..a965fb3 100644
                  err = e
                  continue
 diff --git a/pyproject.toml b/pyproject.toml
-index 8e40e13..5f1b9c4 100644
+index 8e40e13..ba06996 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -19,7 +19,7 @@ classifiers = [
@@ -30,7 +30,7 @@ index 8e40e13..5f1b9c4 100644
  requires-python = ">=3.6"
  dependencies = []
 -dynamic = ["version"]
-+version = "1.1.8"
++version = "1.1.9"
  
  [project.readme]
  text = """
