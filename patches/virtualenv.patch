@@ -11,7 +11,7 @@ index b799ed2..837bb1c 100644
  .python-version
  
 diff --git a/pyproject.toml b/pyproject.toml
-index 6efae4f..d7a0d79 100644
+index 842a5b5..94915e2 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -1,7 +1,6 @@
@@ -29,7 +29,7 @@ index 6efae4f..d7a0d79 100644
 -dynamic = [
 -  "version",
 -]
-+version = "20.24.6"
++version = "20.25.0"
  dependencies = [
    "distlib<1,>=0.3.7",
    "filelock<4,>=3.12.2",
@@ -470,7 +470,7 @@ index b1da34c..feea879 100644
          possible = self.options("virtualenv.seed")
          super().__init__(interpreter, parser, "seeder", possible)
 diff --git a/src/virtualenv/seed/wheels/embed/__init__.py b/src/virtualenv/seed/wheels/embed/__init__.py
-index 46a7fc1..b1b6c08 100644
+index 09ec8cb..afbb97a 100644
 --- a/src/virtualenv/seed/wheels/embed/__init__.py
 +++ b/src/virtualenv/seed/wheels/embed/__init__.py
 @@ -2,9 +2,14 @@ from __future__ import annotations
@@ -491,11 +491,11 @@ index 46a7fc1..b1b6c08 100644
          "pip": "pip-23.3.1-py3-none-any.whl",
 diff --git a/src/virtualenv/version.py b/src/virtualenv/version.py
 new file mode 100644
-index 0000000..806f7cb
+index 0000000..e1e5b26
 --- /dev/null
 +++ b/src/virtualenv/version.py
 @@ -0,0 +1 @@
-+__version__ = "20.24.6"
++__version__ = "20.25.0"
 diff --git a/tests/unit/create/test_interpreters.py b/tests/unit/create/test_interpreters.py
 index b6b58df..17d040a 100644
 --- a/tests/unit/create/test_interpreters.py
