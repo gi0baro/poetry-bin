@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from packaging.tags import Tag
-from poetry.core.constraints.version import Version
 
+from poetry.core.constraints.version import Version
 from poetry.utils._compat import WINDOWS
 from poetry.utils.env.base_env import Env
 from poetry.utils.env.script_strings import GET_BASE_PREFIX, GET_SYS_PATH, GET_PYTHON_VERSION, GET_PATHS, GET_SYS_TAGS, GET_ENVIRONMENT_INFO

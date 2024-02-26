@@ -83,8 +83,9 @@ If your package will be used as an application, it might be worth to define an u
 
 ### Is tox supported?
 
-**Yes**. By using the [isolated builds](https://tox.readthedocs.io/en/latest/config.html#conf-isolated_build) `tox` provides,
-you can use it in combination with the PEP 517 compliant build system provided by Poetry.
+**Yes**. Provided that you are using `tox` >= 4, you can use it in combination with
+the PEP 517 compliant build system provided by Poetry. (With tox 3, you have to set the
+[isolated build](https://tox.wiki/en/3.27.1/config.html#conf-isolated_build) option.)
 
 So, in your `pyproject.toml` file, add this section if it does not already exist:
 
@@ -97,10 +98,9 @@ build-backend = "poetry.core.masonry.api"
 `tox` can be configured in multiple ways. It depends on what should be the code under test and which dependencies
 should be installed.
 
-#### Usecase #1
+#### Use case #1
 ```ini
 [tox]
-isolated_build = true
 
 [testenv]
 deps =
@@ -112,10 +112,9 @@ commands =
 `tox` will create an `sdist` package of the project and uses `pip` to install it in a fresh environment.
 Thus, dependencies are resolved by `pip`.
 
-#### Usecase #2
+#### Use case #2
 ```ini
 [tox]
-isolated_build = true
 
 [testenv]
 allowlist_externals = poetry
@@ -126,13 +125,12 @@ commands =
 ```
 
 `tox` will create an `sdist` package of the project and uses `pip` to install it in a fresh environment.
-Thus, dependencies are resolved by `pip` in the first place. But afterwards we run Poetry,
+Thus, dependencies are resolved by `pip` in the first place. But afterward we run Poetry,
  which will install the locked dependencies into the environment.
 
-#### Usecase #3
+#### Use case #3
 ```ini
 [tox]
-isolated_build = true
 
 [testenv]
 skip_install = true
@@ -145,6 +143,25 @@ commands =
 
 `tox` will not do any install. Poetry installs all the dependencies and the current package in editable mode.
 Thus, tests are running against the local files and not the built and installed package.
+
+#### Note about credentials
+
+Note that `tox` does not forward the environment variables of your current shell session by default.
+This may cause Poetry to not be able to install dependencies in the `tox` environments if you have configured
+credentials using the system keyring on Linux systems or using environment variables in general.
+You can use the `passenv` [configuration option](https://tox.wiki/en/latest/config.html#passenv) to forward the
+required variables explicitly or `passenv = "*"` to forward all of them.
+Linux systems may require forwarding the `DBUS_SESSION_BUS_ADDRESS` variable to allow access to the system keyring,
+though this may vary between desktop environments.
+
+Alternatively, you can disable the keyring completely:
+
+```bash
+poetry config keyring.enabled false
+```
+
+Be aware that this will cause Poetry to write passwords to plaintext config files.
+You will need to set the credentials again after changing this setting.
 
 ### Is Nox supported?
 
@@ -198,7 +215,7 @@ For example, if Poetry builds a distribution for a project that uses a version t
 
 ### Poetry busts my Docker cache because it requires me to COPY my source files in before installing 3rd party dependencies
 
-By default running `poetry install ...` requires you to have your source files present (both the "root" package and any directory path dependencies you might have).
+By default, running `poetry install ...` requires you to have your source files present (both the "root" package and any directory path dependencies you might have).
 This interacts poorly with Docker's caching mechanisms because any change to a source file will make any layers (subsequent commands in your Dockerfile) re-run.
 For example, you might have a Dockerfile that looks something like this:
 
@@ -206,7 +223,7 @@ For example, you might have a Dockerfile that looks something like this:
 FROM python
 COPY pyproject.toml poetry.lock .
 COPY src/ ./src
-RUN pip install poetry && poetry install --no-dev
+RUN pip install poetry && poetry install --only main
 ```
 
 As soon as *any* source file changes, the cache for the `RUN` layer will be invalidated, which forces all 3rd party dependencies (likely the slowest step out of these) to be installed again if you changed any files in `src/`.
@@ -221,9 +238,9 @@ This might look something like this:
 ```text
 FROM python
 COPY pyproject.toml poetry.lock .
-RUN pip install poetry && poetry install --no-root --no-directory
+RUN pip install poetry && poetry install --only main --no-root --no-directory
 COPY src/ ./src
-RUN poetry install --no-dev
+RUN poetry install --only main
 ```
 
 The two key options we are using here are `--no-root` (skips installing the project source) and `--no-directory` (skips installing any local directory path dependencies, you can omit this if you don't have any).

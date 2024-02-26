@@ -277,7 +277,9 @@ def test_chooser_chooses_distributions_that_match_the_package_hashes(
     package = Package("isort", "4.3.4")
     files = [
         {
-            "hash": "sha256:b9c40e9750f3d77e6e4d441d8b0266cf555e7cdabdcff33c4fd06366ca761ef8",
+            "hash": (
+                "sha256:b9c40e9750f3d77e6e4d441d8b0266cf555e7cdabdcff33c4fd06366ca761ef8"
+            ),
             "filename": "isort-4.3.4.tar.gz",
         }
     ]
@@ -311,7 +313,9 @@ def test_chooser_chooses_yanked_if_no_others(
     files = [
         {
             "filename": "black-21.11b0-py3-none-any.whl",
-            "hash": "sha256:0b1f66cbfadcd332ceeaeecf6373d9991d451868d2e2219ad0ac1213fb701117",
+            "hash": (
+                "sha256:0b1f66cbfadcd332ceeaeecf6373d9991d451868d2e2219ad0ac1213fb701117"
+            ),
         }
     ]
     if source_type == "legacy":
@@ -387,7 +391,9 @@ def test_chooser_throws_an_error_if_package_hashes_do_not_match(
     package = Package("isort", "4.3.4")
     files = [
         {
-            "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "hash": (
+                "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+            ),
             "filename": "isort-4.3.4.tar.gz",
         }
     ]
@@ -421,7 +427,9 @@ def test_chooser_md5_remote_fallback_to_sha256_inline_calculation(
     )
     package.files = [
         {
-            "hash": "sha256:9fa123ad707a5c6c944743bf3e11a0e80d86cb518d3cf25320866ca3ef43e2ad",
+            "hash": (
+                "sha256:9fa123ad707a5c6c944743bf3e11a0e80d86cb518d3cf25320866ca3ef43e2ad"
+            ),
             "filename": "demo-0.1.0.tar.gz",
         }
     ]

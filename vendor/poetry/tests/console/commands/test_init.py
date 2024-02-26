@@ -903,7 +903,9 @@ def test_init_existing_pyproject_consistent_linesep(
     existing_section = """
 [tool.black]
 line-length = 88
-""".replace("\n", linesep)
+""".replace(
+        "\n", linesep
+    )
     with open(pyproject_file, "w", newline="") as f:
         f.write(existing_section)
     tester.execute(inputs=init_basic_inputs)
@@ -993,6 +995,22 @@ def test_validate_package_valid(name: str | None) -> None:
 def test_validate_package_invalid(name: str) -> None:
     with pytest.raises(ValueError):
         assert InitCommand._validate_package(name)
+
+
+@pytest.mark.parametrize(
+    "author",
+    [
+        str(b"Jos\x65\xcc\x81 Duarte", "utf-8"),
+        str(b"Jos\xc3\xa9 Duarte", "utf-8"),
+    ],
+)
+def test_validate_author(author: str) -> None:
+    """
+    This test was added following issue #8779, hence, we're looking to see if the test
+    no longer throws an exception, hence the seemingly "useless" test of just running
+    the method.
+    """
+    InitCommand._validate_author(author, "")
 
 
 @pytest.mark.parametrize(

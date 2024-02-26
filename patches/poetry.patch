@@ -1,5 +1,5 @@
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..3c1e9cbd 100644
+index 13fa08fc..2d986fc5 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -19,7 +19,7 @@ index 13fa08fc..3c1e9cbd 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.7.1"
++__version__ = "1.8.1"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
 index 3286c73f..5c189821 100644
 --- a/src/poetry/console/application.py
@@ -129,7 +129,7 @@ index be1194c7..c0d47683 100644
  
  
 diff --git a/src/poetry/utils/env/env_manager.py b/src/poetry/utils/env/env_manager.py
-index e7b0cc75..4dc686db 100644
+index 12eaac57..ee9a2eb3 100644
 --- a/src/poetry/utils/env/env_manager.py
 +++ b/src/poetry/utils/env/env_manager.py
 @@ -3,7 +3,6 @@ from __future__ import annotations
@@ -140,7 +140,7 @@ index e7b0cc75..4dc686db 100644
  import re
  import shutil
  import subprocess
-@@ -19,17 +18,18 @@ import virtualenv
+@@ -20,17 +19,18 @@ import virtualenv
  from cleo.io.null_io import NullIO
  from cleo.io.outputs.output import Verbosity
  from poetry.core.constraints.version import Version
@@ -161,7 +161,7 @@ index e7b0cc75..4dc686db 100644
  from poetry.utils.env.script_strings import GET_ENV_PATH_ONELINER
  from poetry.utils.env.script_strings import GET_PYTHON_VERSION_ONELINER
  from poetry.utils.env.system_env import SystemEnv
-@@ -102,7 +102,7 @@ class EnvManager:
+@@ -141,7 +141,7 @@ class EnvManager:
          prefer_active_python: bool = False,
          io: None | IO = None,
      ) -> Version:
@@ -170,7 +170,7 @@ index e7b0cc75..4dc686db 100644
  
          if prefer_active_python:
              executable = EnvManager._detect_active_python(io)
-@@ -114,6 +114,12 @@ class EnvManager:
+@@ -153,6 +153,12 @@ class EnvManager:
  
                  version = ".".join(str(v) for v in python_patch.split(".")[:precision])
  
@@ -183,7 +183,7 @@ index e7b0cc75..4dc686db 100644
          return Version.parse(version)
  
      @property
-@@ -467,8 +473,7 @@ class EnvManager:
+@@ -474,8 +480,7 @@ class EnvManager:
          if not name:
              name = self._poetry.package.name
  
@@ -193,7 +193,7 @@ index e7b0cc75..4dc686db 100644
          if executable:
              python_patch = subprocess.check_output(
                  [executable, "-c", GET_PYTHON_VERSION_ONELINER], text=True
-@@ -476,7 +481,10 @@ class EnvManager:
+@@ -483,7 +488,10 @@ class EnvManager:
              python_minor = ".".join(python_patch.split(".")[:2])
  
          supported_python = self._poetry.package.python_constraint
@@ -205,7 +205,7 @@ index e7b0cc75..4dc686db 100644
              # The currently activated or chosen Python version
              # is not compatible with the Python constraint specified
              # for the project.
-@@ -488,49 +496,7 @@ class EnvManager:
+@@ -495,49 +503,7 @@ class EnvManager:
                      self._poetry.package.python_versions, python_patch
                  )
  
@@ -256,7 +256,7 @@ index e7b0cc75..4dc686db 100644
  
              if not executable:
                  raise NoCompatiblePythonVersionFound(
-@@ -589,22 +555,6 @@ class EnvManager:
+@@ -596,22 +562,6 @@ class EnvManager:
                  prompt=venv_prompt,
              )
  
@@ -279,7 +279,7 @@ index e7b0cc75..4dc686db 100644
          return VirtualEnv(venv)
  
      @classmethod
-@@ -653,7 +603,7 @@ class EnvManager:
+@@ -660,7 +610,7 @@ class EnvManager:
              "--no-download",
              "--no-periodic-update",
              "--python",
@@ -288,9 +288,9 @@ index e7b0cc75..4dc686db 100644
          ]
  
          if prompt is not None:
-@@ -670,17 +620,6 @@ class EnvManager:
+@@ -677,17 +627,6 @@ class EnvManager:
  
-         cli_result = virtualenv.cli_run(args)
+         cli_result = virtualenv.cli_run(args, setup_logging=False)
  
 -        # Exclude the venv folder from from macOS Time Machine backups
 -        # TODO: Add backup-ignore markers for other platforms too
@@ -306,7 +306,7 @@ index e7b0cc75..4dc686db 100644
          return cli_result
  
      @classmethod
-@@ -718,9 +657,13 @@ class EnvManager:
+@@ -725,9 +664,13 @@ class EnvManager:
          want to retrieve Poetry's custom virtual environment
          (e.g. plugin installation or self update).
          """
@@ -320,10 +320,10 @@ index e7b0cc75..4dc686db 100644
 +        )
 +        env: Env = SystemEnv(prefix) if prefix else NullEnv()
 +        if not naive and prefix:
-             if prefix.joinpath("poetry_env").exists():
-                 env = GenericEnv(base_prefix, child_env=env)
-             else:
-@@ -756,3 +699,59 @@ class EnvManager:
+             env = GenericEnv(base_prefix, child_env=env)
+ 
+         return env
+@@ -753,3 +696,59 @@ class EnvManager:
          h_str = base64.urlsafe_b64encode(h_bytes).decode()[:8]
  
          return f"{sanitized_name}-{h_str}"
@@ -1496,10 +1496,10 @@ index 24664986..4dfdcb24 100644
  GET_ENVIRONMENT_INFO = """\
  import json
 diff --git a/src/poetry/utils/env/system_env.py b/src/poetry/utils/env/system_env.py
-index e088e684..66953553 100644
+index 8ddef7b5..61bbb8e1 100644
 --- a/src/poetry/utils/env/system_env.py
 +++ b/src/poetry/utils/env/system_env.py
-@@ -1,21 +1,18 @@
+@@ -1,20 +1,18 @@
  from __future__ import annotations
  
 -import os
@@ -1517,15 +1517,15 @@ index e088e684..66953553 100644
 -from packaging.tags import interpreter_name
 -from packaging.tags import interpreter_version
 -from packaging.tags import sys_tags
- from poetry.core.constraints.version import Version
  
++from poetry.core.constraints.version import Version
 +from poetry.utils._compat import WINDOWS
  from poetry.utils.env.base_env import Env
 +from poetry.utils.env.script_strings import GET_BASE_PREFIX, GET_SYS_PATH, GET_PYTHON_VERSION, GET_PATHS, GET_SYS_TAGS, GET_ENVIRONMENT_INFO
  
  
  class SystemEnv(Env):
-@@ -23,68 +20,46 @@ class SystemEnv(Env):
+@@ -22,63 +20,46 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -1606,11 +1606,8 @@ index e088e684..66953553 100644
 -        }
 +        output = self.run_python_script(GET_ENVIRONMENT_INFO)
 +        return json.loads(output)
- 
-     def get_pip_version(self) -> Version:
--        from pip import __version__
--
--        return Version.parse(__version__)
++
++    def get_pip_version(self) -> Version:
 +        output = self.run_pip("--version").strip()
 +        m = re.match("pip (.+?)(?: from .+)?$", output)
 +        if not m:
@@ -1676,434 +1673,6 @@ zoU8w684v0|UdHbJKbN|T(EGQ($MMGm-rVrp<_6vdl-g4<wIBNCClLOxfqz5YZxH0L
 z9~yWovOl=?am$D6^db&AB@O|HfJ49`;1F;KI0PI54grUNL%<>65O4@M1RMhY3W2`?
 LE~wAj04M+eXZ{jT
 
-diff --git a/tests/console/commands/self/test_add_plugins.py b/tests/console/commands/self/test_add_plugins.py
-deleted file mode 100644
-index 07b0c905..00000000
---- a/tests/console/commands/self/test_add_plugins.py
-+++ /dev/null
-@@ -1,309 +0,0 @@
--from __future__ import annotations
--
--from typing import TYPE_CHECKING
--from typing import Any
--
--
--if TYPE_CHECKING:
--    from collections.abc import Mapping
--
--import pytest
--
--from poetry.core.packages.package import Package
--
--from poetry.console.commands.add import AddCommand
--from poetry.console.commands.self.self_command import SelfCommand
--from poetry.factory import Factory
--from tests.console.commands.self.utils import get_self_command_dependencies
--
--
--if TYPE_CHECKING:
--    from cleo.testers.command_tester import CommandTester
--
--    from tests.helpers import TestRepository
--    from tests.types import CommandTesterFactory
--
--
--@pytest.fixture()
--def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
--    return command_tester_factory("self add")
--
--
--def assert_plugin_add_result(
--    tester: CommandTester,
--    expected: str,
--    constraint: str | Mapping[str, str | list[str]],
--) -> None:
--    assert tester.io.fetch_output() == expected
--    dependencies: dict[str, Any] = get_self_command_dependencies()
--
--    assert "poetry-plugin" in dependencies
--    assert dependencies["poetry-plugin"] == constraint
--
--
--def test_add_no_constraint(
--    tester: CommandTester,
--    repo: TestRepository,
--) -> None:
--    repo.add_package(Package("poetry-plugin", "0.1.0"))
--
--    tester.execute("poetry-plugin")
--
--    expected = """\
--Using version ^0.1.0 for poetry-plugin
--
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 1 install, 0 updates, 0 removals
--
--  • Installing poetry-plugin (0.1.0)
--
--Writing lock file
--"""
--    assert_plugin_add_result(tester, expected, "^0.1.0")
--
--
--def test_add_with_constraint(
--    tester: CommandTester,
--    repo: TestRepository,
--) -> None:
--    repo.add_package(Package("poetry-plugin", "0.1.0"))
--    repo.add_package(Package("poetry-plugin", "0.2.0"))
--
--    tester.execute("poetry-plugin@^0.2.0")
--
--    expected = """
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 1 install, 0 updates, 0 removals
--
--  • Installing poetry-plugin (0.2.0)
--
--Writing lock file
--"""
--
--    assert_plugin_add_result(tester, expected, "^0.2.0")
--
--
--def test_add_with_git_constraint(
--    tester: CommandTester,
--    repo: TestRepository,
--) -> None:
--    repo.add_package(Package("pendulum", "2.0.5"))
--
--    tester.execute("git+https://github.com/demo/poetry-plugin.git")
--
--    expected = """
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 2 installs, 0 updates, 0 removals
--
--  • Installing pendulum (2.0.5)
--  • Installing poetry-plugin (0.1.2 9cf87a2)
--
--Writing lock file
--"""
--
--    assert_plugin_add_result(
--        tester, expected, {"git": "https://github.com/demo/poetry-plugin.git"}
--    )
--
--
--def test_add_with_git_constraint_with_extras(
--    tester: CommandTester,
--    repo: TestRepository,
--) -> None:
--    repo.add_package(Package("pendulum", "2.0.5"))
--    repo.add_package(Package("tomlkit", "0.7.0"))
--
--    tester.execute("git+https://github.com/demo/poetry-plugin.git[foo]")
--
--    expected = """
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 3 installs, 0 updates, 0 removals
--
--  • Installing pendulum (2.0.5)
--  • Installing tomlkit (0.7.0)
--  • Installing poetry-plugin (0.1.2 9cf87a2)
--
--Writing lock file
--"""
--
--    constraint: dict[str, str | list[str]] = {
--        "git": "https://github.com/demo/poetry-plugin.git",
--        "extras": ["foo"],
--    }
--    assert_plugin_add_result(tester, expected, constraint)
--
--
--@pytest.mark.parametrize(
--    "url, rev",
--    [
--        ("git+https://github.com/demo/poetry-plugin2.git#subdirectory=subdir", None),
--        (
--            "git+https://github.com/demo/poetry-plugin2.git@master#subdirectory=subdir",
--            "master",
--        ),
--    ],
--)
--def test_add_with_git_constraint_with_subdirectory(
--    url: str,
--    rev: str | None,
--    tester: CommandTester,
--    repo: TestRepository,
--) -> None:
--    repo.add_package(Package("pendulum", "2.0.5"))
--
--    tester.execute(url)
--
--    expected = """
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 2 installs, 0 updates, 0 removals
--
--  • Installing pendulum (2.0.5)
--  • Installing poetry-plugin (0.1.2 9cf87a2)
--
--Writing lock file
--"""
--
--    constraint = {
--        "git": "https://github.com/demo/poetry-plugin2.git",
--        "subdirectory": "subdir",
--    }
--
--    if rev:
--        constraint["rev"] = rev
--
--    assert_plugin_add_result(
--        tester,
--        expected,
--        constraint,
--    )
--
--
--def test_add_existing_plugin_warns_about_no_operation(
--    tester: CommandTester,
--    repo: TestRepository,
--    installed: TestRepository,
--) -> None:
--    pyproject = SelfCommand.get_default_system_pyproject_file()
--    with open(pyproject, "w", encoding="utf-8", newline="") as f:
--        f.write(f"""\
--[tool.poetry]
--name = "poetry-instance"
--version = "1.2.0"
--description = "Python dependency management and packaging made easy."
--authors = []
--
--[tool.poetry.dependencies]
--python = "^3.6"
--
--[tool.poetry.group.{SelfCommand.ADDITIONAL_PACKAGE_GROUP}.dependencies]
--poetry-plugin = "^1.2.3"
--""")
--
--    installed.add_package(Package("poetry-plugin", "1.2.3"))
--
--    repo.add_package(Package("poetry-plugin", "1.2.3"))
--
--    tester.execute("poetry-plugin")
--
--    assert isinstance(tester.command, AddCommand)
--    expected = f"""\
--The following packages are already present in the pyproject.toml and will be\
-- skipped:
--
--  • poetry-plugin
--{tester.command._hint_update_packages}
--Nothing to add.
--"""
--
--    assert tester.io.fetch_output() == expected
--
--
--def test_add_existing_plugin_updates_if_requested(
--    tester: CommandTester,
--    repo: TestRepository,
--    installed: TestRepository,
--) -> None:
--    pyproject = SelfCommand.get_default_system_pyproject_file()
--    with open(pyproject, "w", encoding="utf-8", newline="") as f:
--        f.write(f"""\
--[tool.poetry]
--name = "poetry-instance"
--version = "1.2.0"
--description = "Python dependency management and packaging made easy."
--authors = []
--
--[tool.poetry.dependencies]
--python = "^3.6"
--
--[tool.poetry.group.{SelfCommand.ADDITIONAL_PACKAGE_GROUP}.dependencies]
--poetry-plugin = "^1.2.3"
--""")
--
--    installed.add_package(Package("poetry-plugin", "1.2.3"))
--
--    repo.add_package(Package("poetry-plugin", "1.2.3"))
--    repo.add_package(Package("poetry-plugin", "2.3.4"))
--
--    tester.execute("poetry-plugin@latest")
--
--    expected = """\
--Using version ^2.3.4 for poetry-plugin
--
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 0 installs, 1 update, 0 removals
--
--  • Updating poetry-plugin (1.2.3 -> 2.3.4)
--
--Writing lock file
--"""
--
--    assert_plugin_add_result(tester, expected, "^2.3.4")
--
--
--def test_adding_a_plugin_can_update_poetry_dependencies_if_needed(
--    tester: CommandTester,
--    repo: TestRepository,
--    installed: TestRepository,
--) -> None:
--    poetry_package = Package("poetry", "1.2.0")
--    poetry_package.add_dependency(Factory.create_dependency("tomlkit", "^0.7.0"))
--
--    plugin_package = Package("poetry-plugin", "1.2.3")
--    plugin_package.add_dependency(Factory.create_dependency("tomlkit", "^0.7.2"))
--
--    installed.add_package(poetry_package)
--    installed.add_package(Package("tomlkit", "0.7.1"))
--
--    repo.add_package(plugin_package)
--    repo.add_package(Package("tomlkit", "0.7.1"))
--    repo.add_package(Package("tomlkit", "0.7.2"))
--
--    tester.execute("poetry-plugin")
--
--    expected = """\
--Using version ^1.2.3 for poetry-plugin
--
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 1 install, 1 update, 0 removals
--
--  • Updating tomlkit (0.7.1 -> 0.7.2)
--  • Installing poetry-plugin (1.2.3)
--
--Writing lock file
--"""
--
--    assert_plugin_add_result(tester, expected, "^1.2.3")
-diff --git a/tests/console/commands/self/test_remove_plugins.py b/tests/console/commands/self/test_remove_plugins.py
-deleted file mode 100644
-index 8000f2ce..00000000
---- a/tests/console/commands/self/test_remove_plugins.py
-+++ /dev/null
-@@ -1,107 +0,0 @@
--from __future__ import annotations
--
--from typing import TYPE_CHECKING
--
--import pytest
--import tomlkit
--
--from poetry.core.packages.dependency import Dependency
--from poetry.core.packages.package import Package
--from poetry.core.packages.project_package import ProjectPackage
--
--from poetry.__version__ import __version__
--from poetry.console.commands.self.self_command import SelfCommand
--from poetry.factory import Factory
--from tests.console.commands.self.utils import get_self_command_dependencies
--
--
--if TYPE_CHECKING:
--    from cleo.testers.command_tester import CommandTester
--
--    from poetry.repositories import Repository
--    from tests.types import CommandTesterFactory
--
--
--@pytest.fixture()
--def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
--    return command_tester_factory("self remove")
--
--
--@pytest.fixture(autouse=True)
--def install_plugin(installed: Repository) -> None:
--    package = ProjectPackage("poetry-instance", __version__)
--    plugin = Package("poetry-plugin", "1.2.3")
--
--    package.add_dependency(
--        Dependency(plugin.name, "^1.2.3", groups=[SelfCommand.ADDITIONAL_PACKAGE_GROUP])
--    )
--    content = Factory.create_pyproject_from_package(package)
--    system_pyproject_file = SelfCommand.get_default_system_pyproject_file()
--    with open(system_pyproject_file, "w", encoding="utf-8", newline="") as f:
--        f.write(content.as_string())
--
--    lock_content = {
--        "package": [
--            {
--                "name": "poetry-plugin",
--                "version": "1.2.3",
--                "optional": False,
--                "platform": "*",
--                "python-versions": "*",
--                "checksum": [],
--            },
--        ],
--        "metadata": {
--            "python-versions": "^3.6",
--            "platform": "*",
--            "content-hash": "123456789",
--            "files": {"poetry-plugin": []},
--        },
--    }
--    system_pyproject_file.parent.joinpath("poetry.lock").write_text(
--        tomlkit.dumps(lock_content), encoding="utf-8"
--    )
--
--    installed.add_package(plugin)
--
--
--def test_remove_installed_package(tester: CommandTester) -> None:
--    tester.execute("poetry-plugin")
--
--    expected = """\
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 0 installs, 0 updates, 1 removal
--
--  • Removing poetry-plugin (1.2.3)
--
--Writing lock file
--"""
--    assert tester.io.fetch_output() == expected
--
--    dependencies = get_self_command_dependencies()
--
--    assert "poetry-plugin" not in dependencies
--    assert not dependencies
--
--
--def test_remove_installed_package_dry_run(tester: CommandTester) -> None:
--    tester.execute("poetry-plugin --dry-run")
--
--    expected = f"""\
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 0 installs, 0 updates, 1 removal, 1 skipped
--
--  • Removing poetry-plugin (1.2.3)
--  • Installing poetry ({__version__}): Skipped for the following reason: Already \
--installed
--"""
--
--    assert tester.io.fetch_output() == expected
--
--    dependencies = get_self_command_dependencies()
--
--    assert "poetry-plugin" in dependencies
 diff --git a/tests/console/commands/self/test_self_command.py b/tests/console/commands/self/test_self_command.py
 deleted file mode 100644
 index 7abf266e..00000000
@@ -2159,329 +1728,11 @@ index 7abf266e..00000000
 -        generated = f.read()
 -
 -    assert "\r\r" not in generated
-diff --git a/tests/console/commands/self/test_show_plugins.py b/tests/console/commands/self/test_show_plugins.py
-deleted file mode 100644
-index 20ae7f5d..00000000
---- a/tests/console/commands/self/test_show_plugins.py
-+++ /dev/null
-@@ -1,226 +0,0 @@
--from __future__ import annotations
--
--from typing import TYPE_CHECKING
--from typing import Any
--from typing import Callable
--
--import pytest
--
--from poetry.core.packages.dependency import Dependency
--from poetry.core.packages.package import Package
--
--from poetry.plugins.application_plugin import ApplicationPlugin
--from poetry.plugins.plugin import Plugin
--from poetry.utils._compat import metadata
--
--
--if TYPE_CHECKING:
--    from os import PathLike
--    from pathlib import Path
--
--    from cleo.io.io import IO
--    from cleo.testers.command_tester import CommandTester
--    from pytest_mock import MockerFixture
--
--    from poetry.plugins.base_plugin import BasePlugin
--    from poetry.poetry import Poetry
--    from poetry.repositories import Repository
--    from poetry.utils.env import Env
--    from tests.helpers import PoetryTestApplication
--    from tests.types import CommandTesterFactory
--
--
--class DoNothingPlugin(Plugin):
--    def activate(self, poetry: Poetry, io: IO) -> None:
--        pass
--
--
--class EntryPoint(metadata.EntryPoint):
--    def load(self) -> type[BasePlugin]:
--        if self.group == ApplicationPlugin.group:
--            return ApplicationPlugin
--
--        return DoNothingPlugin
--
--
--@pytest.fixture()
--def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
--    return command_tester_factory("self show plugins")
--
--
--@pytest.fixture()
--def plugin_package_requires_dist() -> list[str]:
--    return []
--
--
--@pytest.fixture()
--def plugin_package(plugin_package_requires_dist: list[str]) -> Package:
--    package = Package("poetry-plugin", "1.2.3")
--
--    for requirement in plugin_package_requires_dist:
--        package.add_dependency(Dependency.create_from_pep_508(requirement))
--
--    return package
--
--
--@pytest.fixture()
--def plugin_distro(plugin_package: Package, tmp_path: Path) -> metadata.Distribution:
--    class MockDistribution(metadata.Distribution):
--        def read_text(self, filename: str) -> str | None:
--            if filename == "METADATA":
--                return "\n".join(
--                    [
--                        f"Name: {plugin_package.name}",
--                        f"Version: {plugin_package.version}",
--                        *[
--                            f"Requires-Dist: {dep.to_pep_508()}"
--                            for dep in plugin_package.requires
--                        ],
--                    ]
--                )
--            return None
--
--        def locate_file(self, path: str | PathLike[str]) -> Path:
--            return tmp_path / path
--
--    return MockDistribution()  # type: ignore[no-untyped-call]
--
--
--@pytest.fixture
--def entry_point_name() -> str:
--    return "poetry-plugin"
--
--
--@pytest.fixture
--def entry_point_values_by_group() -> dict[str, list[str]]:
--    return {}
--
--
--@pytest.fixture
--def entry_points(
--    entry_point_name: str,
--    entry_point_values_by_group: dict[str, list[str]],
--    plugin_distro: metadata.Distribution,
--) -> Callable[..., list[metadata.EntryPoint]]:
--    by_group = {
--        key: [
--            EntryPoint(  # type: ignore[no-untyped-call]
--                name=entry_point_name,
--                group=key,
--                value=value,
--            )._for(  # type: ignore[attr-defined]
--                plugin_distro
--            )
--            for value in values
--        ]
--        for key, values in entry_point_values_by_group.items()
--    }
--
--    def _entry_points(**params: Any) -> list[metadata.EntryPoint]:
--        group = params.get("group")
--
--        if group not in by_group:
--            return []
--
--        eps: list[metadata.EntryPoint] = by_group[group]
--
--        return eps
--
--    return _entry_points
--
--
--@pytest.fixture(autouse=True)
--def mock_metadata_entry_points(
--    plugin_package: Package,
--    plugin_distro: metadata.Distribution,
--    installed: Repository,
--    mocker: MockerFixture,
--    tmp_venv: Env,
--    entry_points: Callable[..., metadata.EntryPoint],
--) -> None:
--    installed.add_package(plugin_package)
--
--    mocker.patch.object(
--        tmp_venv.site_packages, "find_distribution", return_value=plugin_distro
--    )
--    mocker.patch.object(metadata, "entry_points", entry_points)
--
--
--@pytest.mark.parametrize("entry_point_name", ["poetry-plugin", "not-package-name"])
--@pytest.mark.parametrize(
--    "entry_point_values_by_group",
--    [
--        {
--            ApplicationPlugin.group: ["FirstApplicationPlugin"],
--            Plugin.group: ["FirstPlugin"],
--        }
--    ],
--)
--def test_show_displays_installed_plugins(
--    app: PoetryTestApplication,
--    tester: CommandTester,
--) -> None:
--    tester.execute("")
--
--    expected = """
--  • poetry-plugin (1.2.3)
--      1 plugin and 1 application plugin
--"""
--
--    assert tester.io.fetch_output() == expected
--
--
--@pytest.mark.parametrize(
--    "entry_point_values_by_group",
--    [
--        {
--            ApplicationPlugin.group: [
--                "FirstApplicationPlugin",
--                "SecondApplicationPlugin",
--            ],
--            Plugin.group: ["FirstPlugin", "SecondPlugin"],
--        }
--    ],
--)
--def test_show_displays_installed_plugins_with_multiple_plugins(
--    app: PoetryTestApplication,
--    tester: CommandTester,
--) -> None:
--    tester.execute("")
--
--    expected = """
--  • poetry-plugin (1.2.3)
--      2 plugins and 2 application plugins
--"""
--
--    assert tester.io.fetch_output() == expected
--
--
--@pytest.mark.parametrize(
--    "plugin_package_requires_dist", [["foo (>=1.2.3)", "bar (<4.5.6)"]]
--)
--@pytest.mark.parametrize(
--    "entry_point_values_by_group",
--    [
--        {
--            ApplicationPlugin.group: ["FirstApplicationPlugin"],
--            Plugin.group: ["FirstPlugin"],
--        }
--    ],
--)
--def test_show_displays_installed_plugins_with_dependencies(
--    app: PoetryTestApplication,
--    tester: CommandTester,
--) -> None:
--    tester.execute("")
--
--    expected = """
--  • poetry-plugin (1.2.3)
--      1 plugin and 1 application plugin
--
--      Dependencies
--        - foo (>=1.2.3)
--        - bar (<4.5.6)
--"""
--
--    assert tester.io.fetch_output() == expected
-diff --git a/tests/console/commands/self/test_update.py b/tests/console/commands/self/test_update.py
-deleted file mode 100644
-index d2c6ef0c..00000000
---- a/tests/console/commands/self/test_update.py
-+++ /dev/null
-@@ -1,80 +0,0 @@
--from __future__ import annotations
--
--from typing import TYPE_CHECKING
--
--import pytest
--
--from poetry.core.constraints.version import Version
--from poetry.core.packages.package import Package
--
--from poetry.__version__ import __version__
--from poetry.factory import Factory
--from poetry.installation.executor import Executor
--from poetry.installation.wheel_installer import WheelInstaller
--
--
--if TYPE_CHECKING:
--    from cleo.testers.command_tester import CommandTester
--    from pytest_mock import MockerFixture
--
--    from tests.helpers import TestRepository
--    from tests.types import CommandTesterFactory
--    from tests.types import FixtureDirGetter
--
--
--@pytest.fixture
--def setup(mocker: MockerFixture, fixture_dir: FixtureDirGetter) -> None:
--    mocker.patch.object(
--        Executor,
--        "_download",
--        return_value=fixture_dir("distributions").joinpath(
--            "demo-0.1.2-py2.py3-none-any.whl"
--        ),
--    )
--
--    mocker.patch.object(WheelInstaller, "install")
--
--
--@pytest.fixture()
--def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
--    return command_tester_factory("self update")
--
--
--def test_self_update_can_update_from_recommended_installation(
--    tester: CommandTester,
--    repo: TestRepository,
--    installed: TestRepository,
--) -> None:
--    new_version = Version.parse(__version__).next_minor().text
--
--    old_poetry = Package("poetry", __version__)
--    old_poetry.add_dependency(Factory.create_dependency("cleo", "^0.8.2"))
--
--    new_poetry = Package("poetry", new_version)
--    new_poetry.add_dependency(Factory.create_dependency("cleo", "^1.0.0"))
--
--    installed.add_package(old_poetry)
--    installed.add_package(Package("cleo", "0.8.2"))
--
--    repo.add_package(new_poetry)
--    repo.add_package(Package("cleo", "1.0.0"))
--
--    tester.execute()
--
--    expected_output = f"""\
--Updating Poetry version ...
--
--Using version ^{new_version} for poetry
--
--Updating dependencies
--Resolving dependencies...
--
--Package operations: 0 installs, 2 updates, 0 removals
--
--  • Updating cleo (0.8.2 -> 1.0.0)
--  • Updating poetry ({__version__} -> {new_version})
--
--Writing lock file
--"""
--
--    assert tester.io.fetch_output() == expected_output
 diff --git a/tests/console/commands/test_init.py b/tests/console/commands/test_init.py
-index 44e472fb..a363ee5b 100644
+index 2ecb794a..d4e3f895 100644
 --- a/tests/console/commands/test_init.py
 +++ b/tests/console/commands/test_init.py
-@@ -1046,15 +1046,16 @@ def test_package_include(
+@@ -1064,15 +1064,16 @@ def test_package_include(
  
  
  @pytest.mark.parametrize(
@@ -2501,7 +1752,7 @@ index 44e472fb..a363ee5b 100644
      config: Config,
      mocker: MockerFixture,
      tester: CommandTester,
-@@ -1066,7 +1067,7 @@ def test_respect_prefer_active_on_init(
+@@ -1084,7 +1085,7 @@ def test_respect_prefer_active_on_init(
  
      def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
          if GET_PYTHON_VERSION_ONELINER in cmd:
@@ -2544,10 +1795,10 @@ index 9bbef7ff..925cbbab 100644
          output: str = orig_check_output(cmd, *_, **__)
          return output
 diff --git a/tests/installation/test_executor.py b/tests/installation/test_executor.py
-index 3b2aec4e..b129011f 100644
+index 3b7c16ef..5bb80fe9 100644
 --- a/tests/installation/test_executor.py
 +++ b/tests/installation/test_executor.py
-@@ -1252,6 +1252,7 @@ Package operations: 1 install, 0 updates, 0 removals
+@@ -1236,6 +1236,7 @@ Package operations: 1 install, 0 updates, 0 removals
      ],
  )
  @pytest.mark.parametrize("editable", [False, True])
@@ -2555,7 +1806,7 @@ index 3b2aec4e..b129011f 100644
  def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess(
      failing_method: str,
      exception: Exception,
-@@ -1320,6 +1321,7 @@ PEP 517 builds. You can verify this by running '{pip_command} "{requirement}"'.
+@@ -1304,6 +1305,7 @@ PEP 517 builds. You can verify this by running '{pip_command} "{requirement}"'.
      assert output.endswith(expected_end)
  
  
@@ -2563,7 +1814,7 @@ index 3b2aec4e..b129011f 100644
  @pytest.mark.parametrize("encoding", ["utf-8", "latin-1"])
  @pytest.mark.parametrize("stderr", [None, "Errör on stderr"])
  def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess_encoding(
-@@ -1361,6 +1363,7 @@ def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess_enc
+@@ -1345,6 +1347,7 @@ def test_build_backend_errors_are_reported_correctly_if_caused_by_subprocess_enc
      assert (stderr or stdout) in io.fetch_output()
  
  
@@ -2571,7 +1822,7 @@ index 3b2aec4e..b129011f 100644
  def test_build_system_requires_not_available(
      config: Config,
      pool: RepositoryPool,
-@@ -1406,6 +1409,7 @@ Package operations: 1 install, 0 updates, 0 removals
+@@ -1390,6 +1393,7 @@ Package operations: 1 install, 0 updates, 0 removals
      assert output.endswith(expected_end)
  
  
@@ -2580,10 +1831,10 @@ index 3b2aec4e..b129011f 100644
      mocker: MockerFixture,
      config: Config,
 diff --git a/tests/installation/test_installer.py b/tests/installation/test_installer.py
-index fca6307b..65c07d87 100644
+index 0d7a898c..bbe8b89e 100644
 --- a/tests/installation/test_installer.py
 +++ b/tests/installation/test_installer.py
-@@ -1141,6 +1141,7 @@ def test_run_installs_extras_with_deps_if_requested_locked(
+@@ -1097,6 +1097,7 @@ def test_run_installs_extras_with_deps_if_requested(
  
  
  @pytest.mark.network
@@ -2615,229 +1866,3 @@ index 2dbf0141..c8419ddf 100644
  def test_system_site_packages_source_type(
      tmp_path: Path, mocker: MockerFixture, poetry: Poetry
  ) -> None:
-diff --git a/tests/utils/test_env.py b/tests/utils/test_env.py
-index c8cb98ea..2b8d3475 100644
---- a/tests/utils/test_env.py
-+++ b/tests/utils/test_env.py
-@@ -60,6 +60,11 @@ print("nullpackage loaded"),
- """
- 
- 
-+class MockSubprocRun:
-+    def __init__(self, v):
-+        self.stdout = v
-+
-+
- class MockVirtualEnv(VirtualEnv):
-     def __init__(
-         self,
-@@ -101,7 +106,7 @@ def test_virtualenvs_with_spaces_in_their_path_work_as_expected(
-     assert venv.run("python", "-V").startswith("Python")
- 
- 
--@pytest.mark.skipif(sys.platform != "darwin", reason="requires darwin")
-+@pytest.mark.skip("no xattr on bin")
- def test_venv_backup_exclusion(tmp_path: Path, manager: EnvManager) -> None:
-     import xattr
- 
-@@ -246,6 +251,7 @@ def test_activate_in_project_venv_no_explicit_config(
-     assert not envs_file.exists()
- 
- 
-+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
- def test_activate_activates_non_existing_virtualenv_no_envs_file(
-     tmp_path: Path,
-     manager: EnvManager,
-@@ -552,7 +558,7 @@ def test_deactivate_non_activated_but_existing(
- 
-     mocker.patch(
-         "subprocess.check_output",
--        side_effect=check_output_wrapper(),
-+        side_effect=check_output_wrapper(Version.parse("3.10.5")),
-     )
- 
-     manager.deactivate()
-@@ -589,7 +595,7 @@ def test_deactivate_activated(
- 
-     mocker.patch(
-         "subprocess.check_output",
--        side_effect=check_output_wrapper(),
-+        side_effect=check_output_wrapper(Version.parse("3.10.5")),
-     )
- 
-     manager.deactivate()
-@@ -1066,7 +1072,7 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_generic_
- 
-     m.assert_called_with(
-         config_virtualenvs_path / f"{venv_name}-py3.7",
--        executable=Path("/usr/bin/python3"),
-+        executable=Path("/usr/bin/python"),
-         flags=venv_flags_default,
-         prompt="simple-project-py3.7",
-     )
-@@ -1114,18 +1120,25 @@ def test_create_venv_tries_to_find_a_compatible_python_executable_using_specific
- 
-     poetry.package.python_versions = "^3.6"
- 
--    mocker.patch("sys.version_info", (2, 7, 16))
-+    orig_run = subprocess.run
-+    orig_check_output = subprocess.check_output
-+    pyversions = ["3.5.3", "3.5.3", "3.9.0"]
-+
-+    def mock_run(cmd: str, *_: Any, **__: Any) -> str:
-+        if "/usr/bin/python3.9" in cmd:
-+            return MockSubprocRun("/usr/local")
-+        return orig_run(cmd, *_, **__)
-+
-+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
-+        if GET_PYTHON_VERSION_ONELINER in cmd:
-+            return pyversions.pop(0)
-+        if "import sys; print(sys.executable)" in cmd:
-+            return "/usr/bin/python3.9"
-+        return orig_check_output(cmd, *_, **__)
-+
-     mocker.patch("shutil.which", side_effect=lambda py: f"/usr/bin/{py}")
--    mocker.patch(
--        "subprocess.check_output",
--        side_effect=[
--            "/usr/bin/python3",
--            "3.5.3",
--            "/usr/bin/python3.9",
--            "3.9.0",
--            "/usr",
--        ],
--    )
-+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
-+    mocker.patch("subprocess.run", side_effect=mock_run)
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-     )
-@@ -1148,7 +1161,7 @@ def test_create_venv_fails_if_no_compatible_python_version_could_be_found(
- 
-     poetry.package.python_versions = "^4.8"
- 
--    mocker.patch("subprocess.check_output", side_effect=["", "", "", ""])
-+    mocker.patch("subprocess.check_output", side_effect=lambda *args, **kwargs: "")
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-     )
-@@ -1174,7 +1187,16 @@ def test_create_venv_does_not_try_to_find_compatible_versions_with_executable(
- 
-     poetry.package.python_versions = "^4.8"
- 
--    mocker.patch("subprocess.check_output", side_effect=["3.8.0"])
-+    orig_check_output = subprocess.check_output
-+
-+    def mock_check_output(cmd: str, *_: Any, **__: Any) -> str:
-+        if GET_PYTHON_VERSION_ONELINER in cmd:
-+            return "3.8.0"
-+        if "import sys; print(sys.executable)" in cmd:
-+            return "python"
-+        return orig_check_output(cmd, *_, **__)
-+
-+    mocker.patch("subprocess.check_output", side_effect=mock_check_output)
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-     )
-@@ -1210,10 +1232,9 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
-     )
- 
-     assert version.patch is not None
--    mocker.patch("sys.version_info", (version.major, version.minor, version.patch + 1))
-     mocker.patch(
-         "subprocess.check_output",
--        side_effect=check_output_wrapper(Version.parse("3.6.9")),
-+        side_effect=check_output_wrapper(Version.parse(f"{version.major}.{version.minor}.{version.patch + 1}")),
-     )
-     m = mocker.patch(
-         "poetry.utils.env.EnvManager.build_venv", side_effect=lambda *args, **kwargs: ""
-@@ -1223,7 +1244,7 @@ def test_create_venv_uses_patch_version_to_detect_compatibility(
- 
-     m.assert_called_with(
-         config_virtualenvs_path / f"{venv_name}-py{version.major}.{version.minor}",
--        executable=None,
-+        executable=Path('/usr/bin/python'),
-         flags=venv_flags_default,
-         prompt=f"simple-project-py{version.major}.{version.minor}",
-     )
-@@ -1297,6 +1318,7 @@ def test_create_venv_fails_if_current_python_version_is_not_supported(
-     assert expected_message == str(e.value)
- 
- 
-+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
- def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
-     manager: EnvManager,
-     poetry: Poetry,
-@@ -1338,7 +1360,7 @@ def test_activate_with_in_project_setting_does_not_fail_if_no_venvs_dir(
- 
- 
- def test_system_env_has_correct_paths() -> None:
--    env = SystemEnv(Path(sys.prefix))
-+    env = SystemEnv(Path(sys.prefix), auto_path=False)
- 
-     paths = env.paths
- 
-@@ -1349,6 +1371,7 @@ def test_system_env_has_correct_paths() -> None:
-     assert paths["include"] is not None
- 
- 
-+@pytest.mark.skip
- @pytest.mark.parametrize(
-     "enabled",
-     [True, False],
-@@ -1400,6 +1423,7 @@ def test_generic_env_system_packages(poetry: Poetry) -> None:
-     assert not env.includes_system_site_packages
- 
- 
-+@pytest.mark.skip
- @pytest.mark.parametrize("with_system_site_packages", [True, False])
- def test_env_system_packages_are_relative_to_lib(
-     tmp_path: Path, poetry: Poetry, with_system_site_packages: bool
-@@ -1592,6 +1616,13 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
- 
-     poetry.package.python_versions = "~3.5.1"
- 
-+    orig_run = subprocess.run
-+
-+    def mock_run(cmd: str, *_: Any, **__: Any) -> str:
-+        if "/usr/bin/python3.5" in cmd:
-+            return MockSubprocRun("/usr/local")
-+        return orig_run(cmd, *_, **__)
-+
-     def mock_check_output(cmd: str, *args: Any, **kwargs: Any) -> str:
-         if GET_PYTHON_VERSION_ONELINER in cmd:
-             executable = cmd[0]
-@@ -1603,6 +1634,7 @@ def test_create_venv_accepts_fallback_version_w_nonzero_patchlevel(
-             return "/usr/bin/python3.5"
- 
-     mocker.patch("shutil.which", side_effect=lambda py: f"/usr/bin/{py}")
-+    mocker.patch("subprocess.run", side_effect=mock_run)
-     check_output = mocker.patch(
-         "subprocess.check_output",
-         side_effect=mock_check_output,
-@@ -1670,7 +1702,7 @@ def test_build_environment_called_build_script_specified(
-         assert env.executed == [  # type: ignore[attr-defined]
-             [
-                 str(sys.executable),
--                str(env.pip_embedded),
-+                env.pip_embedded,
-                 "install",
-                 "--disable-pip-version-check",
-                 "--ignore-installed",
-@@ -1695,6 +1727,7 @@ def test_build_environment_not_called_without_build_script_specified(
-         assert not env.executed  # type: ignore[attr-defined]
- 
- 
-+@pytest.mark.skipif(sys.platform == 'darwin', reason='no hardcoded bin on macos')
- def test_create_venv_project_name_empty_sets_correct_prompt(
-     fixture_dir: FixtureDirGetter,
-     project_factory: ProjectFactory,
-@@ -1725,7 +1758,7 @@ def test_create_venv_project_name_empty_sets_correct_prompt(
- 
-     m.assert_called_with(
-         config_virtualenvs_path / f"{venv_name}-py3.7",
--        executable=Path("/usr/bin/python3"),
-+        executable=Path("/usr/bin/python"),
-         flags={
-             "always-copy": False,
-             "system-site-packages": False,

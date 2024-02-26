@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import shutil
+
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
+from zipfile import ZipFile
 
 import pytest
+
+from packaging.metadata import parse_email
 
 from poetry.inspection.info import PackageInfo
 from poetry.inspection.info import PackageInfoError
@@ -14,6 +19,7 @@ from poetry.utils.env import VirtualEnv
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from packaging.metadata import RawMetadata
     from pytest_mock import MockerFixture
 
     from tests.types import FixtureDirGetter
@@ -32,6 +38,13 @@ def demo_sdist(fixture_dir: FixtureDirGetter) -> Path:
 @pytest.fixture
 def demo_wheel(fixture_dir: FixtureDirGetter) -> Path:
     return fixture_dir("distributions") / "demo-0.1.0-py2.py3-none-any.whl"
+
+
+@pytest.fixture
+def demo_wheel_metadata(demo_wheel: Path) -> RawMetadata:
+    with ZipFile(demo_wheel) as zf:
+        metadata, _ = parse_email(zf.read("demo-0.1.0.dist-info/METADATA"))
+    return metadata
 
 
 @pytest.fixture
@@ -89,6 +102,37 @@ def demo_setup_complex_pep517_legacy(demo_setup_complex: Path) -> Path:
     return demo_setup_complex
 
 
+@pytest.fixture
+def demo_setup_complex_calls_script(
+    fixture_dir: FixtureDirGetter, source_dir: Path, tmp_path: Path
+) -> Path:
+    # make sure the scripts project is on the same drive (for Windows tests in CI)
+    scripts_dir = tmp_path / "scripts"
+    shutil.copytree(fixture_dir("scripts"), scripts_dir)
+
+    pyproject = source_dir / "pyproject.toml"
+    pyproject.write_text(
+        f"""\
+    [build-system]
+    requires = ["setuptools", "scripts @ {scripts_dir.as_uri()}"]
+    build-backend = "setuptools.build_meta:__legacy__"
+"""
+    )
+
+    setup_py = source_dir / "setup.py"
+    setup_py.write_text(
+        """\
+import subprocess
+from setuptools import setup
+if subprocess.call(["exit-code"]) != 42:
+    raise RuntimeError("Wrong exit code.")
+setup(name="demo", version="0.1.0", install_requires=[i for i in ["package"]])
+"""
+    )
+
+    return source_dir
+
+
 def demo_check_info(info: PackageInfo, requires_dist: set[str] | None = None) -> None:
     assert info.name == "demo"
     assert info.version == "0.1.0"
@@ -116,16 +160,52 @@ def demo_check_info(info: PackageInfo, requires_dist: set[str] | None = None) ->
 def test_info_from_sdist(demo_sdist: Path) -> None:
     info = PackageInfo.from_sdist(demo_sdist)
     demo_check_info(info)
+    assert info._source_type == "file"
+    assert info._source_url == demo_sdist.resolve().as_posix()
+
+
+def test_info_from_sdist_no_pkg_info(fixture_dir: FixtureDirGetter) -> None:
+    path = fixture_dir("distributions") / "demo_no_pkg_info-0.1.0.tar.gz"
+    info = PackageInfo.from_sdist(path)
+    demo_check_info(info)
+    assert info._source_type == "file"
+    assert info._source_url == path.resolve().as_posix()
 
 
 def test_info_from_wheel(demo_wheel: Path) -> None:
     info = PackageInfo.from_wheel(demo_wheel)
     demo_check_info(info)
+    assert info._source_type == "file"
+    assert info._source_url == demo_wheel.resolve().as_posix()
+
+
+def test_info_from_wheel_metadata(demo_wheel_metadata: RawMetadata) -> None:
+    info = PackageInfo.from_metadata(demo_wheel_metadata)
+    demo_check_info(info)
+    assert info.requires_python == ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+    assert info._source_type is None
+    assert info._source_url is None
+
+
+def test_info_from_wheel_metadata_incomplete() -> None:
+    """
+    To avoid differences in cached metadata,
+    it is important that the representation of missing fields does not change!
+    """
+    metadata, _ = parse_email(b"Metadata-Version: 2.1\nName: demo\nVersion: 0.1.0\n")
+    info = PackageInfo.from_metadata(metadata)
+    assert info.name == "demo"
+    assert info.version == "0.1.0"
+    assert info.summary is None
+    assert info.requires_dist is None
+    assert info.requires_python is None
 
 
 def test_info_from_bdist(demo_wheel: Path) -> None:
     info = PackageInfo.from_bdist(demo_wheel)
     demo_check_info(info)
+    assert info._source_type == "file"
+    assert info._source_url == demo_wheel.resolve().as_posix()
 
 
 def test_info_from_poetry_directory(fixture_dir: FixtureDirGetter) -> None:
@@ -154,7 +234,7 @@ def test_info_from_poetry_directory_fallback_on_poetry_create_error(
 
 
 def test_info_from_requires_txt(fixture_dir: FixtureDirGetter) -> None:
-    info = PackageInfo.from_metadata(
+    info = PackageInfo.from_metadata_directory(
         fixture_dir("inspection") / "demo_only_requires_txt.egg-info"
     )
     assert info is not None
@@ -225,12 +305,16 @@ def test_info_setup_complex_pep517_legacy(
 def test_info_setup_complex_disable_build(
     mocker: MockerFixture, demo_setup_complex: Path
 ) -> None:
-    spy = mocker.spy(VirtualEnv, "run")
-    info = PackageInfo.from_directory(demo_setup_complex, disable_build=True)
-    assert spy.call_count == 0
-    assert info.name == "demo"
-    assert info.version == "0.1.0"
-    assert info.requires_dist is None
+    # Cannot extract install_requires from list comprehension.
+    with pytest.raises(PackageInfoError):
+        PackageInfo.from_directory(demo_setup_complex, disable_build=True)
+
+
+@pytest.mark.network
+def test_info_setup_complex_calls_script(demo_setup_complex_calls_script: Path) -> None:
+    """Building the project requires calling a script from its build_requires."""
+    info = PackageInfo.from_directory(demo_setup_complex_calls_script)
+    demo_check_info(info, requires_dist={"package"})
 
 
 @pytest.mark.network
