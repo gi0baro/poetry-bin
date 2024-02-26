@@ -116,6 +116,7 @@ def test_convert_dependencies() -> None:
     assert result == (main, extras)
 
 
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
 def test_make_setup() -> None:
     poetry = Factory().create_poetry(project("complete"))
 
@@ -178,6 +179,9 @@ def test_find_files_to_add() -> None:
     result = {f.relative_to_source_root() for f in builder.find_files_to_add()}
 
     assert result == {
+        Path("AUTHORS"),
+        Path("COPYING"),
+        Path("LICENCE"),
         Path("LICENSE"),
         Path("README.rst"),
         Path("bin/script.sh"),
@@ -295,6 +299,7 @@ def test_sdist_reproducibility() -> None:
     assert len(hashes) == 1
 
 
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
 def test_setup_py_context() -> None:
     poetry = Factory().create_poetry(project("complete"))
 
@@ -440,21 +445,19 @@ def test_default_with_excluded_data(mocker: MockerFixture) -> None:
     class MockGit:
         def get_ignored_files(self, folder: Path | None = None) -> list[str]:
             # Patch git module to return specific excluded files
-            return [
+            return [(
                 (
-                    (
-                        Path(__file__).parent
-                        / "fixtures"
-                        / "default_with_excluded_data"
-                        / "my_package"
-                        / "data"
-                        / "sub_data"
-                        / "data2.txt"
-                    )
-                    .relative_to(project("default_with_excluded_data"))
-                    .as_posix()
+                    Path(__file__).parent
+                    / "fixtures"
+                    / "default_with_excluded_data"
+                    / "my_package"
+                    / "data"
+                    / "sub_data"
+                    / "data2.txt"
                 )
-            ]
+                .relative_to(project("default_with_excluded_data"))
+                .as_posix()
+            )]
 
     p = mocker.patch("poetry.core.vcs.get_vcs")
     p.return_value = MockGit()

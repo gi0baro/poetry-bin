@@ -21,6 +21,8 @@ class URLDependency(Dependency):
         optional: bool = False,
         extras: Iterable[str] | None = None,
     ) -> None:
+        # Attributes must be immutable for clone() to be safe!
+        # (For performance reasons, clone only creates a copy instead of a deep copy).
         self._url = url
         self._directory = directory
 
@@ -50,13 +52,7 @@ class URLDependency(Dependency):
 
     @property
     def base_pep_508_name(self) -> str:
-        requirement = self.pretty_name
-
-        if self.extras:
-            extras = ",".join(sorted(self.extras))
-            requirement += f"[{extras}]"
-
-        requirement += f" @ {self._url}"
+        requirement = f"{self.complete_pretty_name} @ {self._url}"
 
         if self.directory:
             requirement += f"#subdirectory={self.directory}"

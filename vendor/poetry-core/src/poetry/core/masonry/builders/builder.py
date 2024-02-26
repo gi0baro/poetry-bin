@@ -41,6 +41,11 @@ class Builder:
     ) -> None:
         from poetry.core.masonry.metadata import Metadata
 
+        if not poetry.is_package_mode:
+            raise RuntimeError(
+                "Building a package is not possible in non-package mode."
+            )
+
         self._poetry = poetry
         self._package = poetry.package
         self._path: Path = poetry.pyproject_path.parent
@@ -180,6 +185,15 @@ class Builder:
                 else:
                     source_root = self._path
 
+                if (
+                    isinstance(include, PackageInclude)
+                    and include.target
+                    and self.format == "wheel"
+                ):
+                    target_dir = include.target
+                else:
+                    target_dir = None
+
                 if file.is_dir():
                     if self.format in formats:
                         for current_file in file.glob("**/*"):
@@ -187,6 +201,7 @@ class Builder:
                                 path=current_file,
                                 project_root=self._path,
                                 source_root=source_root,
+                                target_dir=target_dir,
                             )
 
                             if not (
@@ -199,7 +214,10 @@ class Builder:
                     continue
 
                 include_file = BuildIncludeFile(
-                    path=file, project_root=self._path, source_root=source_root
+                    path=file,
+                    project_root=self._path,
+                    source_root=source_root,
+                    target_dir=target_dir,
                 )
 
                 if self.is_excluded(
@@ -293,7 +311,7 @@ class Builder:
                     f"Use of callable in script specification ({name}) is"
                     " deprecated. Use reference instead.",
                     DeprecationWarning,
-                    stacklevel=2,
+                    stacklevel=1,
                 )
                 specification = {
                     "reference": specification["callable"],
@@ -304,6 +322,16 @@ class Builder:
                 continue
 
             extras = specification.get("extras", [])
+            if extras:
+                warnings.warn(
+                    f'The script "{name}" depends on an extra. Scripts depending on'
+                    " extras are deprecated and support for them will be removed in a"
+                    " future version of poetry/poetry-core. See"
+                    " https://packaging.python.org/en/latest/specifications/entry-points/#data-model"
+                    " for details.",
+                    DeprecationWarning,
+                    stacklevel=1,
+                )
             extras = f"[{', '.join(extras)}]" if extras else ""
             reference = specification.get("reference")
 
@@ -361,23 +389,36 @@ class Builder:
 
         return {"name": name, "email": email}
 
+    def _get_legal_files(self) -> set[Path]:
+        include_files_patterns = {"COPYING*", "LICEN[SC]E*", "AUTHORS*", "NOTICE*"}
+        files: set[Path] = set()
+
+        for pattern in include_files_patterns:
+            files.update(self._path.glob(pattern))
+
+        files.update(self._path.joinpath("LICENSES").glob("**/*"))
+        return files
+
 
 class BuildIncludeFile:
     def __init__(
         self,
         path: Path | str,
         project_root: Path | str,
-        source_root: Path | str | None = None,
+        source_root: Path | str,
+        target_dir: Path | str | None = None,
     ) -> None:
         """
         :param project_root: the full path of the project's root
         :param path: a full path to the file to be included
-        :param source_root: the root path to resolve to
+        :param source_root: the full root path to resolve to
+        :param target_dir: the relative target root to resolve to
         """
         self.path = Path(path)
         self.project_root = Path(project_root).resolve()
-        self.source_root = None if not source_root else Path(source_root).resolve()
-        if not self.path.is_absolute() and self.source_root:
+        self.source_root = Path(source_root).resolve()
+        self.target_dir = None if not target_dir else Path(target_dir)
+        if not self.path.is_absolute():
             self.path = self.source_root / self.path
         else:
             self.path = self.path
@@ -400,7 +441,10 @@ class BuildIncludeFile:
         return self.path.relative_to(self.project_root)
 
     def relative_to_source_root(self) -> Path:
-        if self.source_root is not None:
-            return self.path.relative_to(self.source_root)
+        return self.path.relative_to(self.source_root)
 
-        return self.path
+    def relative_to_target_root(self) -> Path:
+        path = self.relative_to_source_root()
+        if self.target_dir is not None:
+            return self.target_dir / path
+        return path

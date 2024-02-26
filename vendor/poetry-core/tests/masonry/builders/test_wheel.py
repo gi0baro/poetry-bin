@@ -70,6 +70,7 @@ def test_wheel_module() -> None:
         assert "module1.py" in z.namelist()
 
 
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
 def test_wheel_package() -> None:
     module_path = fixtures_dir / "complete"
     WheelBuilder.make(Factory().create_poetry(module_path))
@@ -208,6 +209,7 @@ def test_wheel_build_script_creates_package() -> None:
     shutil.rmtree(module_path / "my_package")
 
 
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
 def test_dist_info_file_permissions() -> None:
     module_path = fixtures_dir / "complete"
     WheelBuilder.make(Factory().create_poetry(module_path))
@@ -326,22 +328,20 @@ def test_default_src_with_excluded_data(mocker: MockerFixture) -> None:
     class MockGit:
         def get_ignored_files(self, folder: Path | None = None) -> list[str]:
             # Patch git module to return specific excluded files
-            return [
+            return [(
                 (
-                    (
-                        Path(__file__).parent
-                        / "fixtures"
-                        / "default_src_with_excluded_data"
-                        / "src"
-                        / "my_package"
-                        / "data"
-                        / "sub_data"
-                        / "data2.txt"
-                    )
-                    .relative_to(project("default_src_with_excluded_data"))
-                    .as_posix()
+                    Path(__file__).parent
+                    / "fixtures"
+                    / "default_src_with_excluded_data"
+                    / "src"
+                    / "my_package"
+                    / "data"
+                    / "sub_data"
+                    / "data2.txt"
                 )
-            ]
+                .relative_to(project("default_src_with_excluded_data"))
+                .as_posix()
+            )]
 
     p = mocker.patch("poetry.core.vcs.get_vcs")
     p.return_value = MockGit()

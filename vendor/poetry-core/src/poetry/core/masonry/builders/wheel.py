@@ -239,27 +239,23 @@ class WheelBuilder(Builder):
 
     def _run_build_command(self, setup: Path) -> None:
         if self._editable:
-            subprocess.check_call(
-                [
-                    self.executable.as_posix(),
-                    str(setup),
-                    "build_ext",
-                    "--inplace",
-                ]
-            )
-        subprocess.check_call(
-            [
+            subprocess.check_call([
                 self.executable.as_posix(),
                 str(setup),
-                "build",
-                "-b",
-                str(self._path / "build"),
-                "--build-purelib",
-                str(self._get_build_purelib_dir()),
-                "--build-platlib",
-                str(self._get_build_platlib_dir()),
-            ]
-        )
+                "build_ext",
+                "--inplace",
+            ])
+        subprocess.check_call([
+            self.executable.as_posix(),
+            str(setup),
+            "build",
+            "-b",
+            str(self._path / "build"),
+            "--build-purelib",
+            str(self._get_build_purelib_dir()),
+            "--build-platlib",
+            str(self._get_build_platlib_dir()),
+        ])
 
     def _run_build_script(self, build_script: str) -> None:
         logger.debug(f"Executing build script: {build_script}")
@@ -271,7 +267,7 @@ class WheelBuilder(Builder):
         # Walk the files and compress them,
         # sorting everything so the order is stable.
         for file in sorted(to_add, key=lambda x: x.path):
-            self._add_file(wheel, file.path, file.relative_to_source_root())
+            self._add_file(wheel, file.path, file.relative_to_target_root())
 
     def prepare_metadata(self, metadata_directory: Path) -> Path:
         dist_info = metadata_directory / self.dist_info
@@ -292,21 +288,14 @@ class WheelBuilder(Builder):
         with (dist_info / "METADATA").open("w", encoding="utf-8", newline="\n") as f:
             self._write_metadata_file(f)
 
-        license_files = set()
-        for base in ("COPYING", "LICENSE"):
-            license_files.add(self._path / base)
-            license_files.update(self._path.glob(base + ".*"))
-
-        license_files.update(self._path.joinpath("LICENSES").glob("**/*"))
-
-        for license_file in license_files:
-            if not license_file.is_file():
-                logger.debug(f"Skipping: {license_file.as_posix()}")
+        for legal_file in self._get_legal_files():
+            if not legal_file.is_file():
+                logger.debug(f"Skipping: {legal_file.as_posix()}")
                 continue
 
-            dest = dist_info / license_file.relative_to(self._path)
+            dest = dist_info / legal_file.relative_to(self._path)
             dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy(license_file, dest)
+            shutil.copy(legal_file, dest)
 
         return dist_info
 
@@ -396,6 +385,7 @@ for t in packaging_tags.sys_tags():
                 ],
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
             )
         except subprocess.CalledProcessError as e:
             raise RuntimeError(

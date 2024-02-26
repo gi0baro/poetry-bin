@@ -79,6 +79,11 @@
     false,
     false
   ],
+  "AML-glslang": [
+    "AML glslang variant License",
+    false,
+    false
+  ],
   "AMPAS": [
     "Academy of Motion Picture Arts and Sciences BSD",
     false,
@@ -146,6 +151,11 @@
   ],
   "Adobe-2006": [
     "Adobe Systems Incorporated Source Code License Agreement",
+    false,
+    false
+  ],
+  "Adobe-Display-PostScript": [
+    "Adobe Display PostScript License",
     false,
     false
   ],
@@ -304,6 +314,16 @@
     false,
     false
   ],
+  "BSD-3-Clause-acpica": [
+    "BSD 3-Clause acpica variant",
+    false,
+    false
+  ],
+  "BSD-3-Clause-flex": [
+    "BSD 3-Clause Flex variant",
+    false,
+    false
+  ],
   "BSD-4-Clause": [
     "BSD 4-Clause \"Original\" or \"Old\" License",
     false,
@@ -354,8 +374,18 @@
     false,
     false
   ],
+  "BSD-Source-beginning-file": [
+    "BSD Source Code Attribution - beginning of file variant",
+    false,
+    false
+  ],
   "BSD-Systemics": [
     "Systemics BSD variant license",
+    false,
+    false
+  ],
+  "BSD-Systemics-W3Works": [
+    "Systemics W3Works BSD variant license",
     false,
     false
   ],
@@ -411,7 +441,7 @@
   ],
   "BlueOak-1.0.0": [
     "Blue Oak Model License 1.0.0",
-    false,
+    true,
     false
   ],
   "Boehm-GC": [
@@ -476,6 +506,11 @@
   ],
   "CC-BY-3.0-AT": [
     "Creative Commons Attribution 3.0 Austria",
+    false,
+    false
+  ],
+  "CC-BY-3.0-AU": [
+    "Creative Commons Attribution 3.0 Australia",
     false,
     false
   ],
@@ -849,6 +884,11 @@
     false,
     false
   ],
+  "Caldera-no-preamble": [
+    "Caldera License (without preamble)",
+    false,
+    false
+  ],
   "ClArtistic": [
     "Clarified Artistic License",
     false,
@@ -899,6 +939,11 @@
     false,
     false
   ],
+  "DEC-3-Clause": [
+    "DEC 3-Clause License",
+    false,
+    false
+  ],
   "DL-DE-BY-2.0": [
     "Data licence Germany – attribution – version 2.0",
     false,
@@ -916,6 +961,11 @@
   ],
   "DRL-1.0": [
     "Detection Rule License 1.0",
+    false,
+    false
+  ],
+  "DRL-1.1": [
+    "Detection Rule License 1.1",
     false,
     false
   ],
@@ -1019,6 +1069,11 @@
     false,
     false
   ],
+  "FSFAP-no-warranty-disclaimer": [
+    "FSF All Permissive License (without Warranty)",
+    false,
+    false
+  ],
   "FSFUL": [
     "FSF Unlimited License",
     false,
@@ -1066,6 +1121,11 @@
   ],
   "Furuseth": [
     "Furuseth License",
+    false,
+    false
+  ],
+  "GCR-docs": [
+    "Gnome GCR Documentation License",
     false,
     false
   ],
@@ -1186,11 +1246,6 @@
   ],
   "GLWTPL": [
     "Good Luck With That Public License",
-    false,
-    false
-  ],
-  "GNU-compiler-exception": [
-    "GNU Compiler Exception",
     false,
     false
   ],
@@ -1329,6 +1384,16 @@
     false,
     false
   ],
+  "HPND-Kevlin-Henney": [
+    "Historical Permission Notice and Disclaimer - Kevlin Henney variant",
+    false,
+    false
+  ],
+  "HPND-MIT-disclaimer": [
+    "Historical Permission Notice and Disclaimer with MIT disclaimer",
+    false,
+    false
+  ],
   "HPND-Markus-Kuhn": [
     "Historical Permission Notice and Disclaimer - Markus Kuhn variant",
     false,
@@ -1344,6 +1409,11 @@
     false,
     false
   ],
+  "HPND-doc": [
+    "Historical Permission Notice and Disclaimer - documentation variant",
+    false,
+    false
+  ],
   "HPND-doc-sell": [
     "Historical Permission Notice and Disclaimer - documentation sell variant",
     false,
@@ -1356,6 +1426,11 @@
   ],
   "HPND-export-US-modify": [
     "HPND with US Government export control warning and modification rqmt",
+    false,
+    false
+  ],
+  "HPND-sell-MIT-disclaimer-xserver": [
+    "Historical Permission Notice and Disclaimer - sell xserver variant with MIT disclaimer",
     false,
     false
   ],
@@ -1396,7 +1471,7 @@
   ],
   "ICU": [
     "ICU License",
-    false,
+    true,
     false
   ],
   "IEC-Code-Components-EULA": [
@@ -1427,6 +1502,11 @@
   "ISC": [
     "ISC License",
     true,
+    false
+  ],
+  "ISC-Veillard": [
+    "ISC Veillard variant",
+    false,
     false
   ],
   "ImageMagick": [
@@ -1581,6 +1661,11 @@
   ],
   "LOOP": [
     "Common Lisp LOOP License",
+    false,
+    false
+  ],
+  "LPD-document": [
+    "LPD Documentation License",
     false,
     false
   ],
@@ -2264,6 +2349,11 @@
     false,
     false
   ],
+  "Pixar": [
+    "Pixar License",
+    false,
+    false
+  ],
   "Plexus": [
     "Plexus Classworlds License",
     false,
@@ -2349,13 +2439,13 @@
     false,
     false
   ],
-  "SANE-exception": [
-    "SANE Exception",
+  "SAX-PD": [
+    "Sax Public Domain Notice",
     false,
     false
   ],
-  "SAX-PD": [
-    "Sax Public Domain Notice",
+  "SAX-PD-2.0": [
+    "Sax Public Domain Notice 2.0",
     false,
     false
   ],
@@ -2539,6 +2629,11 @@
     false,
     false
   ],
+  "TGPPL-1.0": [
+    "Transitive Grace Period Public Licence 1.0",
+    false,
+    false
+  ],
   "TMate": [
     "TMate Open Source License",
     false,
@@ -2589,11 +2684,6 @@
     false,
     false
   ],
-  "Texinfo-exception": [
-    "Texinfo exception",
-    false,
-    false
-  ],
   "UCAR": [
     "UCAR License",
     false,
@@ -2612,6 +2702,11 @@
   "URT-RLE": [
     "Utah Raster Toolkit Run Length Encoded License",
     false,
+    false
+  ],
+  "Unicode-3.0": [
+    "Unicode License v3",
+    true,
     false
   ],
   "Unicode-DFS-2015": [
@@ -2869,6 +2964,11 @@
     false,
     false
   ],
+  "hdparm": [
+    "hdparm License",
+    false,
+    false
+  ],
   "iMatix": [
     "iMatix Standard Function Library Agreement",
     false,
@@ -2901,6 +3001,11 @@
   ],
   "magaz": [
     "magaz License",
+    false,
+    false
+  ],
+  "mailprio": [
+    "mailprio License",
     false,
     false
   ],
@@ -2944,6 +3049,11 @@
     false,
     false
   ],
+  "radvd": [
+    "radvd License",
+    false,
+    false
+  ],
   "snprintf": [
     "snprintf License",
     false,
@@ -2951,11 +3061,6 @@
   ],
   "ssh-keyscan": [
     "ssh-keyscan License",
-    false,
-    false
-  ],
-  "stunnel-exception": [
-    "stunnel Exception",
     false,
     false
   ],
@@ -2981,6 +3086,11 @@
   ],
   "xinetd": [
     "xinetd License",
+    false,
+    false
+  ],
+  "xkeyboard-config-Zinoviev": [
+    "xkeyboard-config Zinoviev License",
     false,
     false
   ],

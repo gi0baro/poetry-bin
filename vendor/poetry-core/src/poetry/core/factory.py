@@ -19,6 +19,8 @@ from poetry.core.utils.helpers import readme_content_type
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from packaging.utils import NormalizedName
+
     from poetry.core.packages.dependency import Dependency
     from poetry.core.packages.dependency_group import DependencyGroup
     from poetry.core.packages.project_package import ProjectPackage
@@ -58,9 +60,12 @@ class Factory:
             raise RuntimeError("The Poetry configuration is invalid:\n" + message)
 
         # Load package
-        name = local_config["name"]
+        # If name or version were missing in package mode, we would have already
+        # raised an error, so we can safely assume they might only be missing
+        # in non-package mode and use some dummy values in this case.
+        name = local_config.get("name", "non-package-mode")
         assert isinstance(name, str)
-        version = local_config["version"]
+        version = local_config.get("version", "0")
         assert isinstance(version, str)
         package = self.get_package(name, version)
         package = self.configure_package(
@@ -128,11 +133,13 @@ class Factory:
 
         package.root_dir = root
 
-        for author in config["authors"]:
-            package.authors.append(combine_unicode(author))
+        package.authors = [
+            combine_unicode(author) for author in config.get("authors", [])
+        ]
 
-        for maintainer in config.get("maintainers", []):
-            package.maintainers.append(combine_unicode(maintainer))
+        package.maintainers = [
+            combine_unicode(maintainer) for maintainer in config.get("maintainers", [])
+        ]
 
         package.description = config.get("description", "")
         package.homepage = config.get("homepage")
@@ -174,10 +181,11 @@ class Factory:
                 package=package, group="dev", dependencies=config["dev-dependencies"]
             )
 
+        package_extras: dict[NormalizedName, list[Dependency]] = {}
         extras = config.get("extras", {})
         for extra_name, requirements in extras.items():
             extra_name = canonicalize_name(extra_name)
-            package.extras[extra_name] = []
+            package_extras[extra_name] = []
 
             # Checking for dependency
             for req in requirements:
@@ -185,8 +193,10 @@ class Factory:
 
                 for dep in package.requires:
                     if dep.name == req.name:
-                        dep.in_extras.append(extra_name)
-                        package.extras[extra_name].append(dep)
+                        dep._in_extras = [*dep._in_extras, extra_name]
+                        package_extras[extra_name].append(dep)
+
+        package.extras = package_extras
 
         if "build" in config:
             build = config["build"]
@@ -389,6 +399,22 @@ class Factory:
         # Schema validation errors
         validation_errors = validate_object(config, "poetry-schema")
 
+        # json validation may only say "data cannot be validated by any definition",
+        # which is quite vague, so we try to give a more precise error message
+        generic_error = "data cannot be validated by any definition"
+        if generic_error in validation_errors:
+            package_mode = config.get("package-mode", True)
+            if not isinstance(package_mode, bool):
+                validation_errors[validation_errors.index(generic_error)] = (
+                    f"Invalid value for package-mode: {package_mode}"
+                )
+            elif package_mode:
+                required = {"name", "version", "description", "authors"}
+                if missing := required.difference(config):
+                    validation_errors[validation_errors.index(generic_error)] = (
+                        f"The fields {sorted(missing)} are required in package mode."
+                    )
+
         result["errors"] += validation_errors
 
         if strict:
@@ -438,11 +464,20 @@ class Factory:
                         continue
 
                     extras = script.get("extras", [])
+                    if extras:
+                        result["warnings"].append(
+                            f'The script "{name}" depends on an extra. Scripts'
+                            " depending on extras are deprecated and support for them"
+                            " will be removed in a future version of"
+                            " poetry/poetry-core. See"
+                            " https://packaging.python.org/en/latest/specifications/entry-points/#data-model"
+                            " for details."
+                        )
                     for extra in extras:
                         if extra not in config_extras:
                             result["errors"].append(
-                                f'Script "{name}" requires extra "{extra}" which is not'
-                                " defined."
+                                f'The script "{name}" requires extra "{extra}"'
+                                " which is not defined."
                             )
 
             # Checking types of all readme files (must match)

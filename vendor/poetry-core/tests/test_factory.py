@@ -31,6 +31,8 @@ fixtures_dir = Path(__file__).parent / "fixtures"
 def test_create_poetry() -> None:
     poetry = Factory().create_poetry(fixtures_dir / "sample_project")
 
+    assert poetry.is_package_mode
+
     package = poetry.package
 
     assert package.name == "my-package"
@@ -217,6 +219,8 @@ def test_create_poetry_with_packages_and_includes() -> None:
         {"include": "tests", "format": "sdist"},
         {"include": "for_wheel_only", "format": ["wheel"]},
         {"include": "src_package", "from": "src"},
+        {"include": "from_to", "from": "etc", "to": "target_from_to"},
+        {"include": "my_module_to.py", "to": "target_module"},
     ]
 
     assert package.include == [
@@ -233,6 +237,12 @@ def test_create_poetry_with_multi_constraints_dependency() -> None:
     package = poetry.package
 
     assert len(package.requires) == 2
+
+
+def test_create_poetry_non_package_mode() -> None:
+    poetry = Factory().create_poetry(fixtures_dir / "non_package_mode")
+
+    assert not poetry.is_package_mode
 
 
 def test_validate() -> None:
@@ -267,8 +277,8 @@ def test_validate_without_strict_fails_only_non_strict() -> None:
     assert Factory.validate(content) == {
         "errors": [
             (
-                "data must contain ['authors', 'description', 'name', 'version'] "
-                "properties"
+                "The fields ['authors', 'description', 'name', 'version']"
+                " are required in package mode."
             ),
         ],
         "warnings": [],
@@ -286,8 +296,8 @@ def test_validate_strict_fails_strict_and_non_strict() -> None:
     assert Factory.validate(content, strict=True) == {
         "errors": [
             (
-                "data must contain ['authors', 'description', 'name', 'version']"
-                " properties"
+                "The fields ['authors', 'description', 'name', 'version']"
+                " are required in package mode."
             ),
             (
                 'Cannot find dependency "missing_extra" for extra "some-extras" in '
@@ -298,8 +308,8 @@ def test_validate_strict_fails_strict_and_non_strict() -> None:
                 '"some-extras" in main dependencies.'
             ),
             (
-                'Script "a_script_with_unknown_extra" requires extra "foo" which is not'
-                " defined."
+                'The script "a_script_with_unknown_extra" requires extra "foo" which is'
+                " not defined."
             ),
             (
                 "Declared README files must be of same type: found text/markdown,"
@@ -314,6 +324,13 @@ def test_validate_strict_fails_strict_and_non_strict() -> None:
             (
                 'The "pathlib2" dependency specifies the "allows-prereleases" property,'
                 ' which is deprecated. Use "allow-prereleases" instead.'
+            ),
+            (
+                'The script "a_script_with_unknown_extra" depends on an extra. Scripts'
+                " depending on extras are deprecated and support for them will be"
+                " removed in a future version of poetry/poetry-core. See"
+                " https://packaging.python.org/en/latest/specifications/entry-points/#data-model"
+                " for details."
             ),
         ],
     }
@@ -352,7 +369,20 @@ def test_create_poetry_fails_on_invalid_configuration() -> None:
 
     expected = """\
 The Poetry configuration is invalid:
-  - data must contain ['description'] properties
+  - The fields ['description'] are required in package mode.
+"""
+    assert str(e.value) == expected
+
+
+def test_create_poetry_fails_on_invalid_mode() -> None:
+    with pytest.raises(RuntimeError) as e:
+        Factory().create_poetry(
+            Path(__file__).parent / "fixtures" / "invalid_mode" / "pyproject.toml"
+        )
+
+    expected = """\
+The Poetry configuration is invalid:
+  - Invalid value for package-mode: invalid
 """
     assert str(e.value) == expected
 

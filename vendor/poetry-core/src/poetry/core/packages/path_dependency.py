@@ -32,6 +32,8 @@ class PathDependency(Dependency, ABC):
         subdirectory: str | None = None,
         extras: Iterable[str] | None = None,
     ) -> None:
+        # Attributes must be immutable for clone() to be safe!
+        # (For performance reasons, clone only creates a copy instead of a deep copy).
         assert source_type in ("file", "directory")
         self._path = path
         self._base = base or Path.cwd()
@@ -83,16 +85,7 @@ class PathDependency(Dependency, ABC):
 
     @property
     def base_pep_508_name(self) -> str:
-        requirement = self.pretty_name
-
-        if self.extras:
-            extras = ",".join(sorted(self.extras))
-            requirement += f"[{extras}]"
-
-        path = path_to_url(self.full_path)
-        requirement += f" @ {path}"
-
-        return requirement
+        return f"{self.complete_pretty_name} @ {path_to_url(self.full_path)}"
 
     def _validate(self) -> str:
         if not self._full_path.exists():

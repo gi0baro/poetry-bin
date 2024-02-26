@@ -29,6 +29,9 @@ class PackageSpecification:
     ) -> None:
         from packaging.utils import canonicalize_name
 
+        # Attributes must be immutable for clone() to be safe!
+        # (For performance reasons, clone only creates a copy instead of a deep copy).
+
         self._pretty_name = name
         self._name = canonicalize_name(name)
         self._source_type = source_type
@@ -53,6 +56,16 @@ class PackageSpecification:
     @property
     def complete_name(self) -> str:
         name: str = self._name
+
+        if self._features:
+            features = ",".join(sorted(self._features))
+            name = f"{name}[{features}]"
+
+        return name
+
+    @property
+    def complete_pretty_name(self) -> str:
+        name = self._pretty_name
 
         if self._features:
             features = ",".join(sorted(self._features))
@@ -165,7 +178,7 @@ class PackageSpecification:
         return self.is_same_source_as(other)
 
     def clone(self: T) -> T:
-        return copy.deepcopy(self)
+        return copy.copy(self)
 
     def with_features(self: T, features: Iterable[str]) -> T:
         package = self.clone()

@@ -1,8 +1,8 @@
 diff --git a/pyproject.toml b/pyproject.toml
-index 04c1b78..0540b09 100644
+index faf24c4..c240abf 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
-@@ -137,6 +137,5 @@ drop = [
+@@ -135,6 +135,5 @@ drop = [
  pyrsistent = "https://raw.githubusercontent.com/tobgu/pyrsistent/master/LICENSE.mit"
  
  [build-system]
@@ -11,13 +11,20 @@ index 04c1b78..0540b09 100644
  build-backend = "poetry.core.masonry.api"
 -backend-path = ["src"]
 diff --git a/src/poetry/core/__init__.py b/src/poetry/core/__init__.py
-index df62f6e..4c1a225 100644
+index 8a2867f..6593825 100644
 --- a/src/poetry/core/__init__.py
 +++ b/src/poetry/core/__init__.py
-@@ -8,8 +8,3 @@ from pathlib import Path
+@@ -1,15 +1,5 @@
+ from __future__ import annotations
+ 
+-import sys
+-
+-from pathlib import Path
+-
+-
  # this cannot presently be replaced with importlib.metadata.version as when building
  # itself, poetry-core is not available as an installed distribution.
- __version__ = "1.8.1"
+ __version__ = "1.9.0"
 -
 -__vendor_site__ = (Path(__file__).parent / "_vendor").as_posix()
 -
@@ -58,10 +65,10 @@ index 1d77bbf..0000000
 -SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 diff --git a/src/poetry/core/_vendor/fastjsonschema/__init__.py b/src/poetry/core/_vendor/fastjsonschema/__init__.py
 deleted file mode 100644
-index 0d2d388..0000000
+index b0b8849..0000000
 --- a/src/poetry/core/_vendor/fastjsonschema/__init__.py
 +++ /dev/null
-@@ -1,266 +0,0 @@
+@@ -1,271 +0,0 @@
 -#    ___
 -#    \./     DANGER: This project implements some code generation
 -# .--.O.--.          techniques involving string concatenation.
@@ -187,7 +194,7 @@ index 0d2d388..0000000
 -)
 -
 -
--def validate(definition, data, handlers={}, formats={}, use_default=True):
+-def validate(definition, data, handlers={}, formats={}, use_default=True, use_formats=True):
 -    """
 -    Validation function for lazy programmers or for use cases when you need
 -    to call validation only once, so you do not have to compile it first.
@@ -203,12 +210,12 @@ index 0d2d388..0000000
 -
 -    Preferred is to use :any:`compile` function.
 -    """
--    return compile(definition, handlers, formats, use_default)(data)
+-    return compile(definition, handlers, formats, use_default, use_formats)(data)
 -
 -
 -#TODO: Change use_default to False when upgrading to version 3.
 -# pylint: disable=redefined-builtin,dangerous-default-value,exec-used
--def compile(definition, handlers={}, formats={}, use_default=True):
+-def compile(definition, handlers={}, formats={}, use_default=True, use_formats=True):
 -    """
 -    Generates validation function for validating JSON schema passed in ``definition``.
 -    Example:
@@ -260,13 +267,17 @@ index 0d2d388..0000000
 -            'bar': lambda value: value in ('foo', 'bar'),
 -        })
 -
+-    Note that formats are automatically used as assertions. It can be turned
+-    off by passing `use_formats=False`. When disabled, custom formats are
+-    disabled as well. (Added in 2.19.0.)
+-
 -    Exception :any:`JsonSchemaDefinitionException` is raised when generating the
 -    code fails (bad definition).
 -
 -    Exception :any:`JsonSchemaValueException` is raised from generated function when
 -    validation fails (data do not follow the definition).
 -    """
--    resolver, code_generator = _factory(definition, handlers, formats, use_default)
+-    resolver, code_generator = _factory(definition, handlers, formats, use_default, use_formats)
 -    global_state = code_generator.global_state
 -    # Do not pass local state so it can recursively call itself.
 -    exec(code_generator.func_code, global_state)
@@ -277,7 +288,7 @@ index 0d2d388..0000000
 -
 -
 -# pylint: disable=dangerous-default-value
--def compile_to_code(definition, handlers={}, formats={}, use_default=True):
+-def compile_to_code(definition, handlers={}, formats={}, use_default=True, use_formats=True):
 -    """
 -    Generates validation code for validating JSON schema passed in ``definition``.
 -    Example:
@@ -300,7 +311,7 @@ index 0d2d388..0000000
 -    Exception :any:`JsonSchemaDefinitionException` is raised when generating the
 -    code fails (bad definition).
 -    """
--    _, code_generator = _factory(definition, handlers, formats, use_default)
+-    _, code_generator = _factory(definition, handlers, formats, use_default, use_formats)
 -    return (
 -        'VERSION = "' + VERSION + '"\n' +
 -        code_generator.global_state_code + '\n' +
@@ -308,13 +319,14 @@ index 0d2d388..0000000
 -    )
 -
 -
--def _factory(definition, handlers, formats={}, use_default=True):
+-def _factory(definition, handlers, formats={}, use_default=True, use_formats=True):
 -    resolver = RefResolver.from_schema(definition, handlers=handlers, store={})
 -    code_generator = _get_code_generator_class(definition)(
 -        definition,
 -        resolver=resolver,
 -        formats=formats,
 -        use_default=use_default,
+-        use_formats=use_formats,
 -    )
 -    return resolver, code_generator
 -
@@ -355,10 +367,10 @@ index e5f3aa7..0000000
 -    main()
 diff --git a/src/poetry/core/_vendor/fastjsonschema/draft04.py b/src/poetry/core/_vendor/fastjsonschema/draft04.py
 deleted file mode 100644
-index 25cb374..0000000
+index e2d9c8a..0000000
 --- a/src/poetry/core/_vendor/fastjsonschema/draft04.py
 +++ /dev/null
-@@ -1,600 +0,0 @@
+@@ -1,603 +0,0 @@
 -import decimal
 -import re
 -
@@ -395,9 +407,10 @@ index 25cb374..0000000
 -        'uri': r'^\w+:(\/?\/?)[^\s]+\Z',
 -    }
 -
--    def __init__(self, definition, resolver=None, formats={}, use_default=True):
+-    def __init__(self, definition, resolver=None, formats={}, use_default=True, use_formats=True):
 -        super().__init__(definition, resolver)
 -        self._custom_formats = formats
+-        self._use_formats = use_formats
 -        self._use_default = use_default
 -        self._json_keywords_to_function.update((
 -            ('type', self.generate_type),
@@ -615,6 +628,8 @@ index 25cb374..0000000
 -
 -        Valid value for this definition is user@example.com but not @username
 -        """
+-        if not self._use_formats:
+-            return
 -        with self.l('if isinstance({variable}, str):'):
 -            format_ = self._definition['format']
 -            # Checking custom formats - user is allowed to override default formats.
@@ -961,7 +976,7 @@ index 25cb374..0000000
 -                self.l('pass')
 diff --git a/src/poetry/core/_vendor/fastjsonschema/draft06.py b/src/poetry/core/_vendor/fastjsonschema/draft06.py
 deleted file mode 100644
-index f5aca06..0000000
+index 2e679d0..0000000
 --- a/src/poetry/core/_vendor/fastjsonschema/draft06.py
 +++ /dev/null
 @@ -1,188 +0,0 @@
@@ -983,8 +998,8 @@ index f5aca06..0000000
 -        ),
 -    })
 -
--    def __init__(self, definition, resolver=None, formats={}, use_default=True):
--        super().__init__(definition, resolver, formats, use_default)
+-    def __init__(self, definition, resolver=None, formats={}, use_default=True, use_formats=True):
+-        super().__init__(definition, resolver, formats, use_default, use_formats)
 -        self._json_keywords_to_function.update((
 -            ('exclusiveMinimum', self.generate_exclusive_minimum),
 -            ('exclusiveMaximum', self.generate_exclusive_maximum),
@@ -1155,7 +1170,7 @@ index f5aca06..0000000
 -            self.exc('{name} must be same as const definition: {definition_rule}', rule='const')
 diff --git a/src/poetry/core/_vendor/fastjsonschema/draft07.py b/src/poetry/core/_vendor/fastjsonschema/draft07.py
 deleted file mode 100644
-index 470e23b..0000000
+index 18546d9..0000000
 --- a/src/poetry/core/_vendor/fastjsonschema/draft07.py
 +++ /dev/null
 @@ -1,116 +0,0 @@
@@ -1164,7 +1179,7 @@ index 470e23b..0000000
 -
 -class CodeGeneratorDraft07(CodeGeneratorDraft06):
 -    FORMAT_REGEXS = dict(CodeGeneratorDraft06.FORMAT_REGEXS, **{
--        'date': r'^(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})\Z',
+-        'date': r'^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})\Z',
 -        'iri': r'^\w+:(\/?\/?)[^\s]+\Z',
 -        'iri-reference': r'^(\w+:(\/?\/?))?[^#\\\s]*(#[^\\\s]*)?\Z',
 -        'idn-email': r'^[^@]+@[^@]+\.[^@]+\Z',
@@ -1178,8 +1193,8 @@ index 470e23b..0000000
 -        ),
 -    })
 -
--    def __init__(self, definition, resolver=None, formats={}, use_default=True):
--        super().__init__(definition, resolver, formats, use_default)
+-    def __init__(self, definition, resolver=None, formats={}, use_default=True, use_formats=True):
+-        super().__init__(definition, resolver, formats, use_default, use_formats)
 -        # pylint: disable=duplicate-code
 -        self._json_keywords_to_function.update((
 -            ('if', self.generate_if_then_else),
@@ -1904,11 +1919,11 @@ index b94813a..0000000
 -                    self.walk(item)
 diff --git a/src/poetry/core/_vendor/fastjsonschema/version.py b/src/poetry/core/_vendor/fastjsonschema/version.py
 deleted file mode 100644
-index 3335adc..0000000
+index aa8b439..0000000
 --- a/src/poetry/core/_vendor/fastjsonschema/version.py
 +++ /dev/null
 @@ -1 +0,0 @@
--VERSION = '2.18.1'
+-VERSION = '2.19.1'
 diff --git a/src/poetry/core/_vendor/lark/LICENSE b/src/poetry/core/_vendor/lark/LICENSE
 deleted file mode 100644
 index 9201da2..0000000
@@ -1935,7 +1950,7 @@ index 9201da2..0000000
 -CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/src/poetry/core/_vendor/lark/__init__.py b/src/poetry/core/_vendor/lark/__init__.py
 deleted file mode 100644
-index e316f99..0000000
+index a13c7b3..0000000
 --- a/src/poetry/core/_vendor/lark/__init__.py
 +++ /dev/null
 @@ -1,38 +0,0 @@
@@ -1955,7 +1970,7 @@ index e316f99..0000000
 -from .utils import logger
 -from .visitors import Discard, Transformer, Transformer_NonRecursive, Visitor, v_args
 -
--__version__: str = "1.1.8"
+-__version__: str = "1.1.9"
 -
 -__all__ = (
 -    "GrammarError",
@@ -10568,10 +10583,10 @@ index 6ec7323..0000000
 -    return value.lstrip(_TEMPLATE_MARKER) if value.startswith(_TEMPLATE_MARKER) else None
 diff --git a/src/poetry/core/_vendor/lark/utils.py b/src/poetry/core/_vendor/lark/utils.py
 deleted file mode 100644
-index cc6183b..0000000
+index 70ac27e..0000000
 --- a/src/poetry/core/_vendor/lark/utils.py
 +++ /dev/null
-@@ -1,358 +0,0 @@
+@@ -1,361 +0,0 @@
 -import unicodedata
 -import os
 -from itertools import product
@@ -10723,11 +10738,14 @@ index cc6183b..0000000
 -            # sre_parse does not support the new features in regex. To not completely fail in that case,
 -            # we manually test for the most important info (whether the empty string is matched)
 -            c = regex.compile(regexp_final)
+-            # Python 3.11.7 introducded sre_parse.MAXWIDTH that is used instead of MAXREPEAT
+-            # See lark-parser/lark#1376 and python/cpython#109859
+-            MAXWIDTH = getattr(sre_parse, "MAXWIDTH", sre_constants.MAXREPEAT)
 -            if c.match('') is None:
 -                # MAXREPEAT is a none pickable subclass of int, therefore needs to be converted to enable caching
--                return 1, int(sre_constants.MAXREPEAT)
+-                return 1, int(MAXWIDTH)
 -            else:
--                return 0, int(sre_constants.MAXREPEAT)
+-                return 0, int(MAXWIDTH)
 -
 -###}
 -
@@ -17244,34 +17262,42 @@ index 7632ecf..0000000
 +++ /dev/null
 @@ -1 +0,0 @@
 -# Marker file for PEP 561
-diff --git a/src/poetry/core/_vendor/vendor.txt b/src/poetry/core/_vendor/vendor.txt
-deleted file mode 100644
-index d6f238d..0000000
---- a/src/poetry/core/_vendor/vendor.txt
-+++ /dev/null
-@@ -1,4 +0,0 @@
--fastjsonschema==2.18.1 ; python_version >= "3.8" and python_version < "4.0"
--lark==1.1.8 ; python_version >= "3.8" and python_version < "4.0"
--packaging==23.2 ; python_version >= "3.8" and python_version < "4.0"
--tomli==2.0.1 ; python_version >= "3.8" and python_version < "4.0"
 diff --git a/src/poetry/core/json/__init__.py b/src/poetry/core/json/__init__.py
-index 4301c9f..65c52c8 100644
+index 035dd90..65c52c8 100644
 --- a/src/poetry/core/json/__init__.py
 +++ b/src/poetry/core/json/__init__.py
-@@ -2,7 +2,7 @@ from __future__ import annotations
+@@ -1,10 +1,8 @@
+ from __future__ import annotations
  
  import json
+-import sys
  
 -from pathlib import Path
+-from typing import TYPE_CHECKING
 +from importlib import resources
  from typing import Any
  
  import fastjsonschema
-@@ -10,22 +10,18 @@ import fastjsonschema
+@@ -12,37 +10,18 @@ import fastjsonschema
  from fastjsonschema.exceptions import JsonSchemaException
  
  
 -SCHEMA_DIR = Path(__file__).parent / "schemas"
+-
+-
+-if sys.version_info < (3, 9):
+-
+-    def _get_schema_file(schema_name: str) -> Path:
+-        return SCHEMA_DIR / f"{schema_name}.json"
+-
+-else:
+-    from importlib.resources import files
+-
+-    if TYPE_CHECKING:
+-        from importlib.abc import Traversable
+-
+-    def _get_schema_file(schema_name: str) -> Traversable:
+-        return files(__package__) / "schemas" / f"{schema_name}.json"
 -
 -
  class ValidationError(ValueError):
@@ -17279,9 +17305,9 @@ index 4301c9f..65c52c8 100644
  
  
  def validate_object(obj: dict[str, Any], schema_name: str) -> list[str]:
--    schema_file = SCHEMA_DIR / f"{schema_name}.json"
+-    schema_file = _get_schema_file(schema_name)
 -
--    if not schema_file.exists():
+-    if not schema_file.is_file():
 +    try:
 +        schema = json.loads(
 +            resources.read_text(f"{__name__}.schemas", f"{schema_name}.json")
@@ -17304,25 +17330,47 @@ similarity index 100%
 rename from src/poetry/core/_vendor/lark/parsers/__init__.py
 rename to src/poetry/core/spdx/data/__init__.py
 diff --git a/src/poetry/core/spdx/helpers.py b/src/poetry/core/spdx/helpers.py
-index a58a5f6..73f7c5f 100644
+index 5a5c9be..73f7c5f 100644
 --- a/src/poetry/core/spdx/helpers.py
 +++ b/src/poetry/core/spdx/helpers.py
-@@ -3,7 +3,7 @@ from __future__ import annotations
+@@ -2,29 +2,12 @@ from __future__ import annotations
+ 
  import functools
  import json
+-import sys
  
--from pathlib import Path
+-from typing import TYPE_CHECKING
 +from importlib import resources
  
  from poetry.core.spdx.license import License
  
-@@ -20,11 +20,9 @@ def license_by_id(identifier: str) -> License:
+ 
+-if sys.version_info < (3, 9):
+-    from pathlib import Path
+-
+-    def _get_license_file() -> Path:
+-        return Path(__file__).parent / "data" / "licenses.json"
+-
+-else:
+-    from importlib.resources import files
+-
+-    if TYPE_CHECKING:
+-        from importlib.abc import Traversable
+-
+-    def _get_license_file() -> Traversable:
+-        return files(__package__) / "data" / "licenses.json"
+-
+-
+ def license_by_id(identifier: str) -> License:
+     if not identifier:
+         raise ValueError("A license identifier is required")
+@@ -37,11 +20,9 @@ def license_by_id(identifier: str) -> License:
  
  @functools.lru_cache
  def _load_licenses() -> dict[str, License]:
 +    from . import __name__
      licenses = {}
--    licenses_file = Path(__file__).parent / "data" / "licenses.json"
+-    licenses_file = _get_license_file()
 -
 -    with licenses_file.open(encoding="utf-8") as f:
 -        data = json.load(f)
@@ -17354,10 +17402,10 @@ index caf504b..971104e 100644
  
 diff --git a/vendors/deps.txt b/vendors/deps.txt
 new file mode 100644
-index 0000000..a923875
+index 0000000..262aa63
 --- /dev/null
 +++ b/vendors/deps.txt
 @@ -0,0 +1,3 @@
-+fastjsonschema==2.18.1
++fastjsonschema==2.19.1
 +packaging==23.2
 +tomli==2.0.1

@@ -19,6 +19,8 @@ def get_vcs(directory: Path) -> Git | None:
 
         check_ignore = subprocess.run(
             [executable(), "check-ignore", "."],
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
         ).returncode
 
         if check_ignore == 0:
@@ -28,6 +30,7 @@ def get_vcs(directory: Path) -> Git | None:
                 [executable(), "rev-parse", "--show-toplevel"],
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
             ).strip()
 
             vcs = Git(Path(git_dir))

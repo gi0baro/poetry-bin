@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Any
+from typing import Mapping
+from typing import Sequence
 
 
 if TYPE_CHECKING:
@@ -18,8 +20,8 @@ class Module:
         self,
         name: str,
         directory: str = ".",
-        packages: list[dict[str, Any]] | None = None,
-        includes: list[dict[str, Any]] | None = None,
+        packages: Sequence[Mapping[str, Any]] = (),
+        includes: Sequence[Mapping[str, Any]] = (),
     ) -> None:
         from poetry.core.masonry.utils.include import Include
         from poetry.core.masonry.utils.package_include import PackageInclude
@@ -30,8 +32,6 @@ class Module:
         self._is_package = False
         self._path = Path(directory)
         self._includes: list[Include] = []
-        packages = packages or []
-        includes = includes or []
 
         if not packages:
             # It must exist either as a .py file or a directory, but not both
@@ -52,19 +52,15 @@ class Module:
                 if src_pkg_dir.is_dir() and src_py_file.is_file():
                     raise ValueError(f"Both {pkg_dir} and {py_file} exist")
                 elif src_pkg_dir.is_dir():
-                    packages = [
-                        {
-                            "include": str(src_pkg_dir.relative_to(src)),
-                            "from": str(src.relative_to(self._path)),
-                        }
-                    ]
+                    packages = [{
+                        "include": str(src_pkg_dir.relative_to(src)),
+                        "from": str(src.relative_to(self._path)),
+                    }]
                 elif src_py_file.is_file():
-                    packages = [
-                        {
-                            "include": str(src_py_file.relative_to(src)),
-                            "from": str(src.relative_to(self._path)),
-                        }
-                    ]
+                    packages = [{
+                        "include": str(src_py_file.relative_to(src)),
+                        "from": str(src.relative_to(self._path)),
+                    }]
                 else:
                     raise ModuleOrPackageNotFound(
                         f"No file/folder found for package {name}"
@@ -81,6 +77,7 @@ class Module:
                     package["include"],
                     formats=formats,
                     source=package.get("from"),
+                    target=package.get("to"),
                 )
             )
 

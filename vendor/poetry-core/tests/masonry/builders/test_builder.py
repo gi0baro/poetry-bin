@@ -16,6 +16,17 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
+def test_building_not_possible_in_non_package_mode() -> None:
+    with pytest.raises(RuntimeError) as err:
+        Builder(
+            Factory().create_poetry(
+                Path(__file__).parent.parent.parent / "fixtures" / "non_package_mode"
+            )
+        )
+
+    assert str(err.value) == "Building a package is not possible in non-package mode."
+
+
 def test_builder_find_excluded_files(mocker: MockerFixture) -> None:
     p = mocker.patch("poetry.core.vcs.git.Git.get_ignored_files")
     p.return_value = []
@@ -174,8 +185,7 @@ def test_metadata_with_url_dependencies() -> None:
     requires_dist = metadata["Requires-Dist"]
 
     assert (
-        requires_dist
-        == "demo @"
+        requires_dist == "demo @"
         " https://python-poetry.org/distributions/demo-0.1.0-py2.py3-none-any.whl"
     )
 
@@ -190,7 +200,7 @@ def test_missing_script_files_throws_error() -> None:
     with pytest.raises(RuntimeError) as err:
         builder.convert_script_files()
 
-    assert "is not found." in err.value.args[0]
+    assert "is not found." in str(err.value)
 
 
 def test_invalid_script_files_definition() -> None:
@@ -203,8 +213,8 @@ def test_invalid_script_files_definition() -> None:
             )
         )
 
-    assert "configuration is invalid" in err.value.args[0]
-    assert "scripts.invalid_definition" in err.value.args[0]
+    assert "configuration is invalid" in str(err.value)
+    assert "scripts.invalid_definition" in str(err.value)
 
 
 @pytest.mark.parametrize(
@@ -251,7 +261,8 @@ def test_entrypoint_scripts_legacy_warns(fixture: str) -> None:
         ),
     ],
 )
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+@pytest.mark.filterwarnings("ignore:.* callable .* deprecated:DeprecationWarning")
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
 def test_builder_convert_entry_points(
     fixture: str, result: dict[str, list[str]]
 ) -> None:
@@ -296,7 +307,9 @@ def test_metadata_with_readme_files() -> None:
 
     readme1 = test_path / "README-1.rst"
     readme2 = test_path / "README-2.rst"
-    description = "\n".join([readme1.read_text(), readme2.read_text(), ""])
+    description = "\n".join(
+        [readme1.read_text(encoding="utf-8"), readme2.read_text(encoding="utf-8"), ""]
+    )
 
     assert metadata.get_payload() == description
 

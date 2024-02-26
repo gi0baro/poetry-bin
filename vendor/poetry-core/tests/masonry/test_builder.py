@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import warnings
 
 from contextlib import contextmanager
 from pathlib import Path
@@ -10,7 +11,11 @@ from typing import Iterator
 import pytest
 
 from poetry.core.factory import Factory
-from poetry.core.masonry.builder import Builder
+
+
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    from poetry.core.masonry.builder import Builder
 
 
 if TYPE_CHECKING:
@@ -46,6 +51,18 @@ def test_builder_factory_raises_error_when_format_is_not_valid() -> None:
 
 
 @pytest.mark.parametrize("format", ["sdist", "wheel", "all"])
+def test_builder_raises_error_in_non_package_mode(tmp_path: Path, format: str) -> None:
+    poetry = Factory().create_poetry(
+        Path(__file__).parent.parent / "fixtures" / "non_package_mode"
+    )
+    with pytest.raises(RuntimeError) as err:
+        Builder(poetry).build(format, target_dir=tmp_path)
+
+    assert str(err.value) == "Building a package is not possible in non-package mode."
+
+
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
+@pytest.mark.parametrize("format", ["sdist", "wheel", "all"])
 def test_builder_creates_places_built_files_in_specified_directory(
     tmp_path: Path, format: str
 ) -> None:
@@ -56,6 +73,7 @@ def test_builder_creates_places_built_files_in_specified_directory(
     assert all(archive.exists() for archive in build_artifacts)
 
 
+@pytest.mark.filterwarnings("ignore:.* script .* extra:DeprecationWarning")
 @pytest.mark.parametrize("format", ["sdist", "wheel", "all"])
 def test_builder_creates_packages_in_dist_directory_if_no_output_is_specified(
     format: str,
