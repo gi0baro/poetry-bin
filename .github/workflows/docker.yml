@@ -28,7 +28,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Log in to the Container registry
       uses: docker/login-action@v1
       with:
@@ -88,6 +88,18 @@ jobs:
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
           POETRY_VERSION=1.6.0-1
 
+    - name: Build and push 1.7 image
+      uses: docker/build-push-action@v4
+      with:
+        context: docker
+        platforms: linux/amd64,linux/arm64
+        file: docker/Gnu.fixedv.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.7
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          POETRY_VERSION=1.7.1-1
+
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
       with:
@@ -115,7 +127,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Log in to the Container registry
       uses: docker/login-action@v1
       with:
@@ -166,6 +178,17 @@ jobs:
         build-args: |
           PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
           POETRY_VERSION=1.6.0-1
+
+    - name: Build and push 1.7 image
+      uses: docker/build-push-action@v4
+      with:
+        context: docker
+        file: docker/Alpine.fixedv.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ github.repository }}:${{ matrix.python_version }}${{ matrix.image_flavor }}-1.7
+        build-args: |
+          PYTHON_IMAGE=${{ matrix.python_version }}${{ matrix.image_flavor }}
+          POETRY_VERSION=1.7.1-1
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v4
