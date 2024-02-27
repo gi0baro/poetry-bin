@@ -17,7 +17,7 @@ jobs:
     container: ghcr.io/gi0baro/pyoxidizer:0.24.0-gnu
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Get build version
       id: build_version
       run: |
@@ -27,12 +27,12 @@ jobs:
         make build_linux
         make pack_linux BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload release file
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
     - name: Upload checksum file
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
@@ -41,7 +41,7 @@ jobs:
   #   runs-on: ubuntu-latest
 
   #   steps:
-  #   - uses: actions/checkout@v2
+  #   - uses: actions/checkout@v4
   #   - name: Get build version
   #     id: build_version
   #     run: |
@@ -57,24 +57,24 @@ jobs:
   #         make pack_linux ARCH=aarch64-unknown-linux-gnu BUILD_VERSION=$BUILD_VERSION
 
   #   - name: Upload release file
-  #     uses: actions/upload-artifact@v1
+  #     uses: actions/upload-artifact@v3
   #     with:
   #       name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
   #       path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.tar.gz
   #   - name: Upload checksum file
-  #     uses: actions/upload-artifact@v1
+  #     uses: actions/upload-artifact@v3
   #     with:
   #       name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
   #       path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-unknown-linux-gnu.sha256sum
 
   MacOS:
-    runs-on: macos-11
+    runs-on: macos-14
 
     env:
       PYOXIDIZER_SYSTEM_RUST: "1"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Get build version
       id: build_version
       run: |
@@ -85,42 +85,42 @@ jobs:
         default: true
         profile: minimal
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     - name: Install PyOxidizer
       run: |
         pip install pyoxidizer==0.24.0
-    - name: Build x86_64 release
-      run: |
-        make build_mac ARCH=x86_64-apple-darwin
-        make verify_build_mac ARCH=x86_64-apple-darwin
-        make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
-    # - name: Build aarch64 release
+    # - name: Build x86_64 release
     #   run: |
-    #     make build_mac ARCH=aarch64-apple-darwin
-    #     make pack_mac ARCH=aarch64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
-    - name: Upload x86_64 release file
-      uses: actions/upload-artifact@v1
-      with:
-        name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
-        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
-    - name: Upload x86_64 checksum file
-      uses: actions/upload-artifact@v1
-      with:
-        name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
-        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
-    # - name: Upload aarch64 release file
-    #   uses: actions/upload-artifact@v1
+    #     make build_mac ARCH=x86_64-apple-darwin
+    #     make verify_build_mac ARCH=x86_64-apple-darwin
+    #     make pack_mac ARCH=x86_64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
+    - name: Build aarch64 release
+      run: |
+        make build_mac ARCH=aarch64-apple-darwin
+        make verify_build_mac ARCH=aarch64-apple-darwin
+        make pack_mac ARCH=aarch64-apple-darwin BUILD_VERSION=${{ steps.build_version.outputs.version }}
+    # - name: Upload x86_64 release file
+    #   uses: actions/upload-artifact@v3
     #   with:
-    #     name: poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.tar.gz
-    #     path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.tar.gz
-    # - name: Upload aarch64 checksum file
-    #   uses: actions/upload-artifact@v1
+    #     name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
+    #     path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.tar.gz
+    # - name: Upload x86_64 checksum file
+    #   uses: actions/upload-artifact@v3
     #   with:
-    #     name: poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.sha256sum
-    #     path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.sha256sum
-
+    #     name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
+    #     path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-apple-darwin.sha256sum
+    - name: Upload aarch64 release file
+      uses: actions/upload-artifact@v3
+      with:
+        name: poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.tar.gz
+        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.tar.gz
+    - name: Upload aarch64 checksum file
+      uses: actions/upload-artifact@v3
+      with:
+        name: poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.sha256sum
+        path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-aarch64-apple-darwin.sha256sum
 
   Windows:
     runs-on: windows-2019
@@ -129,7 +129,7 @@ jobs:
       PYOXIDIZER_SYSTEM_RUST: "1"
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Get build version
       id: build_version
       shell: bash
@@ -141,7 +141,7 @@ jobs:
         default: true
         profile: minimal
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     - name: Install PyOxidizer
@@ -154,12 +154,12 @@ jobs:
         make verify_build_win
         make pack_win BUILD_VERSION=${{ steps.build_version.outputs.version }}
     - name: Upload x86_64 release file
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.tar.gz
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.tar.gz
     - name: Upload x86_64 checksum file
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
         name: poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum
