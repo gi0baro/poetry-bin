@@ -179,7 +179,7 @@ jobs:
         path: dist/poetry-bin-${{ steps.build_version.outputs.version }}-x86_64-pc-windows-msvc.sha256sum
 
   Release:
-    needs: [Linux-x86, MacOS, Windows]
+    needs: [Linux-x86, MacOS-x86, MacOS-arm, Windows]
     runs-on: ubuntu-latest
 
     steps:
