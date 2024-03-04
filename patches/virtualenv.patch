@@ -11,7 +11,7 @@ index b799ed2..837bb1c 100644
  .python-version
  
 diff --git a/pyproject.toml b/pyproject.toml
-index 842a5b5..94915e2 100644
+index 842a5b5..2798425 100644
 --- a/pyproject.toml
 +++ b/pyproject.toml
 @@ -1,7 +1,6 @@
@@ -33,6 +33,15 @@ index 842a5b5..94915e2 100644
  dependencies = [
    "distlib<1,>=0.3.7",
    "filelock<4,>=3.12.2",
+@@ -60,7 +57,7 @@ optional-dependencies.test = [
+   "coverage-enable-subprocess>=1",
+   "flaky>=3.7",
+   "packaging>=23.1",
+-  "pytest>=7.4",
++  "pytest>=7.4,<8.1",
+   "pytest-env>=0.8.2",
+   'pytest-freezer>=0.4.8; platform_python_implementation == "PyPy"',
+   "pytest-mock>=3.11.1",
 @@ -97,9 +94,7 @@ app-data = "virtualenv.seed.embed.via_app_data.via_app_data:FromAppData"
  pip = "virtualenv.seed.embed.pip_invoke:PipInvoke"
  
