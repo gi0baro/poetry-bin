@@ -1,5 +1,5 @@
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..2d986fc5 100644
+index 13fa08fc..320141d8 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -19,7 +19,7 @@ index 13fa08fc..2d986fc5 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.8.1"
++__version__ = "1.8.2"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
 index 3286c73f..5c189821 100644
 --- a/src/poetry/console/application.py
