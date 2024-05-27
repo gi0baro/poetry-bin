@@ -47,6 +47,15 @@ Depending on your system configuration, credentials might be saved in your comma
 Many shells do not save commands to history when they are prefixed by a space character. For more information, please refer to your shell's documentation.
 {{% /warning %}}
 
+{{% note %}}
+If you would like to provide the password interactively, you can simply omit `<password>` in your command. And
+Poetry will prompt you to enter the credential manually.
+
+```bash
+poetry config http-basic.foo <username>
+```
+{{% /note %}}
+
 Once this is done, you can add dependencies to your project from this source.
 
 ```bash
@@ -74,6 +83,16 @@ poetry config repositories.foo-pub https://pypi.example.org/legacy/
 poetry config http-basic.foo-pub <username> <password>
 ```
 
+{{% /note %}}
+
+{{% note %}}
+When configuring a repository using environment variables, note that correct suffixes need to be used.
+
+```bash
+export POETRY_REPOSITORIES_FOO_URL=https://pypi.example.org/legacy/
+export POETRY_HTTP_BASIC_FOO_USERNAME=<username>
+export POETRY_HTTP_BASIC_FOO_PASSWORD=<password>
+```
 {{% /note %}}
 
 Now, all the is left is to build and publish your project using the
@@ -492,6 +511,10 @@ Once you have created a new token, you can tell Poetry to use it:
 ```bash
 poetry config pypi-token.pypi <my-token>
 ```
+If you have configured **testpypi** as a [Publishable Repository](#publishable-repositories), the token can be set using
+```bash
+poetry config pypi-token.testpypi <your-token>
+```
 
 If you still want to use your username and password, you can do so with the following
 call to `config`.
@@ -521,12 +544,6 @@ Poetry will fallback to Pip style use of keyring so that backends like
 Microsoft's [artifacts-keyring](https://pypi.org/project/artifacts-keyring/) get a chance to retrieve
 valid credentials. It will need to be properly installed into Poetry's virtualenv,
 preferably by installing a plugin.
-
-If you are letting Poetry manage your virtual environments you will want a virtualenv
-seeder installed in Poetry's virtualenv that installs the desired keyring backend
-during `poetry install`. To again use Azure DevOps as an example: [azure-devops-artifacts-helpers](https://pypi.org/project/azure-devops-artifacts-helpers/)
-provides such a seeder. This would of course best achieved by installing a Poetry plugin
-if it exists for you use case instead of doing it yourself.
 
 {{% /note %}}
 

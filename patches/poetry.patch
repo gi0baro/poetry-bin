@@ -1,5 +1,5 @@
 diff --git a/src/poetry/__version__.py b/src/poetry/__version__.py
-index 13fa08fc..320141d8 100644
+index 13fa08fc..a44132de 100644
 --- a/src/poetry/__version__.py
 +++ b/src/poetry/__version__.py
 @@ -1,16 +1 @@
@@ -19,7 +19,7 @@ index 13fa08fc..320141d8 100644
 -version: Callable[[str], str] = metadata.version
 -
 -__version__ = version("poetry")
-+__version__ = "1.8.2"
++__version__ = "1.8.3"
 diff --git a/src/poetry/console/application.py b/src/poetry/console/application.py
 index 3286c73f..5c189821 100644
 --- a/src/poetry/console/application.py
@@ -1457,7 +1457,7 @@ index 00000000..232c3d5c
 +    json.dumps([(t.interpreter, t.abi, t.platform) for t in sys_tags()])
 +)
 diff --git a/src/poetry/utils/env/script_strings.py b/src/poetry/utils/env/script_strings.py
-index 24664986..4dfdcb24 100644
+index 3e663e3e..039dd679 100644
 --- a/src/poetry/utils/env/script_strings.py
 +++ b/src/poetry/utils/env/script_strings.py
 @@ -1,31 +1,10 @@
@@ -1496,7 +1496,7 @@ index 24664986..4dfdcb24 100644
  GET_ENVIRONMENT_INFO = """\
  import json
 diff --git a/src/poetry/utils/env/system_env.py b/src/poetry/utils/env/system_env.py
-index 8ddef7b5..b4e35a6f 100644
+index 81396206..b4e35a6f 100644
 --- a/src/poetry/utils/env/system_env.py
 +++ b/src/poetry/utils/env/system_env.py
 @@ -1,20 +1,15 @@
@@ -1523,7 +1523,7 @@ index 8ddef7b5..b4e35a6f 100644
  
  
  class SystemEnv(Env):
-@@ -22,66 +17,39 @@ class SystemEnv(Env):
+@@ -22,67 +17,39 @@ class SystemEnv(Env):
      A system (i.e. not a virtualenv) Python environment.
      """
  
@@ -1594,7 +1594,8 @@ index 8ddef7b5..b4e35a6f 100644
 -            "platform_release": platform.release(),
 -            "platform_system": platform.system(),
 -            "platform_version": platform.version(),
--            "python_full_version": platform.python_version(),
+-            # Workaround for https://github.com/python/cpython/issues/99968
+-            "python_full_version": platform.python_version().rstrip("+"),
 -            "platform_python_implementation": platform.python_implementation(),
 -            "python_version": ".".join(platform.python_version().split(".")[:2]),
 -            "sys_platform": sys.platform,
@@ -1986,6 +1987,74 @@ index 427448bf..00000000
 -"""
 -
 -    assert_plugin_add_result(tester, expected, "^1.2.3")
+diff --git a/tests/console/commands/self/test_install.py b/tests/console/commands/self/test_install.py
+deleted file mode 100644
+index 3490a2e7..00000000
+--- a/tests/console/commands/self/test_install.py
++++ /dev/null
+@@ -1,62 +0,0 @@
+-from __future__ import annotations
+-
+-from typing import TYPE_CHECKING
+-
+-import pytest
+-
+-from poetry.console.commands.self.install import SelfInstallCommand
+-
+-
+-if TYPE_CHECKING:
+-    from cleo.testers.command_tester import CommandTester
+-
+-    from tests.types import CommandTesterFactory
+-
+-
+-@pytest.fixture
+-def tester(command_tester_factory: CommandTesterFactory) -> CommandTester:
+-    return command_tester_factory("self install")
+-
+-
+-@pytest.mark.parametrize(
+-    "pyproject_content",
+-    (
+-        None,
+-        """\
+-[tool.poetry]
+-name = "poetry-instance"
+-version = "1.2"
+-description = ""
+-authors = []
+-license = ""
+-# no package-mode -> defaults to true
+-
+-[tool.poetry.dependencies]
+-python = "3.9"
+-poetry = "1.2"
+-""",
+-    ),
+-)
+-def test_self_install(
+-    tester: CommandTester,
+-    pyproject_content: str | None,
+-) -> None:
+-    command = tester.command
+-    assert isinstance(command, SelfInstallCommand)
+-    pyproject_path = command.system_pyproject
+-    if pyproject_content:
+-        pyproject_path.write_text(pyproject_content)
+-    else:
+-        assert not pyproject_path.exists()
+-
+-    tester.execute()
+-
+-    expected_output = """\
+-Updating dependencies
+-Resolving dependencies...
+-
+-Writing lock file
+-"""
+-
+-    assert tester.io.fetch_output() == expected_output
+-    assert tester.io.fetch_error() == ""
 diff --git a/tests/console/commands/self/test_remove_plugins.py b/tests/console/commands/self/test_remove_plugins.py
 deleted file mode 100644
 index be5e44f6..00000000
@@ -2872,3 +2941,28 @@ index 55036956..4afa1fdf 100644
  def test_venv_backup_exclusion(tmp_path: Path, manager: EnvManager) -> None:
      import xattr
  
+diff --git a/tests/utils/env/test_system_env.py b/tests/utils/env/test_system_env.py
+deleted file mode 100644
+index 4e71a2c5..00000000
+--- a/tests/utils/env/test_system_env.py
++++ /dev/null
+@@ -1,19 +0,0 @@
+-from __future__ import annotations
+-
+-import sys
+-
+-from pathlib import Path
+-from typing import TYPE_CHECKING
+-
+-from poetry.utils.env import SystemEnv
+-
+-
+-if TYPE_CHECKING:
+-    from pytest_mock import MockerFixture
+-
+-
+-def test_get_marker_env_untagged_cpython(mocker: MockerFixture) -> None:
+-    mocker.patch("platform.python_version", return_value="3.11.9+")
+-    env = SystemEnv(Path(sys.prefix))
+-    marker_env = env.get_marker_env()
+-    assert marker_env["python_full_version"] == "3.11.9"

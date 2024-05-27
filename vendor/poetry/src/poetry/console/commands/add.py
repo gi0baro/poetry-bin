@@ -16,7 +16,7 @@ from poetry.console.commands.installer_command import InstallerCommand
 
 class AddCommand(InstallerCommand, InitCommand):
     name = "add"
-    description = "Adds a new dependency to <comment>pyproject.toml</>."
+    description = "Adds a new dependency to <comment>pyproject.toml</> and installs it."
 
     arguments = [argument("name", "The packages to add.", multiple=True)]
     options = [
@@ -79,6 +79,8 @@ You can specify a package in the following forms:
   - A git url (<b>git+https://github.com/python-poetry/poetry.git</b>)
   - A git url with a revision\
  (<b>git+https://github.com/python-poetry/poetry.git#develop</b>)
+  - A subdirectory of a git repository\
+ (<b>git+https://github.com/python-poetry/poetry.git#subdirectory=tests/fixtures/sample_project</b>)
   - A git SSH url (<b>git+ssh://github.com/python-poetry/poetry.git</b>)
   - A git SSH url with a revision\
  (<b>git+ssh://github.com/python-poetry/poetry.git#develop</b>)

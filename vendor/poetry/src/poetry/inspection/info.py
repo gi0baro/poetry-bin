@@ -245,6 +245,11 @@ class PackageInfo:
 
         :param dist: The distribution instance to parse information from.
         """
+        if dist.metadata_version not in pkginfo.distribution.HEADER_ATTRS:
+            # This check can be replaced once upstream implements strict parsing
+            # https://bugs.launchpad.net/pkginfo/+bug/2058697
+            raise ValueError(f"Unknown metadata version: {dist.metadata_version}")
+
         requirements = None
 
         if dist.requires_dist:
@@ -539,8 +544,8 @@ class PackageInfo:
         try:
             wheel = pkginfo.Wheel(str(path))
             return cls._from_distribution(wheel)
-        except ValueError:
-            return PackageInfo()
+        except ValueError as e:
+            raise PackageInfoError(path, e)
 
     @classmethod
     def from_bdist(cls, path: Path) -> PackageInfo:
